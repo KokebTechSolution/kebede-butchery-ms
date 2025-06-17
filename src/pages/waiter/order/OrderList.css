@@ -1,0 +1,86 @@
+.order-list-container {
+  background: #fcfcfc;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.order-list-main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.order-list-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.order-list-tab {
+  background: none;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #777;
+  transition: all 0.2s ease;
+}
+
+.order-list-tab.active {
+  background: #232323;
+  color: white;
+}
+
+.order-list-tab:hover:not(.active) {
+  background: #f0f0f0;
+}
+
+.order-list-content {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.order-list-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.order-list-item:hover {
+  border-color: #ddd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.order-list-item.selected {
+  background: #e6f7ff; /* Light blue background for selected item */
+  border-color: #91d5ff; /* Blue border for selected item */
+}
+
+.order-checkbox {
+  margin-right: 15px;
+  color: #888;
+}
+
+.order-list-item.selected .order-checkbox {
+  color: #1890ff; /* Blue for selected checkbox */
+}
+
+.order-id {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+} 

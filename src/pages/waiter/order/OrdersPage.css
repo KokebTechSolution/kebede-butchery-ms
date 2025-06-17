@@ -1,0 +1,20 @@
+.orders-page-container {
+  display: grid;
+  grid-template-columns: 350px 1fr; /* Fixed width for left pane, fluid for right */
+  gap: 20px;
+  padding: 20px;
+  height: calc(100vh - 60px); /* Adjust based on your navbar height */
+  overflow: hidden;
+}
+
+.orders-list-pane {
+  /* Styles for the left pane containing the OrderList */
+  height: 100%;
+  overflow-y: auto;
+}
+
+.order-detail-pane {
+  /* Styles for the right pane containing the OrderDetail */
+  height: 100%;
+  overflow-y: auto;
+} 

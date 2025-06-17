@@ -1,0 +1,61 @@
+.menu-container {
+  padding: 20px;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+}
+
+.menu-header h1 {
+  font-size: 48px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.back-button {
+  cursor: pointer;
+}
+
+.menu-tabs {
+  display: flex;
+  gap: 32px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 32px;
+  padding: 0 20px;
+}
+
+.menu-tab {
+  background: none;
+  border: none;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 0 0 8px 0;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-tab.active {
+  color: #232323;
+  border-bottom: 3px solid #232323;
+}
+
+.menu-section {
+  margin-bottom: 32px;
+  padding: 0 20px;
+}
+
+.menu-section h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.menu-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+} 

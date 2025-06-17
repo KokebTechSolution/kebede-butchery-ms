@@ -1,0 +1,289 @@
+.order-page {
+  padding: 20px;
+  background: white;
+  min-height: 100vh;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 30px;
+}
+
+.order-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.order-header-left h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.back-button {
+  cursor: pointer;
+  color: #666;
+}
+
+.order-header-right {
+  display: flex;
+  gap: 30px;
+}
+
+.order-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 16px;
+}
+
+.order-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.order-items {
+  margin-bottom: 40px;
+}
+
+.order-items h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.order-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.order-item-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.order-item-icon {
+  color: #666;
+}
+
+.order-item-details h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.order-item-details p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.order-item-quantity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.order-item-price {
+  font-weight: 600;
+  color: #4CAF50;
+}
+
+.order-summary {
+  background: #f9f9f9;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.order-summary h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item.total {
+  font-weight: 700;
+  font-size: 18px;
+  color: #4CAF50;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #eee;
+}
+
+.order-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.print-btn, .complete-btn {
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s ease;
+}
+
+.print-btn {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.print-btn:hover {
+  background: #e0e0e0;
+}
+
+.complete-btn {
+  background: #4CAF50;
+  color: white;
+}
+
+.complete-btn:hover {
+  background: #45a049;
+}
+
+.order-detail-container {
+  background: #fcfcfc;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.order-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.order-detail-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.order-actions-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+.header-icon {
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s ease;
+}
+
+.header-icon:hover {
+  color: #232323;
+}
+
+.order-items-table {
+  flex-grow: 1;
+  margin-bottom: 30px;
+  overflow-y: auto;
+}
+
+.order-items-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.order-items-table th,
+.order-items-table td {
+  padding: 12px 0;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #444;
+}
+
+.order-items-table th {
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  font-size: 13px;
+  padding-bottom: 15px;
+}
+
+.order-items-table tr:last-child td {
+  border-bottom: none;
+}
+
+.price-note {
+  font-size: 12px;
+  color: #999;
+  text-align: left;
+  margin-bottom: 20px;
+  padding-top: 15px;
+  border-top: 1px dashed #eee;
+}
+
+.order-summary-footer {
+  border-top: 2px solid #eee;
+  padding-top: 20px;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.summary-line span:last-child {
+  font-weight: 700;
+  color: #000;
+}
+
+.summary-line.total {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+  margin-top: 20px;
+}
+
+.summary-line.total span:last-child {
+  font-size: 24px;
+  color: #232323;
+} 
