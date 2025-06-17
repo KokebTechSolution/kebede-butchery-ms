@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import TableCard from '../../../components/TableCard.jsx';
 import '../../../App.css';
 
-const tables = [
+export const tables = [
   { id: 1, status: 'Free' },
   { id: 2, status: 'Ordering' },
   { id: 3, status: 'Busy' },

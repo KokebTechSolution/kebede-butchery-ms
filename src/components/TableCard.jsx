@@ -8,7 +8,7 @@ const TableCard = ({ table, onClick }) => (
     style={{ cursor: 'pointer' }}
   >
     <div className="table-card-title">
-      {table.id === 1 && <MdTableRestaurant size={28} style={{ marginRight: 8, verticalAlign: 'middle' }} />}
+      <MdTableRestaurant size={28} style={{ marginRight: 8, verticalAlign: 'middle' }} />
       <span>Table {table.id}</span>
     </div>
     <div className="table-card-status">{table.status}</div>

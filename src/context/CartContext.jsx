@@ -5,20 +5,34 @@ const CartContext = createContext();
 export const CartProvider = ({ children, initialActiveTableId }) => {
   const [tableCarts, setTableCarts] = useState({}); // Stores carts for all tables { tableId: [item1, item2], ... }
   const [activeTableId, setActiveTableId] = useState(null); // The currently selected table ID
+  const [orders, setOrders] = useState([]); // Stores placed orders { id: 'uniqueId', tableId: '1', items: [{...}] }
 
   useEffect(() => {
     if (initialActiveTableId) {
       setActiveTableId(initialActiveTableId);
+      // Initialize cart for the table if it doesn't exist
+      setTableCarts(prev => ({
+        ...prev,
+        [initialActiveTableId]: prev[initialActiveTableId] || []
+      }));
+      console.log('CartContext: Initial active table set to', initialActiveTableId);
     }
   }, [initialActiveTableId]);
 
   // Function to set the active table
   const setActiveTable = (tableId) => {
     setActiveTableId(tableId);
+    // Initialize cart for the table if it doesn't exist
+    setTableCarts(prev => ({
+      ...prev,
+      [tableId]: prev[tableId] || []
+    }));
+    console.log('CartContext: Active table set to', tableId);
   };
 
   // Get cart items for the active table
   const cartItems = activeTableId ? (tableCarts[activeTableId] || []) : [];
+  console.log('CartContext: Current cart items for table', activeTableId, ':', cartItems);
 
   const addToCart = (item) => {
     if (!activeTableId) {
@@ -37,6 +51,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       } else {
         updatedTableCart = [...currentTableCart, { ...item, quantity: 1 }];
       }
+      console.log('CartContext: Added/Updated item', item.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -46,12 +61,17 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const removeFromCart = (itemName) => {
     if (!activeTableId) return;
-    setTableCarts((prevTableCarts) => ({
-      ...prevTableCarts,
-      [activeTableId]: prevTableCarts[activeTableId].filter(
+    setTableCarts((prevTableCarts) => {
+      const currentTableCart = prevTableCarts[activeTableId] || [];
+      const updatedTableCart = currentTableCart.filter(
         (item) => item.name !== itemName
-      ),
-    }));
+      );
+      console.log('CartContext: Removed item', itemName, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      return {
+        ...prevTableCarts,
+        [activeTableId]: updatedTableCart,
+      };
+    });
   };
 
   const updateQuantity = (itemName, quantity) => {
@@ -60,12 +80,17 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       removeFromCart(itemName);
       return;
     }
-    setTableCarts((prevTableCarts) => ({
-      ...prevTableCarts,
-      [activeTableId]: prevTableCarts[activeTableId].map((item) =>
+    setTableCarts((prevTableCarts) => {
+      const currentTableCart = prevTableCarts[activeTableId] || [];
+      const updatedTableCart = currentTableCart.map((item) =>
         item.name === itemName ? { ...item, quantity } : item
-      ),
-    }));
+      );
+      console.log('CartContext: Updated quantity for item', itemName, 'to', quantity, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      return {
+        ...prevTableCarts,
+        [activeTableId]: updatedTableCart,
+      };
+    });
   };
 
   const clearCart = () => {
@@ -74,6 +99,67 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       ...prevTableCarts,
       [activeTableId]: [],
     }));
+    console.log('CartContext: Cart cleared for table', activeTableId);
+  };
+
+  const placeOrder = () => {
+    if (!activeTableId) {
+      console.warn("Cannot place order: No active table selected.");
+      return;
+    }
+    
+    const currentTableCart = tableCarts[activeTableId] || [];
+    if (currentTableCart.length === 0) {
+      console.warn("Cannot place order: Cart is empty for table", activeTableId);
+      return;
+    }
+
+    const newOrderId = `ORD-${Date.now()}`;
+    const newOrder = {
+      id: newOrderId,
+      tableId: activeTableId,
+      items: [...currentTableCart], // Create a copy of the cart items
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('Placing order:', newOrder);
+
+    setOrders(prevOrders => {
+      const updatedOrders = [...prevOrders, newOrder];
+      console.log('Updated orders:', updatedOrders);
+      return updatedOrders;
+    });
+
+    // Only clear the cart after successfully creating the order
+    setTableCarts(prev => {
+      const newTableCarts = { ...prev };
+      newTableCarts[activeTableId] = [];
+      return newTableCarts;
+    });
+
+    return newOrderId;
+  };
+
+  const updateOrder = (orderId, updatedItems) => {
+    setOrders(prevOrders => prevOrders.map(order => 
+      order.id === orderId ? { ...order, items: updatedItems, timestamp: new Date().toISOString() } : order
+    ));
+    console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
+    clearCart(); // Clear the cart after updating the order
+  };
+
+  const deleteOrder = (orderId) => {
+    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    console.log(`CartContext: Deleted order ${orderId}`);
+  };
+
+  const loadCartForEditing = (tableId, items) => {
+    setActiveTableId(tableId);
+    setTableCarts(prev => ({
+      ...prev,
+      [tableId]: items
+    }));
+    console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };
 
   const getTotalItems = () => {
@@ -84,18 +170,36 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  // Get cart items for any table
+  const getTableCart = (tableId) => {
+    return tableCarts[tableId] || [];
+  };
+
   return (
     <CartContext.Provider
       value={{
-        cartItems, // This will now be the active table's cartItems
+        cartItems,
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
         getTotalItems,
         getTotalPrice,
-        setActiveTable, // Expose setActiveTable
-        activeTableId, // Expose activeTableId for consumption
+        setActiveTable,
+        activeTableId,
+        setCartItems: (items) => {
+          if (!activeTableId) return;
+          setTableCarts(prev => ({
+            ...prev,
+            [activeTableId]: items
+          }));
+        },
+        orders,
+        placeOrder,
+        loadCartForEditing,
+        updateOrder,
+        deleteOrder,
+        getTableCart, // Expose getTableCart for getting any table's cart
       }}
     >
       {children}

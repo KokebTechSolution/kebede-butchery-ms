@@ -377,3 +377,20 @@
   max-width: 800px;
   margin: 0 auto;
 }
+
+.order-details-layout {
+  display: flex;
+  flex: 1;
+  gap: 20px;
+  padding: 20px;
+  background-color: #f8f8f8;
+}
+
+.order-details-layout .order-list-container {
+  flex-basis: 250px;
+  flex-shrink: 0;
+}
+
+.order-details-layout .order-details-container {
+  flex: 1;
+}
