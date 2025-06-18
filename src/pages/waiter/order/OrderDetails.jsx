@@ -1,0 +1,128 @@
+import React, { useEffect, useState } from 'react';
+import './OrderDetails.css'; // We will create this file next
+import { useCart } from '../../../context/CartContext';
+import { tables } from '../tables/TablesPage';
+
+const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
+  const { orders, activeTableId, cartItems, deleteOrder, clearCart } = useCart();
+  const [currentOrder, setCurrentOrder] = useState(null);
+
+  useEffect(() => {
+    if (selectedOrderId) {
+      const foundOrder = orders.find(order => order.id === selectedOrderId);
+      setCurrentOrder(foundOrder);
+    } else if (activeTableId) {
+      // If no specific order is selected, show the current active cart as a 'pending' order
+      const currentPendingOrder = {
+        id: `pending-${activeTableId}`, // Use a unique ID for pending order
+        tableId: activeTableId,
+        items: cartItems, // Use cartItems directly from context
+        timestamp: new Date().toISOString(),
+      };
+      setCurrentOrder(currentPendingOrder);
+    } else {
+      setCurrentOrder(null);
+    }
+  }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
+
+  const getTotalPrice = (items) => {
+    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const handleDeleteOrder = () => {
+    if (currentOrder && currentOrder.id && !currentOrder.id.startsWith('pending-')) {
+      deleteOrder(currentOrder.id);
+      if (onOrderDeleted) {
+        onOrderDeleted();
+      }
+    } else if (currentOrder && currentOrder.id.startsWith('pending-')) {
+      // If it's a pending order, clear the cart and then navigate back to tables.
+      clearCart(); 
+      if (onOrderDeleted) {
+        onOrderDeleted();
+      }
+    }
+  };
+
+  if (!currentOrder || currentOrder.items.length === 0) {
+    return (
+      <div className="order-details-container" style={{ textAlign: 'center', padding: '20px' }}>
+        <h2>No items in this order.</h2>
+        <p>Please add items to the cart from the menu page or select an existing order.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="order-details-container">
+      <div className="order-details-header">
+        <div className="icon-buttons">
+          {/* Icons for edit, print, share, delete */}
+          <span className="icon" onClick={() => onEditOrder(currentOrder)}>✏️</span>
+          <span className="icon">🖨️</span>
+          <span className="icon">↪️</span>
+          <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
+        </div>
+        <div className="action-buttons">
+          <button className="button-details">Details</button>
+          <button className="button-new-order">New Order</button>
+          <button className="button-billing">Billing</button>
+        </div>
+      </div>
+
+      <div className="order-summary">
+        <h2>Order {currentOrder.id.startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.id} (Table ${currentOrder.tableId})`}</h2>
+        <div className="order-info">
+          <div className="order-from">
+            <h3>From</h3>
+            <p>The Cozy Bistro 123 Food Street</p>
+            <p>NY 10001 +123 456 7890</p>
+          </div>
+          <div className="order-to">
+            <h3>Issued to</h3>
+            <p>Delicious Diner 456 Eatery</p>
+            <p>Ave NY 10002 +123 456 7891</p>
+          </div>
+        </div>
+
+        <div className="order-items-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Table No.</th>
+                <th>Dish</th>
+                <th>Qty.</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentOrder.items.map((item) => (
+                <tr key={item.name}>
+                  <td>{currentOrder.tableId || 'N/A'}</td>
+                  <td>{item.name}</td>
+                  <td>{item.quantity}</td>
+                  <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="order-note">All prices are in ETB (Ethiopian Birr).</p>
+
+        <div className="order-total">
+          <div className="subtotal">
+            <span>Subtotal</span>
+            <span>ETB {getTotalPrice(currentOrder.items).toFixed(2)}</span>
+          </div>
+          <div className="total">
+            <span>Total</span>
+            <span>ETB {getTotalPrice(currentOrder.items).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OrderDetails; 

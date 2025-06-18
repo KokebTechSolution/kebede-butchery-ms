@@ -1,0 +1,62 @@
+.order-list-container {
+  background: #f8f8f8;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.order-list-container h2 {
+  color: #333;
+  font-size: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.no-orders-message {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-list-item {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.order-list-item:hover {
+  border-color: #d1d1d1;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
+
+.order-list-item.active {
+  background: #ffe6e6;
+  border-color: #a05c5c;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.order-list-item-id {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.order-list-item-table {
+  font-size: 14px;
+  color: #666;
+} 
