@@ -1,0 +1,9 @@
+| Username   | Password      |
+| ---------- | ------------- |
+| waiter1    | waiterpass    |
+| bartender1 | bartenderpass |
+| meat1      | meatpass      |
+| cashier1   | cashierpass   |
+| manager1   | managerpass   |
+
+

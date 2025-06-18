@@ -1,0 +1,23 @@
+                     List of relations
+ Schema |            Name             | Type  |    Owner    
+--------+-----------------------------+-------+-------------
+ public | auth_group                  | table | kebede_user
+ public | auth_group_permissions      | table | kebede_user
+ public | auth_permission             | table | kebede_user
+ public | authtoken_token             | table | kebede_user
+ public | branches_branch             | table | kebede_user
+ public | core_branch                 | table | kebede_user
+ public | django_admin_log            | table | kebede_user
+ public | django_content_type         | table | kebede_user
+ public | django_migrations           | table | kebede_user
+ public | django_session              | table | kebede_user
+ public | inventory_inventoryitem     | table | kebede_user
+ public | inventory_inventoryrequest  | table | kebede_user
+ public | orders_order                | table | kebede_user
+ public | orders_orderitem            | table | kebede_user
+ public | payments_payment            | table | kebede_user
+ public | users_user                  | table | kebede_user
+ public | users_user_groups           | table | kebede_user
+ public | users_user_user_permissions | table | kebede_user
+(18 rows)
+

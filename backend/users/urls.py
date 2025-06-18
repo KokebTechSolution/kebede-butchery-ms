@@ -1,7 +1,6 @@
 from django.urls import path
-from .views import LoginView  # Adjust imports as needed
+from .views import CustomTokenObtainPairView
 
 urlpatterns = [
-    path('login/', LoginView.as_view(), name='login'),
-    # Add other auth routes here
+    path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
 ]
