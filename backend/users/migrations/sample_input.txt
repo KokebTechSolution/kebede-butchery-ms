@@ -1,0 +1,38 @@
+from django.contrib.auth import get_user_model
+User = get_user_model()
+from django.contrib.auth.models import Group
+from core.models import Branch
+from django.utils import timezone
+
+waiter_group = Group.objects.get(name="Waiter")
+manager_group = Group.objects.get(name="Manager")
+branch = Branch.objects.first()
+
+# Create Waiter user
+waiter = User.objects.create_user(
+    username="1234",
+    password="1234",
+    phone="+251911000000",
+    is_active=True,
+    is_staff=False,
+    is_superuser=False,
+    branch=branch,
+    date_joined=timezone.now()
+)
+waiter.groups.add(waiter_group)
+
+# Create Manager user
+manager = User.objects.create_user(
+    username="12345",
+    password="1234",
+    phone="+251911000001",
+    is_active=True,
+    is_staff=True,  # managers often are staff
+    is_superuser=False,
+    branch=branch,
+    date_joined=timezone.now()
+)
+manager.groups.add(manager_group)
+
+waiter.save()
+manager.save()
