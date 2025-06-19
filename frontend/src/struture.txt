@@ -1,0 +1,85 @@
+.
+├── api
+│   ├── auth.js
+│   ├── branchManagerApi.js
+│   ├── inventory.js
+│   └── staff.js
+├── App.css
+├── App.jsx
+├── App.test.js
+├── components
+│   ├── Cart
+│   │   ├── Cart.css
+│   │   ├── CartItem.jsx
+│   │   └── Cart.jsx
+│   ├── ManagmentComponents
+│   │   ├── Dashboard
+│   │   │   ├── EmployeeActivity.jsx
+│   │   │   ├── SalesSummary.jsx
+│   │   │   ├── StaffRequests.jsx
+│   │   │   └── StockAlerts.jsx
+│   │   ├── DashboardCard.jsx
+│   │   ├── InventoryManagement.jsx
+│   │   ├── ItemRequests.jsx
+│   │   ├── SidebarNav.jsx
+│   │   ├── StaffManagement.jsx
+│   │   ├── StatusDashboard.jsx
+│   │   └── Topbar.jsx
+│   ├── MenuItem
+│   │   ├── MenuItem.css
+│   │   └── MenuItem.jsx
+│   ├── Modals
+│   │   ├── RequestApprovalModal.jsx
+│   │   └── RoleAssignmentModal.jsx
+│   ├── Navbar.jsx
+│   ├── ProtectedRoute.jsx
+│   ├── SidebarNav.jsx
+│   └── TableCard.jsx
+├── context
+│   ├── AuthContext.jsx
+│   └── CartContext.jsx
+├── index.css
+├── index.js
+├── logo.svg
+├── pages
+│   ├── Auth
+│   │   └── Login.jsx
+│   ├── BranchManager
+│   │   ├── BranchManagerDashboard.jsx
+│   │   └── Dashboard.jsx
+│   ├── Error
+│   │   ├── NotFound.jsx
+│   │   └── Unauthorized.jsx
+│   ├── Inventory
+│   │   ├── AddInventoryItem.jsx
+│   │   ├── InventoryListPage.jsx
+│   │   ├── InventoryRequests.jsx
+│   │   └── TransferItems.jsx
+│   ├── RoleBasedDashboard.jsx
+│   ├── Staff
+│   │   ├── AddStaffForm.jsx
+│   │   ├── EditStaffForm.jsx
+│   │   └── StaffListPage.jsx
+│   └── waiter
+│       ├── menu
+│       │   ├── items
+│       │   │   ├── drink
+│       │   │   │   ├── drinkItems.css
+│       │   │   │   └── drinkItems.jsx
+│       │   │   └── food
+│       │   │       └── foodItems.jsx
+│       │   ├── MenuPage.css
+│       │   └── MenuPage.jsx
+│       ├── order
+│       │   ├── OrderDetails.css
+│       │   ├── OrderDetails.jsx
+│       │   ├── OrderList.css
+│       │   └── OrderList.jsx
+│       └── tables
+│           └── TablesPage.jsx
+├── reportWebVitals.js
+├── setupTests.js
+├── struture.txt
+└── waiterdashboard.jsx
+
+22 directories, 61 files

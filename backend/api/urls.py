@@ -16,4 +16,5 @@ urlpatterns = [
     path('orders/create/', CreateOrderView.as_view()),  # Correct use of class-based view here
     path('reports/generate/', GenerateReportView.as_view()),
     path('auth/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/reports/', include('reports.urls')),
 ]

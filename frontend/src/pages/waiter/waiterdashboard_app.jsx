@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar.jsx';
-import TablesPage, { tables } from './pages/waiter/tables/TablesPage.jsx';
-import MenuPage from './pages/waiter/menu/MenuPage.jsx';
-import Cart from './components/Cart/Cart.jsx';
-import { CartProvider, useCart } from './context/CartContext';
-import OrderDetails from './pages/waiter/order/OrderDetails.jsx';
-import OrderList from './pages/waiter/order/OrderList.jsx';
+import Navbar from '../../components/Navbar.jsx';
+import TablesPage, { tables } from './tables/TablesPage.jsx';
+import MenuPage from './menu/MenuPage.jsx';
+import Cart from '../../components/Cart/Cart.jsx';
+import { CartProvider, useCart } from '../../context/CartContext.jsx';
+import OrderDetails from './order/OrderDetails.jsx';
+import OrderList from './order/OrderList.jsx';
 import './App.css';
 
 // New component to encapsulate logic that uses CartContext
