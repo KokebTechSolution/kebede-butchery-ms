@@ -63,6 +63,8 @@ const LoginPage = () => {
       // Determine redirect path based on group membership
       if (userWithAuth.groups && userWithAuth.groups.includes("waiter")) {
         navigate("/waiter/dashboard?start=menu");
+      } else if (userWithAuth.groups && userWithAuth.groups.includes("manager")) {
+        navigate("/branch-manager/dashboard");
       } else if (userWithAuth.groups && userWithAuth.groups.includes("admin")) {
         navigate("/admin-dashboard");
       } else if (userWithAuth.groups && userWithAuth.groups.includes("cashier")) {
