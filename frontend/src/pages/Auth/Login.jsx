@@ -60,14 +60,15 @@ const LoginPage = () => {
       localStorage.setItem('refresh', data.refresh);
       localStorage.setItem('user', JSON.stringify(userWithAuth));
 
-      // Determine redirect path based on role
-      const redirectTo = roleRedirectMap[userWithAuth.role];
-      if (redirectTo) {
-        console.log(`Redirecting user with role "${userWithAuth.role}" to "${redirectTo}"`);
-        navigate(redirectTo);
+      // Determine redirect path based on group membership
+      if (userWithAuth.groups && userWithAuth.groups.includes("waiter")) {
+        navigate("/waiter/dashboard?start=menu");
+      } else if (userWithAuth.groups && userWithAuth.groups.includes("admin")) {
+        navigate("/admin-dashboard");
+      } else if (userWithAuth.groups && userWithAuth.groups.includes("cashier")) {
+        navigate("/cashier-dashboard");
       } else {
-        console.warn(`User role "${userWithAuth.role}" not recognized, redirecting to /unauthorized`);
-        navigate('/unauthorized');
+        navigate("/unauthorized");
       }
     } catch (err) {
       console.error('Login error caught:', err);

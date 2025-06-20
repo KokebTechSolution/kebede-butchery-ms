@@ -10,6 +10,7 @@ import Unauthorized from './pages/Error/Unauthorized';
 import NotFound from './pages/Error/NotFound';
 
 import RoleBasedDashboard from './pages/RoleBasedDashboard';
+import WaiterDashboard from './pages/waiter/WaiterDashboard';
 
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
 // You can create similar route files for other roles like StaffRoutes, WaiterRoutes, etc.
@@ -60,6 +61,18 @@ function App() {
             <ProtectedRoute allowedRoles={['manager']}>
               <Layout>
                 <BranchManagerRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Waiter Dashboard Route */}
+        <Route
+          path="/waiter/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['waiter']}>
+              <Layout>
+                <WaiterDashboard />
               </Layout>
             </ProtectedRoute>
           }
