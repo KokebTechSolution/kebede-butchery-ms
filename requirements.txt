@@ -4,5 +4,3 @@ psycopg2-binary
 djangorestframework-simplejwt
 django_extensions
 django-cors-headers
-
-sudo systemctl restart postgresql
