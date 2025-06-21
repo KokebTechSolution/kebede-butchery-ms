@@ -2,6 +2,5 @@ django
 djangorestframework
 psycopg2-binary
 djangorestframework-simplejwt
-
-
-sudo systemctl restart postgresql
+django_extensions
+django-cors-headers

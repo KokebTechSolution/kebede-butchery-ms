@@ -1,3 +1,5 @@
-from django.shortcuts import render
+# payments/views.py
+from django.http import JsonResponse
 
-# Create your views here.
+def transaction_list_view(request):
+    return JsonResponse({"message": "Payments endpoint ready."})

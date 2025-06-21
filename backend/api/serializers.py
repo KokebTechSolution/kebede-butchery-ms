@@ -2,6 +2,7 @@ from rest_framework import serializers
 from orders.models import Order, OrderItem
 from inventory.models import InventoryItem, InventoryRequest
 from users.models import User
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,3 +32,20 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = InventoryRequest
         fields = ['id', 'requested_by', 'item', 'quantity', 'status', 'created_at']
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims
+        token['role'] = user.role  # Adjust if your user model stores role differently
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = {
+            'id': self.user.id,
+            'username': self.user.username,
+            'role': self.user.role,
+        }
+        return data

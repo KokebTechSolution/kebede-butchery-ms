@@ -6,6 +6,9 @@ from inventory.models import InventoryItem, InventoryRequest
 from .serializers import OrderSerializer, InventoryItemSerializer, InventoryRequestSerializer
 from users.models import User
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import MyTokenObtainPairSerializer
+
 class IsWaiter(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.groups.filter(name='Waiter').exists()
@@ -44,3 +47,6 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         permission_classes = [permissions.IsAuthenticated]  # Expand for managers only on approve/reject
         return [permission() for permission in permission_classes]
 
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer

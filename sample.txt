@@ -1,0 +1,8 @@
+| Username  | Password |
+| --------- | -------- |
+| owner     | 1234     |
+| manager   | 1234     |
+| waiter    | 1234     |
+| meat      | 1234     |
+| cashier   | 1234     |
+| bartender | 1234     |

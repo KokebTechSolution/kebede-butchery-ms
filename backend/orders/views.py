@@ -1,8 +1,10 @@
-from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
-from django.http import JsonResponse
-from users.decorators import group_required
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-@group_required('Waiter')
-def create_order(request):
-    return JsonResponse({'message': 'Order created by waiter'})
+class OrderListView(APIView):
+    def get(self, request):
+        return Response({"message": "Order list placeholder"})
