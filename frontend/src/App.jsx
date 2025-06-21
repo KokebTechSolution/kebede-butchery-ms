@@ -14,6 +14,7 @@ import NotFound from './pages/Error/NotFound';
 
 // Role-based Dashboards
 import RoleBasedDashboard from './pages/RoleBasedDashboard';
+import WaiterDashboard from './pages/waiter/WaiterDashboard';
 
 // Role-specific route groups
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
@@ -68,6 +69,18 @@ function App() {
             <ProtectedRoute allowedRoles={['manager']}>
               <Layout>
                 <BranchManagerRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Waiter Dashboard Route */}
+        <Route
+          path="/waiter/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['waiter']}>
+              <Layout>
+                <WaiterDashboard />
               </Layout>
             </ProtectedRoute>
           }

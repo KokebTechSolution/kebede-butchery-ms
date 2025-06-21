@@ -7,9 +7,14 @@ import { CartProvider, useCart } from '../../context/CartContext.jsx';
 import OrderDetails from './order/OrderDetails.jsx';
 import OrderList from './order/OrderList.jsx';
 import '../../App.css';
+import { useLocation } from 'react-router-dom';
 
 const WaiterDashboard = () => {
-  const [currentPage, setCurrentPage] = useState('tables'); // 'tables', 'menu', or 'orderDetails'
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const startPage = params.get('start') || 'tables';
+
+  const [currentPage, setCurrentPage] = useState(startPage); // 'tables', 'menu', or 'orderDetails'
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);

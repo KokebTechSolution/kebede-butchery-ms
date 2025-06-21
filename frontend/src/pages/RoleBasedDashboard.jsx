@@ -17,28 +17,35 @@ export default function RoleBasedDashboard() {
     return <div className="text-center mt-10">Loading your dashboard...</div>;
   }
 
-  switch (user.role) {
-    case 'manager':
-      return <BranchManagerDashboard />;
-    case 'owner':
-      return <OwnerDashboard />;
-    case 'cashier':
-      return <CashierDashboard />;
-    case 'meat':
-      return <MeatDashboard />;
-    case 'bartender':
-      return <BartenderDashboard />;
-    case 'waiter':
-      return <WaiterDashboard />;
+  // Standardize group names to lowercase for case-insensitive matching
+  const userGroups = user.groups?.map(g => g.toLowerCase()) || [];
 
-    case 'staff':
-      // You can either map staff to a dashboard or reuse another dashboard
-      return <div className="text-center mt-10">Welcome Staff! Dashboard coming soon.</div>;
-    default:
-      return (
-        <div className="text-red-600 text-center mt-20 font-semibold text-lg">
-          ❌ You are not authorized to view any dashboard.
-        </div>
-      );
+  if (userGroups.includes('manager')) {
+    return <BranchManagerDashboard />;
   }
+  if (userGroups.includes('owner')) {
+    return <OwnerDashboard />;
+  }
+  if (userGroups.includes('cashier')) {
+    return <CashierDashboard />;
+  }
+  if (userGroups.includes('meat')) {
+    return <MeatDashboard />;
+  }
+  if (userGroups.includes('bartender')) {
+    return <BartenderDashboard />;
+  }
+  if (userGroups.includes('waiter')) {
+    return <WaiterDashboard />;
+  }
+  if (userGroups.includes('staff')) {
+    return <div className="text-center mt-10">Welcome Staff! Dashboard coming soon.</div>;
+  }
+
+  // Fallback for any other case
+  return (
+    <div className="text-red-600 text-center mt-20 font-semibold text-lg">
+      ❌ You are not authorized to view any dashboard.
+    </div>
+  );
 }
