@@ -36,7 +36,7 @@ const LoginPage = () => {
     console.log('Submitting login with:', formData);
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/login/', {
+      const response = await fetch('http://localhost:8000/api/token/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -51,24 +51,35 @@ const LoginPage = () => {
       const data = await response.json();
       console.log('Login successful, received data:', data);
 
-      // Add isAuthenticated flag here to help ProtectedRoute
-      const userWithAuth = { ...data.user, isAuthenticated: true };
+      // Consolidate user data and add isAuthenticated flag
+      const userData = {
+        ...data.user,
+        isAuthenticated: true,
+        // Ensure groups are part of the main user object
+        groups: data.user.groups || [],
+      };
 
       // Update context and localStorage
-      login({ ...data, user: userWithAuth });
+      login({ ...data, user: userData });
+      
       localStorage.setItem('access', data.access);
       localStorage.setItem('refresh', data.refresh);
-      localStorage.setItem('user', JSON.stringify(userWithAuth));
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Standardize group names to lowercase for case-insensitive matching
+      const userGroups = userData.groups?.map(g => g.toLowerCase()) || [];
 
       // Determine redirect path based on group membership
-      if (userWithAuth.groups && userWithAuth.groups.includes("waiter")) {
+      if (userGroups.includes("waiter")) {
         navigate("/waiter/dashboard?start=menu");
-      } else if (userWithAuth.groups && userWithAuth.groups.includes("manager")) {
+      } else if (userGroups.includes("manager")) {
         navigate("/branch-manager/dashboard");
-      } else if (userWithAuth.groups && userWithAuth.groups.includes("admin")) {
+      } else if (userGroups.includes("admin")) {
         navigate("/admin-dashboard");
-      } else if (userWithAuth.groups && userWithAuth.groups.includes("cashier")) {
+      } else if (userGroups.includes("cashier")) {
         navigate("/cashier-dashboard");
+      } else if (userGroups.includes("meat")) {
+        navigate("/");
       } else {
         navigate("/unauthorized");
       }
