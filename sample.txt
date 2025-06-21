@@ -1,9 +1,8 @@
-| Username   | Password      |
-| ---------- | ------------- |
-| waiter1    | waiterpass    |
-| bartender1 | bartenderpass |
-| meat1      | meatpass      |
-| cashier1   | cashierpass   |
-| manager1   | managerpass   |
-
-
+| Username  | Password |
+| --------- | -------- |
+| owner     | 1234     |
+| manager   | 1234     |
+| waiter    | 1234     |
+| meat      | 1234     |
+| cashier   | 1234     |
+| bartender | 1234     |
