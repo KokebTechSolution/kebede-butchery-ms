@@ -6,7 +6,7 @@ import UserProfile from './UserProfile';
 const Topbar = () => {
   const { user } = useAuth();
 
-  const username = user?.username || "Guest User";
+  const first_name = user?.first_name || "Guest User";
   const role = user?.role || "No Role";
 
   return (
@@ -26,7 +26,7 @@ const Topbar = () => {
       </div>
 
       {/* Right: User Profile */}
-      <UserProfile username={username} role={role} />
+      <UserProfile first_name={first_name} role={role} />
     </header>
   );
 };

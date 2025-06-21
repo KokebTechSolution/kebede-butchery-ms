@@ -1,4 +1,3 @@
-// components/SidebarNav.jsx
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -14,18 +13,17 @@ import {
 export default function SidebarNav() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = [
-    { label: "Dashboard", icon: <FaTachometerAlt />, path: "/" },
-    { label: "Staff Management", icon: <FaUserFriends />, path: "/staff" },
-    { label: "Inventory", icon: <FaBoxes />, path: "/inventory" },
-    { label: "Requests", icon: <FaBell />, path: "/requests" },
-  ];
+const navItems = [
+  { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
+  { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
+  { label: "Inventory", icon: <FaBoxes />, path: "/branch-manager/inventory" },
+  { label: "Requests", icon: <FaBell />, path: "/branch-manager/requests" },
+];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   return (
     <>
-      {/* Mobile hamburger toggle */}
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
@@ -34,7 +32,6 @@ export default function SidebarNav() {
         {isOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
       </button>
 
-      {/* Sidebar */}
       <aside
         className={`
           fixed top-0 left-0 h-screen bg-white border-r shadow-lg
@@ -49,7 +46,6 @@ export default function SidebarNav() {
           🏢 Branch Panel
         </h2>
 
-        {/* Nav wrapper with flex-grow and overflow */}
         <div className="flex flex-col flex-grow min-h-0">
           <nav className="flex flex-col space-y-3 overflow-auto">
             {navItems.map(({ label, icon, path }) => (
@@ -73,7 +69,6 @@ export default function SidebarNav() {
             ))}
           </nav>
 
-          {/* Logout pushed to bottom with mt-auto */}
           <button
             className="mt-auto flex items-center gap-3 px-4 py-3 text-red-600 font-semibold rounded-md hover:bg-red-50 transition-colors text-lg"
             onClick={() => {
@@ -87,7 +82,6 @@ export default function SidebarNav() {
         </div>
       </aside>
 
-      {/* Overlay for mobile when sidebar open */}
       {isOpen && (
         <div
           onClick={toggleSidebar}

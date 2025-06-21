@@ -1,29 +1,36 @@
 // src/App.jsx
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { Routes, Route } from 'react-router-dom';
 
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Public Pages
 import LoginPage from './pages/Auth/Login';
+
+import Logout from './pages/Auth/Logout';
 import Unauthorized from './pages/Error/Unauthorized';
 import NotFound from './pages/Error/NotFound';
 
+// Role-based Dashboards
 import RoleBasedDashboard from './pages/RoleBasedDashboard';
 
+// Role-specific route groups
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
-// You can create similar route files for other roles like StaffRoutes, WaiterRoutes, etc.
+// You can create: StaffRoutes, WaiterRoutes, etc. later
 
+// Common Components
 import Topbar from './components/ManagmentComponents/Topbar';
+// import SidebarNav from './components/ManagmentComponents/SidebarNav'; // Optional if needed
 
-// Layout wrapper to add Topbar and sidebar per role if needed
+// Layout Wrapper with dynamic Topbar/Sidebar
 const Layout = ({ children }) => {
   const { user } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* You can add dynamic sidebar here based on user.role */}
-      {/* {user?.role === 'branch_manager' && <SidebarNav />} */}
+      {/* Optional: Add SidebarNav based on role */}
+      {/* {user?.role === 'manager' && <SidebarNav />} */}
 
       <div className="flex-1 flex flex-col">
         {user?.isAuthenticated && <Topbar />}
@@ -39,9 +46,10 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/logout" element={<Logout />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Protected Routes */}
+        {/* Role-Based Dashboard on root path */}
         <Route
           path="/"
           element={
@@ -65,10 +73,19 @@ function App() {
           }
         />
 
-        {/* You can add other role-specific route groups here */}
-        {/* <Route path="/staff/*" element={<ProtectedRoute ...><Layout><StaffRoutes /></Layout></ProtectedRoute>} /> */}
+        {/* TODO: Add routes for other roles like staff, waiter, etc.
+        <Route
+          path="/staff/*"
+          element={
+            <ProtectedRoute allowedRoles={['staff']}>
+              <Layout>
+                <StaffRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        /> */}
 
-        {/* Catch-all 404 */}
+        {/* Catch-all 404 Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

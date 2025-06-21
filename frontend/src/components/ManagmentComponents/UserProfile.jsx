@@ -1,10 +1,12 @@
 // src/components/ManagmentComponents/UserProfile.jsx
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaUserCircle, FaChevronDown } from "react-icons/fa";
 
-const UserProfile = ({ username, role }) => {
+const UserProfile = ({ first_name, role }) => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -21,14 +23,12 @@ const UserProfile = ({ username, role }) => {
 
   const handleLogout = () => {
     setOpen(false);
-    // Implement your logout logic
-    alert("Logged out! Implement your logout logic.");
+    navigate("/logout"); // redirect to logout page
   };
 
   const handleEditProfile = () => {
     setOpen(false);
-    // Navigate or open edit profile modal/page
-    alert("Edit profile clicked! Implement navigation or modal.");
+    navigate("/profile/edit"); // Replace with your actual route
   };
 
   return (
@@ -49,7 +49,7 @@ const UserProfile = ({ username, role }) => {
     >
       <FaUserCircle className="text-yellow-400 text-5xl" />
       <div className="hidden sm:flex flex-col">
-        <p className="text-yellow-300 font-semibold text-lg">{username}</p>
+        <p className="text-yellow-300 font-semibold text-lg">{first_name}</p>
         <p className="text-yellow-200 text-xs uppercase tracking-widest">{role}</p>
       </div>
       <FaChevronDown className="text-yellow-300 ml-1 hidden sm:block" />
