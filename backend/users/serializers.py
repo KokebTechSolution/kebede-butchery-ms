@@ -9,6 +9,14 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id','first_name', 'username', 'email', 'role', 'branch_id']
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims
+        token['username'] = user.username
+        token['role'] = user.role
+        return token
+
     def validate(self, attrs):
         data = super().validate(attrs)
         # Add serialized user data to the response, including groups

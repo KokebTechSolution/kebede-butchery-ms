@@ -18,6 +18,7 @@ import WaiterDashboard from './pages/waiter/WaiterDashboard';
 
 // Role-specific route groups
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
+import AppRoutes from './routes/AppRoutes';
 // You can create: StaffRoutes, WaiterRoutes, etc. later
 
 // Common Components
@@ -81,6 +82,18 @@ function App() {
             <ProtectedRoute allowedRoles={['waiter']}>
               <Layout>
                 <WaiterDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Routes for Meat and Bartender */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute allowedRoles={['meat', 'bartender']}>
+              <Layout>
+                <AppRoutes />
               </Layout>
             </ProtectedRoute>
           }

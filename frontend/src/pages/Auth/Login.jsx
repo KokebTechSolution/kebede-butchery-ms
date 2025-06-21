@@ -79,7 +79,9 @@ const LoginPage = () => {
       } else if (userGroups.includes("cashier")) {
         navigate("/cashier-dashboard");
       } else if (userGroups.includes("meat")) {
-        navigate("/");
+        navigate("/meat-dashboard");
+      } else if (userGroups.includes("bartender")) {
+        navigate("/bartender-dashboard");
       } else {
         navigate("/unauthorized");
       }

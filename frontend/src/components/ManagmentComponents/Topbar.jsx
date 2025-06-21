@@ -6,8 +6,10 @@ import UserProfile from './UserProfile';
 const Topbar = () => {
   const { user } = useAuth();
 
-  const first_name = user?.first_name || "Guest User";
-  const role = user?.role || "No Role";
+  // Extract user details with fallbacks
+  const first_name = user?.first_name || user?.username || "Guest User";
+  // Roles are in the 'groups' array, get the first one
+  const role = user?.groups?.[0] || "No Role";
 
   return (
     <header className="bg-gradient-to-r from-red-800 via-red-800 to-red-700 p-4 shadow-md flex justify-between items-center text-white select-none">
