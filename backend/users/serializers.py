@@ -2,7 +2,7 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import User
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
+
 class UserLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -11,14 +11,8 @@ class UserLoginSerializer(serializers.ModelSerializer):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-<<<<<<< HEAD
-        # Add serialized user data to the response, including groups
-        user_data = UserSerializer(self.user).data
-        user_data["groups"] = list(self.user.groups.values_list("name", flat=True))
-=======
         # Add serialized user data to the response
         user_data = UserLoginSerializer(self.user).data
->>>>>>> waiter_and_manager
         data.update({"user": user_data})
         return data
 
