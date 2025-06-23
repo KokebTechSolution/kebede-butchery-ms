@@ -10,16 +10,16 @@ const Topbar = () => {
   const role = user?.role || "No Role";
 
   return (
-    <header className="bg-gradient-to-r from-red-800 via-red-800 to-red-700 p-4 shadow-md flex justify-between items-center text-white select-none">
+    <header className="p-4 shadow-md flex justify-between items-center text-white select-none" style={{ backgroundColor: '#7B1123', height: '80px' }}>
       {/* Left: Logo and Title */}
-      <div className="flex items-center gap-3">
-        <FaDrumstickBite className="text-yellow-400 text-4xl" aria-hidden="true" />
-        <FaCocktail className="text-yellow-400 text-3xl -ml-2" aria-hidden="true" />
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-wide font-serif">
+      <div className="flex items-center">
+        {/* Logo fills the top bar height, no gap */}
+        <img src="/kebedelogo.png" alt="Logo" style={{ height: '80px', width: 'auto', margin: 0, padding: 0, display: 'block' }} />
+        <div className="ml-3">
+          <h1 className="text-3xl font-extrabold tracking-wide font-serif text-black">
             Kebede Meat & Bar
           </h1>
-          <span className="text-sm font-light tracking-wide uppercase text-yellow-300">
+          <span className="text-sm font-light tracking-wide uppercase text-white">
             Management System
           </span>
         </div>

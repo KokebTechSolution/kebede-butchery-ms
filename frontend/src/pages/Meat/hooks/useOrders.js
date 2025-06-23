@@ -6,7 +6,7 @@ const initialOrders = [
     table: "5",
     itemCount: 2,
     placedAt: "12:00 PM",
-    items: [{ name: "1/2 Kurt", quantity: "1/2" }, { name: "1/2 Shekla Tibs", quantity: "1/2" }],
+    items: [{ name: "Kurt", quantity: "1/2" }, { name: "Shekla Tibs", quantity: "1/2" }],
     status: 'pending'
   },
   {
