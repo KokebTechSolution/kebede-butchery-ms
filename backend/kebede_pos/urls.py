@@ -17,30 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path,include
 from rest_framework.authtoken.views import obtain_auth_token
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model
-from .views import MyTokenObtainPairView
-
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Add custom claims
-        token['username'] = user.username
-        token['groups'] = list(user.groups.values_list('name', flat=True))
-        return token
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data['user'] = {
-            'username': self.user.username,
-            'groups': list(self.user.groups.values_list('name', flat=True)),
-        }
-        return data
-
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -49,5 +25,5 @@ urlpatterns = [
     path('api/inventory/', include('inventory.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/inventory/', include('inventory.urls')),
-    path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+
 ]

@@ -6,19 +6,14 @@ import { useAuth } from '../context/AuthContext';
 const ProtectedRoute = ({ allowedRoles, children }) => {
   const { user } = useAuth();
 
+  console.log('ProtectedRoute user:', user);
+  console.log('Allowed roles:', allowedRoles);
+
   if (!user || !user.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Case-insensitive check for roles
-  const hasRequiredRole =
-    !allowedRoles ||
-    (user.groups &&
-      user.groups.some(group =>
-        allowedRoles.includes(group.toLowerCase())
-      ));
-
-  if (!hasRequiredRole) {
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
