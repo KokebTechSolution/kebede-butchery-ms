@@ -55,39 +55,103 @@ const WaiterDashboard = () => {
     setEditingOrderId(null);
   };
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (!activeTableId) {
-      setMessage('Please select a table first to place an order.');
-      setCurrentPage('tables');
-      return;
-    }
-    if (!cartItems.length) {
-      setMessage('Your cart is empty. Please add items before placing an order.');
-      setCurrentPage('menu');
+      setMessage('Please select a table first.');
       return;
     }
 
-    if (editingOrderId) {
-      if (!cartItems.length) {
-        deleteOrder(editingOrderId);
-        setSelectedOrderId(null);
-        setMessage('Order deleted due to empty cart.');
-      } else {
-        updateOrder(editingOrderId, cartItems);
-        setSelectedOrderId(editingOrderId);
-      }
-    } else {
-      const newOrderId = placeOrder();
-      if (!newOrderId) {
-        setMessage('Failed to place order. Please try again.');
+    if (cartItems.length === 0) {
+      // If editing, deleting the last item should DELETE the order
+      if (editingOrderId) {
+        try {
+          const response = await fetch(`/api/orders/${editingOrderId}/`, { method: 'DELETE' });
+          if (!response.ok) { throw new Error('Failed to delete order'); }
+          deleteOrder(editingOrderId); // Update local state
+          setMessage('Order cancelled and deleted.');
+        } catch (error) {
+          console.error("Error deleting order:", error);
+          setMessage("Failed to delete order from server.");
+        }
+        setEditingOrderId(null);
+        setCurrentPage('tables');
         return;
       }
-      setSelectedOrderId(newOrderId);
+      setMessage('Your cart is empty.');
+      return;
     }
 
+    // Determine if we are updating an existing order or creating a new one
+    if (editingOrderId) {
+      // Logic for UPDATING an order
+      const updatedOrderData = {
+        items: cartItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          item_type: 'food' 
+        }))
+      };
+
+      try {
+        const response = await fetch(`/api/orders/${editingOrderId}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedOrderData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update order');
+        }
+        
+        const updatedOrder = await response.json();
+        updateOrder(editingOrderId, updatedOrder.items);
+        setSelectedOrderId(editingOrderId);
+        setMessage('Order updated successfully!');
+
+      } catch (error) {
+        console.error('Order update error:', error);
+        setMessage('There was an issue updating your order.');
+      }
+
+    } else {
+      // Logic for CREATING a new order
+      const newOrderData = {
+        branch: 1, 
+        status: 'pending',
+        items: cartItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          item_type: 'food'
+        }))
+      };
+
+      try {
+        const response = await fetch('/api/orders/order-list/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newOrderData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to place order: ${JSON.stringify(errorData)}`);
+        }
+
+        const newOrder = await response.json();
+        placeOrder(newOrder);
+        setSelectedOrderId(newOrder.id);
+        setMessage('Order placed successfully!');
+
+      } catch (error) {
+        console.error('Order submission error:', error);
+        setMessage(error.message || 'There was an issue placing your order.');
+      }
+    }
+  
     setEditingOrderId(null);
     setCurrentPage('orderDetails');
-    setMessage('');
   };
 
   const handleBackFromMenu = () => {
@@ -110,14 +174,19 @@ const WaiterDashboard = () => {
   };
 
   const handleEditOrder = (orderToEdit) => {
-    if (orderToEdit) {
-      loadCartForEditing(orderToEdit.tableId, orderToEdit.items);
-      setSelectedTable(tables.find(table => table.id === orderToEdit.tableId));
-      setActiveTable(orderToEdit.tableId);
+    if (orderToEdit && orderToEdit.branch) {
+      const tableId = orderToEdit.branch;
+
+      loadCartForEditing(tableId, orderToEdit.items);
+      setSelectedTable(tables.find(table => table.id === tableId));
+      setActiveTable(tableId);
       setEditingOrderId(orderToEdit.id);
       setSelectedOrderId(null);
+      setCurrentPage('menu');
+    } else {
+      console.error("Cannot edit order: order data is missing or has no branch.", orderToEdit);
+      setMessage("Could not edit the selected order.");
     }
-    setCurrentPage('menu');
   };
 
   const handleSelectOrder = (orderId) => {

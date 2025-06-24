@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const CartContext = createContext();
 
@@ -20,7 +20,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   }, [initialActiveTableId]);
 
   // Function to set the active table
-  const setActiveTable = (tableId) => {
+  const setActiveTable = useCallback((tableId) => {
     setActiveTableId(tableId);
     // Initialize cart for the table if it doesn't exist
     setTableCarts(prev => ({
@@ -28,7 +28,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       [tableId]: prev[tableId] || []
     }));
     console.log('CartContext: Active table set to', tableId);
-  };
+  }, []); // Empty dependency array means this function is created only once
 
   // Get cart items for the active table
   const cartItems = activeTableId ? (tableCarts[activeTableId] || []) : [];
@@ -102,25 +102,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     console.log('CartContext: Cart cleared for table', activeTableId);
   };
 
-  const placeOrder = () => {
-    if (!activeTableId) {
-      console.warn("Cannot place order: No active table selected.");
-      return;
+  const placeOrder = (newOrder) => {
+    if (!newOrder || !newOrder.id) {
+      console.warn("Cannot place order: Invalid order object provided.");
+      return null;
     }
-    
-    const currentTableCart = tableCarts[activeTableId] || [];
-    if (currentTableCart.length === 0) {
-      console.warn("Cannot place order: Cart is empty for table", activeTableId);
-      return;
-    }
-
-    const newOrderId = `ORD-${Date.now()}`;
-    const newOrder = {
-      id: newOrderId,
-      tableId: activeTableId,
-      items: [...currentTableCart], // Create a copy of the cart items
-      timestamp: new Date().toISOString(),
-    };
 
     console.log('Placing order:', newOrder);
 
@@ -131,13 +117,20 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     });
 
     // Only clear the cart after successfully creating the order
-    setTableCarts(prev => {
-      const newTableCarts = { ...prev };
-      newTableCarts[activeTableId] = [];
-      return newTableCarts;
-    });
+    if (newOrder.branch) { // A simple check to see if it's a real order
+        const tableIdToClear = newOrder.branch; // Assuming branch ID can be used to identify the cart. This might need refinement.
+        setTableCarts(prev => {
+            const newTableCarts = { ...prev };
+            // We need a reliable way to know which table's cart to clear.
+            // For now, let's clear the active one.
+            if(activeTableId) {
+                newTableCarts[activeTableId] = [];
+            }
+            return newTableCarts;
+        });
+    }
 
-    return newOrderId;
+    return newOrder.id;
   };
 
   const updateOrder = (orderId, updatedItems) => {
