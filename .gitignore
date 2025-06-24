@@ -1,1 +1,4 @@
 node_modules
+.venv/
+files.exclude
+backend/node_modules
