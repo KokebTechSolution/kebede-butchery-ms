@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { addUser } from '../../api/stafflist';
 
 function AddStaffForm({ onSuccess, onCancel }) {
-  const [formData, setFormData] = useState({
-    username: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    role: '',
-    branch_id: '',
-    password: '',
-    is_active: true,
+const [formData, setFormData] = useState({
+  username: '',
+  first_name: '',
+  last_name: '',
+  email: '',
+  role: '',
+  branch: '',  
+  password: '',
+  is_active: true,
+
   });
 
   const [error, setError] = useState('');
@@ -20,7 +21,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === 'checkbox' ? checked : (name === 'branch' ? Number(value) : value),
     }));
   };
 
@@ -33,7 +34,16 @@ function AddStaffForm({ onSuccess, onCancel }) {
       onSuccess(newUser); // Pass to parent to update list and close modal
     } catch (err) {
       console.error(err);
-      setError('Failed to add staff. Please check your input.');
+
+      if (err.response && err.response.data) {
+        const messages = [];
+        for (let key in err.response.data) {
+          messages.push(`${key}: ${err.response.data[key]}`);
+        }
+        setError(messages.join(' | '));
+      } else {
+        setError('Failed to add staff. Please check your input.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -49,7 +59,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input type="text" name="last_name" placeholder="Last Name" required value={formData.last_name} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
         <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
         <input type="text" name="role" placeholder="Role (e.g., staff)" required value={formData.role} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <input type="number" name="branch_id" placeholder="Branch ID" required value={formData.branch_id} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <input type="number" name="branch" placeholder="Branch ID" required value={formData.branch} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
         <input type="password" name="password" placeholder="Password" required value={formData.password} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
 
         <div className="flex items-center">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStaffList, updateUser, deleteUser } from '../../api/stafflist';
+import { resetUserPassword, fetchStaffList, updateUser, deleteUser } from '../../api/stafflist';
 import AddStaffForm from './AddStaffForm';
 
 function StaffListPage() {
@@ -66,7 +66,7 @@ function StaffListPage() {
 
   const handleResetPassword = async () => {
     try {
-      await updateUser(resetUser.id, { password: newPassword });
+      await resetUserPassword(resetUser.id, newPassword); // ✅ Use the correct API function
       setResetUser(null);
       setNewPassword('');
       alert('Password reset successfully');
@@ -75,7 +75,6 @@ function StaffListPage() {
       alert('Failed to reset password');
     }
   };
-
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
@@ -122,6 +121,7 @@ function StaffListPage() {
                   <th className="px-6 py-3 text-left">Role</th>
                   <th className="px-6 py-3 text-left">Branch</th>
                   <th className="px-6 py-3 text-left">Date Joined</th>
+                  <th className="px-6 py-3 text-left">Last Updated</th>
                   <th className="px-6 py-3 text-left">Status</th>
                   <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
@@ -136,6 +136,7 @@ function StaffListPage() {
                     <td className="px-6 py-4 capitalize">{user.role}</td>
                     <td className="px-6 py-4">{user.branch_id}</td>
                     <td className="px-6 py-4">{new Date(user.date_joined).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{new Date(user.updated_at).toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
