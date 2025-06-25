@@ -1,7 +1,6 @@
 import React from "react";
-import { FaDrumstickBite, FaCocktail } from "react-icons/fa";
-import { useAuth } from '../../context/AuthContext';
-import UserProfile from './UserProfile';
+import { useAuth } from "../../context/AuthContext";
+import UserProfile from "./UserProfile";
 
 const Topbar = () => {
   const { user } = useAuth();
@@ -10,23 +9,29 @@ const Topbar = () => {
   const role = user?.role || "No Role";
 
   return (
-    <header className="bg-gradient-to-r from-red-800 via-red-800 to-red-700 p-4 shadow-md flex justify-between items-center text-white select-none">
-      {/* Left: Logo and Title */}
-      <div className="flex items-center gap-3">
-        <FaDrumstickBite className="text-yellow-400 text-4xl" aria-hidden="true" />
-        <FaCocktail className="text-yellow-400 text-3xl -ml-2" aria-hidden="true" />
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-wide font-serif">
-            Kebede Meat & Bar
-          </h1>
-          <span className="text-sm font-light tracking-wide uppercase text-yellow-300">
-            Management System
-          </span>
+    <header className="bg-gradient-to-r from-red-800 via-red-800 to-red-700 h-16 px-4 shadow-md flex items-center justify-between">
+      {/* Left: logo + brand */}
+      <div className="flex items-center gap-2">
+        <img
+          src="/Kebedelogo.png"
+          alt="Kebede logo"
+          className="h-12 w-12 object-contain"
+        />
+        <div className="leading-none">
+          <h1 className="text-xl md:text-2xl font-extrabold text-black">Kebede Butchery</h1>
+          <span className="text-sm md:text-base text-white tracking-wide">Management System</span>
         </div>
       </div>
 
-      {/* Right: User Profile */}
-      <UserProfile first_name={first_name} role={role} />
+      {/* Right: user name, role & profile */}
+      <div className="flex items-center gap-2 text-white">
+        <div className="flex flex-col items-end leading-tight text-sm">
+          <span className="font-semibold">{first_name}</span>
+          <span className="opacity-80">{role}</span>
+        </div>
+        {/* Ensure the avatar/icon inherits white color */}
+        <UserProfile className="text-white" />
+      </div>
     </header>
   );
 };

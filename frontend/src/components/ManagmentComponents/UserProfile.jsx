@@ -47,25 +47,25 @@ const UserProfile = ({ first_name, role }) => {
         }
       }}
     >
-      <FaUserCircle className="text-yellow-400 text-5xl" />
+      <FaUserCircle className="text-white text-5xl" />
       <div className="hidden sm:flex flex-col">
-        <p className="text-yellow-300 font-semibold text-lg">{first_name}</p>
-        <p className="text-yellow-200 text-xs uppercase tracking-widest">{role}</p>
+        <p className="text-white font-semibold text-lg">{first_name}</p>
+        <p className="text-white text-xs uppercase tracking-widest">{role}</p>
       </div>
-      <FaChevronDown className="text-yellow-300 ml-1 hidden sm:block" />
+      <FaChevronDown className="text-white ml-1 hidden sm:block" />
 
       {/* Dropdown menu */}
       {open && (
         <div className="absolute right-0 mt-12 w-44 bg-red-800 rounded shadow-lg z-50 ring-1 ring-black ring-opacity-5 focus:outline-none">
           <button
             onClick={handleEditProfile}
-            className="block w-full text-left px-4 py-2 text-yellow-300 hover:bg-red-900 transition-colors"
+            className="block w-full text-left px-4 py-2 text-white hover:bg-red-900 transition-colors"
           >
             Edit Profile
           </button>
           <button
             onClick={handleLogout}
-            className="block w-full text-left px-4 py-2 text-yellow-300 hover:bg-red-900 transition-colors"
+            className="block w-full text-left px-4 py-2 text-white hover:bg-red-900 transition-colors"
           >
             Logout
           </button>
