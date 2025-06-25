@@ -34,7 +34,7 @@ structure = {
                 "EditStaffForm.jsx",
             ],
             "Inventory": [
-                "InventoryListPage.jsx",
+                "ProductListPage.jsx",
                 "AddInventoryItem.jsx",
                 "InventoryRequests.jsx",
                 "TransferItems.jsx",

@@ -1,6 +1,7 @@
 node_modules
-__pycache__/
-*.pyc
-db.sqlite3
-.DS_Store
 .venv/
+files.exclude
+backend/node_modules
+backend/kebede_pos/settings.py
+backend/kebede/pos/__pycache__/
+*.pyc
