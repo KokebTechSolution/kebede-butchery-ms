@@ -30,7 +30,20 @@ class OrderListView(generics.ListCreateAPIView):
             new_seq += 1
             new_order_number = f"{today_str}-{new_seq:02d}"
 
-        serializer.save(created_by=user, order_number=new_order_number)
+        # Determine initial statuses based on items ordered
+        items_data = self.request.data.get('items', [])
+        has_food = any(item.get('item_type') == 'food' for item in items_data)
+        has_drinks = any(item.get('item_type') == 'drink' for item in items_data)
+
+        food_status = 'pending' if has_food else 'not_applicable'
+        drink_status = 'pending' if has_drinks else 'not_applicable'
+
+        serializer.save(
+            created_by=user, 
+            order_number=new_order_number,
+            food_status=food_status,
+            drink_status=drink_status
+        )
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -44,11 +57,11 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Order.objects.filter(items__item_type='food').distinct()
+        return Order.objects.filter(food_status__in=['pending', 'preparing']).distinct()
 
 class DrinkOrderListView(generics.ListAPIView):
     serializer_class = DrinkOrderSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Order.objects.filter(items__item_type='drink').distinct()
+        return Order.objects.filter(drink_status__in=['pending', 'preparing']).distinct()

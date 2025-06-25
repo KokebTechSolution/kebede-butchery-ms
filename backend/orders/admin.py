@@ -7,8 +7,8 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['order_number', 'status', 'created_by', 'branch', 'created_at']
-    list_filter = ['status', 'branch', 'created_at']
+    list_display = ['order_number', 'food_status', 'drink_status', 'created_by', 'branch', 'created_at']
+    list_filter = ['food_status', 'drink_status', 'branch', 'created_at']
     search_fields = ['order_number']
     inlines = [OrderItemInline]
 

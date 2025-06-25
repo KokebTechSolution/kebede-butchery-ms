@@ -14,7 +14,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'assigned_to', 'status', 'branch', 'items', 'created_at', 'updated_at']
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
@@ -27,7 +27,8 @@ class OrderSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         # Update order instance fields
-        instance.status = validated_data.get('status', instance.status)
+        instance.food_status = validated_data.get('food_status', instance.food_status)
+        instance.drink_status = validated_data.get('drink_status', instance.drink_status)
         instance.assigned_to = validated_data.get('assigned_to', instance.assigned_to)
         instance.save()
 
@@ -49,6 +50,11 @@ class FoodOrderItemSerializer(serializers.ModelSerializer):
 
 class FoodOrderSerializer(OrderSerializer):
     items = FoodOrderItemSerializer(many=True, source='food_items')
+    status = serializers.CharField(source='food_status')
+
+    class Meta(OrderSerializer.Meta):
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at']
+
 
 class DrinkOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,3 +63,7 @@ class DrinkOrderItemSerializer(serializers.ModelSerializer):
 
 class DrinkOrderSerializer(OrderSerializer):
     items = DrinkOrderItemSerializer(many=True, source='drink_items')
+    status = serializers.CharField(source='drink_status')
+
+    class Meta(OrderSerializer.Meta):
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at']
