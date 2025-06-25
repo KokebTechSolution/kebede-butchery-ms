@@ -8,8 +8,8 @@ import BranchManagerDashboard from '../pages/BranchManager/BranchManagerDashboar
 import DashboardHome from '../pages/BranchManager/DashboardHome'; // This is a new file you'll create for the homepage inside dashboard
 import StaffListPage from '../pages/Staff/StaffListPage';
 import AddStaffForm from '../pages/Staff/AddStaffForm';
-import InventoryListPage from '../pages/Inventory/InventoryListPage';
-import AddInventoryItem from '../pages/Inventory/AddInventoryItem';
+import ProductListPage from '../pages/Products/ProductListPage';
+import AddProductsItem from '../pages/Products/AddProductsForm';
 import RequestsPage from '../pages/Requests/RequestsPage';
 
 export default function BranchManagerRoutes() {
@@ -19,8 +19,8 @@ export default function BranchManagerRoutes() {
         <Route index element={<DashboardHome />} />
         <Route path="staff" element={<StaffListPage />} />
         <Route path="staff/add" element={<AddStaffForm />} />
-        <Route path="inventory" element={<InventoryListPage />} />
-        <Route path="inventory/add" element={<AddInventoryItem />} />
+        <Route path="products" element={<ProductListPage />} />
+        <Route path="products/add" element={<AddProductsItem />} />
         <Route path="requests" element={<RequestsPage />} />
       </Route>
     </Routes>

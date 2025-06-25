@@ -2,3 +2,4 @@ node_modules
 .venv/
 files.exclude
 backend/node_modules
+backend/kebede_pos/settings.py

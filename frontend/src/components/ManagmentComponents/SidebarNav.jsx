@@ -16,7 +16,7 @@ export default function SidebarNav() {
 const navItems = [
   { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
   { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
-  { label: "Inventory", icon: <FaBoxes />, path: "/branch-manager/inventory" },
+  { label: "Product", icon: <FaBoxes />, path: "/branch-manager/products" },
   { label: "Requests", icon: <FaBell />, path: "/branch-manager/requests" },
 ];
 
