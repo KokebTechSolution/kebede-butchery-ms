@@ -8,37 +8,31 @@ import CashierDashboard from './Cashier/CashierDashboard';
 import MeatDashboard from './Meat/MeatDashboard';
 import BartenderDashboard from './Bartender/BartenderDashboard';
 import WaiterDashboard from './waiter/WaiterDashboard';
+import Unauthorized from './Error/Unauthorized';
 
-
-export default function RoleBasedDashboard() {
+const RoleBasedDashboard = () => {
   const { user } = useAuth();
 
-  if (!user?.isAuthenticated) {
-    return <div className="text-center mt-10">Loading your dashboard...</div>;
+  if (!user) {
+    return <Unauthorized />;
   }
 
   switch (user.role) {
-    case 'manager':
-      return <BranchManagerDashboard />;
     case 'owner':
       return <OwnerDashboard />;
-    case 'cashier':
-      return <CashierDashboard />;
-    case 'meat':
-      return <MeatDashboard />;
-    case 'bartender':
-      return <BartenderDashboard />;
+    case 'manager':
+      return <BranchManagerDashboard />;
     case 'waiter':
       return <WaiterDashboard />;
-
-    case 'staff':
-      // You can either map staff to a dashboard or reuse another dashboard
-      return <div className="text-center mt-10">Welcome Staff! Dashboard coming soon.</div>;
+    case 'cashier':
+      return <CashierDashboard />;
+    case 'bartender':
+      return <BartenderDashboard />;
+    case 'meat':
+      return <MeatDashboard />;
     default:
-      return (
-        <div className="text-red-600 text-center mt-20 font-semibold text-lg">
-          ❌ You are not authorized to view any dashboard.
-        </div>
-      );
+      return <Unauthorized />;
   }
-}
+};
+
+export default RoleBasedDashboard;
