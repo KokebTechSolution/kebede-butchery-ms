@@ -21,6 +21,14 @@ class Order(models.Model):
     def __str__(self):
         return self.order_number
 
+    @property
+    def food_items(self):
+        return self.items.filter(item_type='food')
+
+    @property
+    def drink_items(self):
+        return self.items.filter(item_type='drink')
+
 class OrderItem(models.Model):
     ORDER_ITEM_TYPE = [
         ('food', 'Food'),

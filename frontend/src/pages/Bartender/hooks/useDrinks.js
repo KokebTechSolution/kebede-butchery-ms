@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 
-export const useOrders = () => {
+export const useDrinks = () => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders/food/');
+      const response = await fetch('/api/orders/drinks/');
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
       }
       const data = await response.json();
-      // The backend returns a list of orders.
-      // We need to filter for orders with a 'pending' status.
       setOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -20,7 +18,6 @@ export const useOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-    // Fetch every 10 seconds to look for new orders
     const intervalId = setInterval(fetchOrders, 10000); 
 
     return () => clearInterval(intervalId);
@@ -30,8 +27,7 @@ export const useOrders = () => {
     try {
       const payload = { status };
       if (reason) {
-        // You would need to add 'rejectionReason' to your Order model and serializer for this to work
-        // For now, we just update the status
+        // This part would need backend support for rejection reasons
       }
 
       const response = await fetch(`/api/orders/${orderId}/`, {
@@ -44,7 +40,6 @@ export const useOrders = () => {
         throw new Error(`Failed to update order status: ${response.statusText}`);
       }
       
-      // Remove the order from the local state to update the UI instantly
       setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
 
     } catch (error) {
@@ -70,4 +65,4 @@ export const useOrders = () => {
     getPendingOrders,
     getRejectedOrders
   };
-};
+}; 

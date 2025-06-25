@@ -1,9 +1,123 @@
 // src/pages/Bartender/BartenderDashboard.jsx
+import React, { useState } from "react";
+import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell } from "react-icons/fa";
+
+import Pending from "./screens/Pending/Pending";
+import Inventory from "./screens/Inventory";
+import Reports from "./screens/Reports";
+
 export default function BartenderDashboard() {
+  const [activeSection, setActiveSection] = useState('Orders');
+  const userName = "Bartender"; // Replace with dynamic user name from auth
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'Inventory':
+        return <Inventory />;
+      case 'Reports':
+        return <Reports />;
+      case 'Orders':
+      default:
+        return <Pending />;
+    }
+  };
+
+  const navItems = [
+    { label: 'Orders', icon: <FaClipboardList />, section: 'Orders' },
+    { label: 'Inventory', icon: <FaBoxes />, section: 'Inventory' },
+    { label: 'Reports', icon: <FaChartBar />, section: 'Reports' },
+  ];
+
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-4">🍽️ Bartender Dashboard</h1>
-      <p>Here you can view today's orders, request inventory items, or update service status.</p>
+    <div className="bg-gray-100">
+      {/* Main Content */}
+      <main className="p-4 md:p-6 lg:p-8 space-y-6">
+        {/* Welcome Banner */}
+        <div className="bg-blue-100 text-blue-800 p-4 md:p-6 rounded shadow-sm">
+          <h1 className="text-3xl font-bold">Welcome, {userName} 🍻</h1>
+          <p className="text-md mt-1">
+            Manage drink orders, bar inventory, and sales reports efficiently.
+          </p>
+        </div>
+
+        {/* Bar Operations Navigation */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <FaBeer className="text-2xl text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-700">Bar Operations</h2>
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            {navItems.map(({ label, icon, section }) => (
+              <button
+                key={section}
+                onClick={() => setActiveSection(section)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                  activeSection === section
+                    ? 'bg-blue-100 text-blue-700 shadow'
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                }`}
+              >
+                <span className="text-lg">{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          {/* Pending Orders */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaClipboardList className="text-2xl text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-700">Pending Orders</h3>
+            </div>
+            <p className="text-3xl font-bold text-blue-600">8</p>
+            <p className="text-sm text-gray-500">Awaiting preparation</p>
+          </div>
+
+          {/* Inventory Items */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaBoxes className="text-2xl text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-700">Inventory Items</h3>
+            </div>
+            <p className="text-3xl font-bold text-green-600">62</p>
+            <p className="text-sm text-gray-500">Available drinks</p>
+          </div>
+
+          {/* Low Stock Alerts */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaBell className="text-2xl text-red-600" />
+              <h3 className="text-lg font-semibold text-gray-700">Low Stock</h3>
+            </div>
+            <p className="text-3xl font-bold text-red-600">5</p>
+            <p className="text-sm text-gray-500">Items need restocking</p>
+          </div>
+
+          {/* Staff Available */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUsers className="text-2xl text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-700">Staff Available</h3>
+            </div>
+            <p className="text-3xl font-bold text-purple-600">2</p>
+            <p className="text-sm text-gray-500">Bartending staff</p>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="bg-white rounded-lg shadow">
+          {renderContent()}
+        </div>
+
+        {/* Tip Banner */}
+        <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg text-blue-700 text-sm">
+          💡 <strong>Tip:</strong> Prepare drinks in the order they were received. Keep your bar station clean and organized.
+        </div>
+      </main>
     </div>
   );
 }

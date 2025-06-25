@@ -1,7 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 from .models import Order
-from .serializers import OrderSerializer
+from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer
 from django.utils import timezone
 from rest_framework.response import Response
 
@@ -37,3 +37,18 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
+
+
+class FoodOrderListView(generics.ListAPIView):
+    serializer_class = FoodOrderSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Order.objects.filter(items__item_type='food').distinct()
+
+class DrinkOrderListView(generics.ListAPIView):
+    serializer_class = DrinkOrderSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Order.objects.filter(items__item_type='drink').distinct()

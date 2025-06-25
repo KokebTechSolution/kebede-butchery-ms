@@ -96,7 +96,7 @@ const WaiterDashboard = () => {
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: 'food' 
+          item_type: item.item_type || 'food'
         }))
       };
 
@@ -131,7 +131,7 @@ const WaiterDashboard = () => {
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: 'food'
+          item_type: item.item_type || 'food'
         }))
       };
 

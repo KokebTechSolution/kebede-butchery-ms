@@ -41,3 +41,19 @@ class OrderSerializer(serializers.ModelSerializer):
                 OrderItem.objects.create(order=instance, **item_data)
 
         return instance
+
+class FoodOrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'name', 'quantity', 'price']
+
+class FoodOrderSerializer(OrderSerializer):
+    items = FoodOrderItemSerializer(many=True, source='food_items')
+
+class DrinkOrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'name', 'quantity', 'price']
+
+class DrinkOrderSerializer(OrderSerializer):
+    items = DrinkOrderItemSerializer(many=True, source='drink_items')
