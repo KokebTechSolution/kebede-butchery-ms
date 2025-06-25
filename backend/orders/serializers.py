@@ -10,11 +10,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
+    created_by = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'created_by', 'assigned_to', 'status', 'branch', 'items', 'created_at', 'updated_at']
-        read_only_fields = ['created_by', 'created_at', 'updated_at', 'order_number']
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'assigned_to', 'status', 'branch', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')

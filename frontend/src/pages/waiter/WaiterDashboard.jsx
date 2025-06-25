@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar.jsx';
 import TablesPage, { tables } from './tables/TablesPage.jsx';
 import MenuPage from './menu/MenuPage.jsx';
@@ -30,6 +30,13 @@ const WaiterDashboard = () => {
     deleteOrder, 
     clearCart 
   } = useCart();
+
+  useEffect(() => {
+    // If no table is active, select the first one by default
+    if (!activeTableId && tables.length > 0) {
+      setActiveTable(tables[0].id);
+    }
+  }, [activeTableId, setActiveTable]);
 
   const handleNavigate = (page) => {
     if (page === 'orderDetails') {
@@ -118,6 +125,7 @@ const WaiterDashboard = () => {
       // Logic for CREATING a new order
       const newOrderData = {
         branch: 1, 
+        table_number: activeTableId,
         status: 'pending',
         items: cartItems.map(item => ({
           name: item.name,

@@ -1,11 +1,61 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext'; // Assuming AuthContext is in the same folder
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children, initialActiveTableId }) => {
-  const [tableCarts, setTableCarts] = useState({}); // Stores carts for all tables { tableId: [item1, item2], ... }
+  const { user } = useAuth(); // Get user from AuthContext
+  const [tableCarts, setTableCarts] = useState(() => {
+    try {
+      const localData = localStorage.getItem('tableCarts');
+      const parsedData = localData ? JSON.parse(localData) : {};
+
+      // Sanitize data by removing icons from persisted data
+      if (parsedData) {
+        Object.keys(parsedData).forEach(tableId => {
+          if (Array.isArray(parsedData[tableId])) {
+            parsedData[tableId] = parsedData[tableId].map(item => {
+              const { icon, ...rest } = item;
+              return rest;
+            });
+          }
+        });
+      }
+      return parsedData;
+
+    } catch (error) {
+      console.error("Could not parse or sanitize tableCarts from localStorage", error);
+      return {};
+    }
+  });
   const [activeTableId, setActiveTableId] = useState(null); // The currently selected table ID
-  const [orders, setOrders] = useState([]); // Stores placed orders { id: 'uniqueId', tableId: '1', items: [{...}] }
+  const [orders, setOrders] = useState([]); // Start with an empty array, will be populated from DB
+
+  // Fetch orders from the database on component mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders/order-list/');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        setOrders(data);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      }
+    };
+
+    fetchOrders();
+  }, []); // The empty dependency array ensures this runs only once on mount
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tableCarts', JSON.stringify(tableCarts));
+    } catch (error) {
+      console.error("Could not save tableCarts to localStorage", error);
+    }
+  }, [tableCarts]);
 
   useEffect(() => {
     if (initialActiveTableId) {
@@ -39,19 +89,22 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       console.warn("No active table selected. Cannot add item to cart.");
       return;
     }
+    const { icon, ...rest } = item; // Destructure to remove the icon
+    const itemToAdd = rest; // Item without the icon
+
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      const existingItem = currentTableCart.find((i) => i.name === item.name);
+      const existingItem = currentTableCart.find((i) => i.name === itemToAdd.name);
 
       let updatedTableCart;
       if (existingItem) {
         updatedTableCart = currentTableCart.map((i) =>
-          i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i
+          i.name === itemToAdd.name ? { ...i, quantity: i.quantity + 1 } : i
         );
       } else {
-        updatedTableCart = [...currentTableCart, { ...item, quantity: 1 }];
+        updatedTableCart = [...currentTableCart, { ...itemToAdd, quantity: 1 }];
       }
-      console.log('CartContext: Added/Updated item', item.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      console.log('CartContext: Added/Updated item', itemToAdd.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -193,6 +246,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
         updateOrder,
         deleteOrder,
         getTableCart, // Expose getTableCart for getting any table's cart
+        user, // Expose user
       }}
     >
       {children}

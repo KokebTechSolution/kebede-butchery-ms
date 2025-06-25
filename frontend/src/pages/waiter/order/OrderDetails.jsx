@@ -4,7 +4,7 @@ import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
 
 const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
-  const { orders, activeTableId, cartItems, deleteOrder, clearCart } = useCart();
+  const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
   const [currentOrder, setCurrentOrder] = useState(null);
   const [printedOrders, setPrintedOrders] = useState(() => {
     const saved = localStorage.getItem('printedOrders');
@@ -97,7 +97,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       </div>
 
       <div className="order-summary">
-        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Branch ${currentOrder.branch})`}</h2>
+        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>
@@ -119,15 +119,17 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                 <th>Dish</th>
                 <th>Qty.</th>
                 <th>Amount</th>
+                <th>Created By</th>
               </tr>
             </thead>
             <tbody>
               {currentOrder.items.map((item) => (
                 <tr key={item.name}>
-                  <td>{currentOrder.branch || 'N/A'}</td>
+                  <td>{currentOrder.table_number || 'N/A'}</td>
                   <td>{item.name}</td>
                   <td>{item.quantity}</td>
                   <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
+                  <td>{currentOrder.created_by || user?.username || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
