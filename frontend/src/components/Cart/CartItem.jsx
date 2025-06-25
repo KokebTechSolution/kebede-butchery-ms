@@ -8,7 +8,7 @@ const CartItem = ({ item }) => {
   return (
     <div className="cart-item">
       <div className="cart-item-info">
-        <div className="cart-item-icon">{item.icon}</div>
+        <div className="cart-item-icon">{item.icon && item.icon}</div>
         <div className="cart-item-details">
           <h3>{item.name}</h3>
           <p>{item.desc}</p>

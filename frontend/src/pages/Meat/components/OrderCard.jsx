@@ -8,7 +8,7 @@ export const OrderCard = ({ order, onAccept, onReject, showActions = true }) => 
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   const handleAccept = () => {
-    onAccept(order.id);
+    onAccept(order.order_number);
   };
 
   const handleRejectClick = () => {
@@ -27,16 +27,12 @@ export const OrderCard = ({ order, onAccept, onReject, showActions = true }) => 
           <div className="flex justify-between w-full">
             <div className="flex flex-col gap-1">
               <p className="font-['Work_Sans',Helvetica] text-sm text-[#6b7582]">
-                Order id {order.id}
+                Order {order.order_number}
               </p>
 
               <h3 className="font-['Work_Sans',Helvetica] font-bold text-base text-[#111416]">
-                Table {order.table} - {order.itemCount} items
+                {order.items.length} items
               </h3>
-
-              <p className="font-['Work_Sans',Helvetica] text-sm text-[#6b7582]">
-                Order placed at {order.placedAt}
-              </p>
 
               {order.rejectionReason && (
                 <p className="font-['Work_Sans',Helvetica] text-sm text-red-600 bg-red-50 px-2 py-1 rounded mt-1">
@@ -86,7 +82,7 @@ export const OrderCard = ({ order, onAccept, onReject, showActions = true }) => 
           isOpen={showRejectDialog}
           onClose={() => setShowRejectDialog(false)}
           onConfirm={handleRejectConfirm}
-          orderId={order.id}
+          orderId={order.order_number}
         />
       )}
     </>
