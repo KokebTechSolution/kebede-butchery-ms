@@ -4,11 +4,24 @@ import { OrderCard } from '../../components/OrderCard';
 import { useOrders } from '../../hooks/useOrders';
 
 export const Pending = () => {
-  const { acceptOrder, rejectOrder, getPendingOrders, getRejectedOrders } = useOrders();
+  const { 
+    acceptOrder, 
+    rejectOrder, 
+    getPendingOrders, 
+    getPreparingOrders,
+    getRejectedOrders 
+  } = useOrders();
   const [activeTab, setActiveTab] = useState('pending');
 
   const pendingOrders = getPendingOrders();
+  const preparingOrders = getPreparingOrders();
   const rejectedOrders = getRejectedOrders();
+
+  const displayOrders = {
+    pending: pendingOrders,
+    preparing: preparingOrders,
+    rejected: rejectedOrders,
+  }[activeTab];
 
   const handleAcceptOrder = (orderId) => {
     acceptOrder(orderId);
@@ -17,8 +30,6 @@ export const Pending = () => {
   const handleRejectOrder = (orderId, reason) => {
     rejectOrder(orderId, reason);
   };
-
-  const displayOrders = activeTab === 'pending' ? pendingOrders : rejectedOrders;
 
   return (
     <main className="flex flex-col w-full bg-white min-h-screen">
@@ -38,7 +49,7 @@ export const Pending = () => {
             {displayOrders.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-[#6b7582] text-lg">
-                  {activeTab === 'pending' ? 'No pending orders' : 'No rejected orders'}
+                  No orders in this category
                 </p>
               </div>
             ) : (

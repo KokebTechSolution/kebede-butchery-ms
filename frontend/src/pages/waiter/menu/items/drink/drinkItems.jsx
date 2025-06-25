@@ -3,16 +3,16 @@ import { MdWineBar, MdCoffee } from 'react-icons/md';
 import MenuItem from '../../../../../components/MenuItem/MenuItem';
 
 export const coldDrinkItems = [
-  { name: 'Iced Tea', desc: 'Refreshing iced tea', price: 45, icon: <MdWineBar size={28} /> },
-  { name: 'Lemonade', desc: 'Classic lemonade', price: 50, icon: <MdWineBar size={28} /> },
-  { name: 'Soda', desc: 'Variety of sodas', price: 40, icon: <MdWineBar size={28} /> },
-  { name: 'Fruit Punch', desc: 'Sweet fruit punch', price: 55, icon: <MdWineBar size={28} /> },
+  { name: 'Iced Tea', desc: 'Refreshing iced tea', price: 45, icon: <MdWineBar size={28} />, item_type: 'drink' },
+  { name: 'Lemonade', desc: 'Classic lemonade', price: 50, icon: <MdWineBar size={28} />, item_type: 'drink' },
+  { name: 'Soda', desc: 'Variety of sodas', price: 40, icon: <MdWineBar size={28} />, item_type: 'drink' },
+  { name: 'Fruit Punch', desc: 'Sweet fruit punch', price: 55, icon: <MdWineBar size={28} />, item_type: 'drink' },
 ];
 
 export const hotDrinkItems = [
-  { name: 'Coffee', desc: 'Freshly brewed coffee', price: 35, icon: <MdCoffee size={28} /> },
-  { name: 'Tea', desc: 'Selection of teas', price: 30, icon: <MdCoffee size={28} /> },
-  { name: 'Hot Chocolate', desc: 'Rich hot chocolate', price: 45, icon: <MdWineBar size={28} /> },
+  { name: 'Coffee', desc: 'Freshly brewed coffee', price: 35, icon: <MdCoffee size={28} />, item_type: 'drink' },
+  { name: 'Tea', desc: 'Selection of teas', price: 30, icon: <MdCoffee size={28} />, item_type: 'drink' },
+  { name: 'Hot Chocolate', desc: 'Rich hot chocolate', price: 45, icon: <MdWineBar size={28} />, item_type: 'drink' },
 ];
 
 export const DrinkItems = () => {

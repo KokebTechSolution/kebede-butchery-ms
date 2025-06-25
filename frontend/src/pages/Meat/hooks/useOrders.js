@@ -1,60 +1,71 @@
-import { useState } from 'react';
-
-const initialOrders = [
-  {
-    id: "#4567",
-    table: "5",
-    itemCount: 2,
-    placedAt: "12:00 PM",
-    items: [{ name: "1/2 Kurt", quantity: "1/2" }, { name: "1/2 Shekla Tibs", quantity: "1/2" }],
-    status: 'pending'
-  },
-  {
-    id: "#4568",
-    table: "7",
-    itemCount: 3,
-    placedAt: "12:05 PM",
-    items: [
-      { name: "Kurt", quantity: "1/2" },
-      { name: "Shekla Tibs", quantity: "1" },
-      { name: "Dulet", quantity: "1" }
-    ],
-    status: 'pending'
-  },
-  {
-    id: "#4569",
-    table: "2",
-    itemCount: 1,
-    placedAt: "12:10 PM",
-    items: [{ name: "Kitfo", quantity: "1" }],
-    status: 'pending'
-  }
-];
+import { useState, useEffect } from 'react';
 
 export const useOrders = () => {
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState([]);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders/food/');
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      const data = await response.json();
+      // The backend returns a list of orders.
+      // We need to filter for orders with a 'pending' status.
+      setOrders(data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    // Fetch every 10 seconds to look for new orders
+    const intervalId = setInterval(fetchOrders, 10000); 
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const updateOrderStatus = async (orderId, status, reason = null) => {
+    try {
+      const payload = { food_status: status };
+      if (reason) {
+        // You would need to add 'rejectionReason' to your Order model and serializer for this to work
+        // For now, we just update the status
+      }
+
+      const response = await fetch(`/api/orders/${orderId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update order status: ${response.statusText}`);
+      }
+      
+      // Update the order's status in the local state instead of removing it
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? { ...order, status: status } : order
+        )
+      );
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const acceptOrder = (orderId) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'accepted'  }
-          : order
-      ).filter(order => order.status !== 'accepted')
-    );
+    updateOrderStatus(orderId, 'preparing');
   };
 
   const rejectOrder = (orderId, reason) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'rejected' , rejectionReason: reason }
-          : order
-      )
-    );
+    updateOrderStatus(orderId, 'rejected', reason);
   };
 
   const getPendingOrders = () => orders.filter(order => order.status === 'pending');
+  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
   return {
@@ -62,6 +73,7 @@ export const useOrders = () => {
     acceptOrder,
     rejectOrder,
     getPendingOrders,
+    getPreparingOrders,
     getRejectedOrders
   };
 };

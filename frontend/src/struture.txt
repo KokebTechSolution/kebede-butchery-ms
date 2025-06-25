@@ -52,7 +52,7 @@
 │   │   └── Unauthorized.jsx
 │   ├── Inventory
 │   │   ├── AddInventoryItem.jsx
-│   │   ├── InventoryListPage.jsx
+│   │   ├── ProductListPage.jsx
 │   │   ├── InventoryRequests.jsx
 │   │   └── TransferItems.jsx
 │   ├── RoleBasedDashboard.jsx

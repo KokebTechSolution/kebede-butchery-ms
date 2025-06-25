@@ -4,8 +4,16 @@ import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
 
 const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
-  const { orders, activeTableId, cartItems, deleteOrder, clearCart } = useCart();
+  const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
   const [currentOrder, setCurrentOrder] = useState(null);
+  const [printedOrders, setPrintedOrders] = useState(() => {
+    const saved = localStorage.getItem('printedOrders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('printedOrders', JSON.stringify(printedOrders));
+  }, [printedOrders]);
 
   useEffect(() => {
     if (selectedOrderId) {
@@ -30,12 +38,12 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   };
 
   const handleDeleteOrder = () => {
-    if (currentOrder && currentOrder.id && !currentOrder.id.startsWith('pending-')) {
+    if (currentOrder && currentOrder.id && !String(currentOrder.id).startsWith('pending-')) {
       deleteOrder(currentOrder.id);
       if (onOrderDeleted) {
         onOrderDeleted();
       }
-    } else if (currentOrder && currentOrder.id.startsWith('pending-')) {
+    } else if (currentOrder && String(currentOrder.id).startsWith('pending-')) {
       // If it's a pending order, clear the cart and then navigate back to tables.
       clearCart(); 
       if (onOrderDeleted) {
@@ -43,6 +51,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       }
     }
   };
+
+  const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
@@ -58,8 +68,24 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       <div className="order-details-header">
         <div className="icon-buttons">
           {/* Icons for edit, print, share, delete */}
-          <span className="icon" onClick={() => onEditOrder(currentOrder)}>✏️</span>
-          <span className="icon">🖨️</span>
+          <span
+            className="icon"
+            onClick={!isPrinted ? () => onEditOrder(currentOrder) : undefined}
+            style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
+          >
+            ✏️
+          </span>
+          <span
+            className="icon"
+            onClick={() => {
+              if (currentOrder && !isPrinted) {
+                setPrintedOrders(prev => [...prev, currentOrder.id]);
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            🖨️
+          </span>
           <span className="icon">↪️</span>
           <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
         </div>
@@ -71,7 +97,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       </div>
 
       <div className="order-summary">
-        <h2>Order {currentOrder.id.startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.id} (Table ${currentOrder.tableId})`}</h2>
+        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>
@@ -93,15 +119,17 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                 <th>Dish</th>
                 <th>Qty.</th>
                 <th>Amount</th>
+                <th>Created By</th>
               </tr>
             </thead>
             <tbody>
               {currentOrder.items.map((item) => (
                 <tr key={item.name}>
-                  <td>{currentOrder.tableId || 'N/A'}</td>
+                  <td>{currentOrder.table_number || 'N/A'}</td>
                   <td>{item.name}</td>
                   <td>{item.quantity}</td>
                   <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
+                  <td>{currentOrder.created_by || user?.username || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>

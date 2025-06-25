@@ -12,14 +12,14 @@ const OrderList = ({ onSelectOrder, selectedOrderId }) => {
         <p className="no-orders-message">No orders placed yet.</p>
       ) : (
         <div className="order-list">
-          {orders.map(order => (
+          {orders.filter(order => order.order_number).map(order => (
             <div
               key={order.id}
               className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
               onClick={() => onSelectOrder(order.id)}
             >
-              <span className="order-list-item-id">{order.id}</span>
-              <span className="order-list-item-table">Table {order.tableId}</span>
+              <span className="order-list-item-id">{order.order_number}</span>
+              <span className="order-list-item-table">Branch {order.branch}</span>
             </div>
           ))}
         </div>

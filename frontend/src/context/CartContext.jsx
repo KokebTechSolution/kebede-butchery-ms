@@ -1,11 +1,61 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext'; // Assuming AuthContext is in the same folder
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children, initialActiveTableId }) => {
-  const [tableCarts, setTableCarts] = useState({}); // Stores carts for all tables { tableId: [item1, item2], ... }
+  const { user } = useAuth(); // Get user from AuthContext
+  const [tableCarts, setTableCarts] = useState(() => {
+    try {
+      const localData = localStorage.getItem('tableCarts');
+      const parsedData = localData ? JSON.parse(localData) : {};
+
+      // Sanitize data by removing icons from persisted data
+      if (parsedData) {
+        Object.keys(parsedData).forEach(tableId => {
+          if (Array.isArray(parsedData[tableId])) {
+            parsedData[tableId] = parsedData[tableId].map(item => {
+              const { icon, ...rest } = item;
+              return rest;
+            });
+          }
+        });
+      }
+      return parsedData;
+
+    } catch (error) {
+      console.error("Could not parse or sanitize tableCarts from localStorage", error);
+      return {};
+    }
+  });
   const [activeTableId, setActiveTableId] = useState(null); // The currently selected table ID
-  const [orders, setOrders] = useState([]); // Stores placed orders { id: 'uniqueId', tableId: '1', items: [{...}] }
+  const [orders, setOrders] = useState([]); // Start with an empty array, will be populated from DB
+
+  // Fetch orders from the database on component mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders/order-list/');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        setOrders(data);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      }
+    };
+
+    fetchOrders();
+  }, []); // The empty dependency array ensures this runs only once on mount
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tableCarts', JSON.stringify(tableCarts));
+    } catch (error) {
+      console.error("Could not save tableCarts to localStorage", error);
+    }
+  }, [tableCarts]);
 
   useEffect(() => {
     if (initialActiveTableId) {
@@ -20,7 +70,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   }, [initialActiveTableId]);
 
   // Function to set the active table
-  const setActiveTable = (tableId) => {
+  const setActiveTable = useCallback((tableId) => {
     setActiveTableId(tableId);
     // Initialize cart for the table if it doesn't exist
     setTableCarts(prev => ({
@@ -28,7 +78,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       [tableId]: prev[tableId] || []
     }));
     console.log('CartContext: Active table set to', tableId);
-  };
+  }, []); // Empty dependency array means this function is created only once
 
   // Get cart items for the active table
   const cartItems = activeTableId ? (tableCarts[activeTableId] || []) : [];
@@ -39,19 +89,22 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       console.warn("No active table selected. Cannot add item to cart.");
       return;
     }
+    const { icon, ...rest } = item; // Destructure to remove the icon
+    const itemToAdd = rest; // Item without the icon
+
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      const existingItem = currentTableCart.find((i) => i.name === item.name);
+      const existingItem = currentTableCart.find((i) => i.name === itemToAdd.name);
 
       let updatedTableCart;
       if (existingItem) {
         updatedTableCart = currentTableCart.map((i) =>
-          i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i
+          i.name === itemToAdd.name ? { ...i, quantity: i.quantity + 1 } : i
         );
       } else {
-        updatedTableCart = [...currentTableCart, { ...item, quantity: 1 }];
+        updatedTableCart = [...currentTableCart, { ...itemToAdd, quantity: 1 }];
       }
-      console.log('CartContext: Added/Updated item', item.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      console.log('CartContext: Added/Updated item', itemToAdd.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -102,25 +155,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     console.log('CartContext: Cart cleared for table', activeTableId);
   };
 
-  const placeOrder = () => {
-    if (!activeTableId) {
-      console.warn("Cannot place order: No active table selected.");
-      return;
+  const placeOrder = (newOrder) => {
+    if (!newOrder || !newOrder.id) {
+      console.warn("Cannot place order: Invalid order object provided.");
+      return null;
     }
-    
-    const currentTableCart = tableCarts[activeTableId] || [];
-    if (currentTableCart.length === 0) {
-      console.warn("Cannot place order: Cart is empty for table", activeTableId);
-      return;
-    }
-
-    const newOrderId = `ORD-${Date.now()}`;
-    const newOrder = {
-      id: newOrderId,
-      tableId: activeTableId,
-      items: [...currentTableCart], // Create a copy of the cart items
-      timestamp: new Date().toISOString(),
-    };
 
     console.log('Placing order:', newOrder);
 
@@ -131,13 +170,20 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     });
 
     // Only clear the cart after successfully creating the order
-    setTableCarts(prev => {
-      const newTableCarts = { ...prev };
-      newTableCarts[activeTableId] = [];
-      return newTableCarts;
-    });
+    if (newOrder.branch) { // A simple check to see if it's a real order
+        const tableIdToClear = newOrder.branch; // Assuming branch ID can be used to identify the cart. This might need refinement.
+        setTableCarts(prev => {
+            const newTableCarts = { ...prev };
+            // We need a reliable way to know which table's cart to clear.
+            // For now, let's clear the active one.
+            if(activeTableId) {
+                newTableCarts[activeTableId] = [];
+            }
+            return newTableCarts;
+        });
+    }
 
-    return newOrderId;
+    return newOrder.id;
   };
 
   const updateOrder = (orderId, updatedItems) => {
@@ -200,6 +246,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
         updateOrder,
         deleteOrder,
         getTableCart, // Expose getTableCart for getting any table's cart
+        user, // Expose user
       }}
     >
       {children}

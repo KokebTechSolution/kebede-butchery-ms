@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
 export const OrderListSection = ({ activeTab, onTabChange }) => {
   const tabOptions = [
     { value: 'pending', label: 'Pending' },
+    { value: 'preparing', label: 'Preparing' },
     { value: 'rejected', label: 'Rejected' },
   ];
 
