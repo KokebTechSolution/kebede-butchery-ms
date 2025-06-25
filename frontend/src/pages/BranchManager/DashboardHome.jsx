@@ -1,6 +1,7 @@
 // src/pages/BranchManager/DashboardHome.jsx
 import React from 'react';
 import SalesSummary from "../../components/ManagmentComponents/Dashboard/SalesSummary";
+import StockAlerts from "../../components/ManagmentComponents/Dashboard/StockAlerts";
 import StockLevels from "../../components/ManagmentComponents/Dashboard/StockLevels";
 import EmployeeActivity from "../../components/ManagmentComponents/Dashboard/EmployeeActivity";
 import StaffRequests from "../../components/ManagmentComponents/Dashboard/StaffRequests";
@@ -9,6 +10,8 @@ import { FaCashRegister, FaBoxes, FaUsers, FaClipboardList } from "react-icons/f
 export default function DashboardHome() {
   return (
     <div className="space-y-6">
+      <h1>Stock Alert</h1>
+      <StockAlerts />
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* Sales */}
         <Card icon={<FaCashRegister />} title="Sales Overview" color="text-green-600">
@@ -17,6 +20,7 @@ export default function DashboardHome() {
 
         {/* Stock */}
         <Card icon={<FaBoxes />} title="Stock Alerts" color="text-red-600">
+          
           <StockLevels />
         </Card>
 

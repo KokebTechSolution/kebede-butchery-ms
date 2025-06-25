@@ -7,7 +7,11 @@ class ItemTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemType
         fields = '__all__'
-
+class LowStockProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        
+        model = Product
+        fields = ['id', 'name', 'stock_qty', 'branch_id', 'expiration_date']
 
 class ProductSerializer(serializers.ModelSerializer):
     type = ItemTypeSerializer(read_only=True)

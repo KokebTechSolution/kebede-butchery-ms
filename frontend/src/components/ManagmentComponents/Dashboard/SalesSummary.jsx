@@ -1,10 +1,46 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 export default function SalesSummary() {
-  // Mock data for sales
-  const totalRevenue = 12450;
-  const avgOrderValue = 42;
-  const ordersCount = 295;
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [avgOrderValue, setAvgOrderValue] = useState(0);
+  const [ordersCount, setOrdersCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Example API endpoint (you should create this)
+  const SALES_SUMMARY_API = "http://localhost:8000/api/orders/sales-summary/";
+
+  useEffect(() => {
+    const fetchSalesSummary = async () => {
+      try {
+        const response = await axios.get(SALES_SUMMARY_API, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
+        });
+
+        const { total_revenue, avg_order_value, orders_count } = response.data;
+
+        setTotalRevenue(total_revenue);
+        setAvgOrderValue(avg_order_value);
+        setOrdersCount(orders_count);
+
+      } catch (error) {
+        console.error("Error fetching sales summary:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSalesSummary();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-xl font-semibold mb-4">Sales Summary</h3>
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
