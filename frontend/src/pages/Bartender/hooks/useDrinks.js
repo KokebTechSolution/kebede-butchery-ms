@@ -25,7 +25,7 @@ export const useDrinks = () => {
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
-      const payload = { status };
+      const payload = { drink_status: status };
       if (reason) {
         // This part would need backend support for rejection reasons
       }
@@ -40,7 +40,11 @@ export const useDrinks = () => {
         throw new Error(`Failed to update order status: ${response.statusText}`);
       }
       
-      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? { ...order, status: status } : order
+        )
+      );
 
     } catch (error) {
       console.error(error);
@@ -56,6 +60,7 @@ export const useDrinks = () => {
   };
 
   const getPendingOrders = () => orders.filter(order => order.status === 'pending');
+  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
   return {
@@ -63,6 +68,7 @@ export const useDrinks = () => {
     acceptOrder,
     rejectOrder,
     getPendingOrders,
+    getPreparingOrders,
     getRejectedOrders
   };
 }; 

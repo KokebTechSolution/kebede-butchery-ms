@@ -7,15 +7,27 @@ export const Pending = () => {
   const { 
     acceptOrder, 
     rejectOrder, 
-    getPendingOrders, 
+    getPendingOrders,
+    getPreparingOrders, 
     getRejectedOrders 
   } = useDrinks();
   const [activeTab, setActiveTab] = useState('pending');
 
   const pendingOrders = getPendingOrders();
+  const preparingOrders = getPreparingOrders();
   const rejectedOrders = getRejectedOrders();
 
-  const displayOrders = activeTab === 'pending' ? pendingOrders : rejectedOrders;
+  const displayOrders = {
+    pending: pendingOrders,
+    preparing: preparingOrders,
+    rejected: rejectedOrders,
+  }[activeTab];
+
+  const tabMessages = {
+    pending: 'No pending drink orders',
+    preparing: 'No orders are currently being prepared',
+    rejected: 'No rejected drink orders',
+  };
 
   return (
     <main className="flex flex-col w-full bg-white min-h-screen">
@@ -24,6 +36,9 @@ export const Pending = () => {
         <div className="flex justify-center border-b">
           <button onClick={() => setActiveTab('pending')} className={`p-4 ${activeTab === 'pending' ? 'border-b-2 border-blue-500' : ''}`}>
             Pending
+          </button>
+          <button onClick={() => setActiveTab('preparing')} className={`p-4 ${activeTab === 'preparing' ? 'border-b-2 border-blue-500' : ''}`}>
+            Preparing
           </button>
           <button onClick={() => setActiveTab('rejected')} className={`p-4 ${activeTab === 'rejected' ? 'border-b-2 border-blue-500' : ''}`}>
             Rejected
@@ -34,7 +49,7 @@ export const Pending = () => {
           {displayOrders.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">
-                {activeTab === 'pending' ? 'No pending drink orders' : 'No rejected drink orders'}
+                {tabMessages[activeTab]}
               </p>
             </div>
           ) : (

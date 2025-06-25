@@ -28,7 +28,7 @@ export const useOrders = () => {
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
-      const payload = { status };
+      const payload = { food_status: status };
       if (reason) {
         // You would need to add 'rejectionReason' to your Order model and serializer for this to work
         // For now, we just update the status
@@ -44,8 +44,12 @@ export const useOrders = () => {
         throw new Error(`Failed to update order status: ${response.statusText}`);
       }
       
-      // Remove the order from the local state to update the UI instantly
-      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+      // Update the order's status in the local state instead of removing it
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? { ...order, status: status } : order
+        )
+      );
 
     } catch (error) {
       console.error(error);
@@ -61,6 +65,7 @@ export const useOrders = () => {
   };
 
   const getPendingOrders = () => orders.filter(order => order.status === 'pending');
+  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
   return {
@@ -68,6 +73,7 @@ export const useOrders = () => {
     acceptOrder,
     rejectOrder,
     getPendingOrders,
+    getPreparingOrders,
     getRejectedOrders
   };
 };
