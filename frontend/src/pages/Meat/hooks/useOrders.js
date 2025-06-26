@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders/food/');
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders');
-      }
-      const data = await response.json();
-      // The backend returns a list of orders.
-      // We need to filter for orders with a 'pending' status.
-      setOrders(data);
+      const response = await axios.get('http://localhost:8000/api/orders/food/');
+      setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
     }
@@ -34,15 +29,7 @@ export const useOrders = () => {
         // For now, we just update the status
       }
 
-      const response = await fetch(`/api/orders/${orderId}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update order status: ${response.statusText}`);
-      }
+      await axios.patch(`http://localhost:8000/api/orders/${orderId}/`, payload);
       
       // Update the order's status in the local state instead of removing it
       setOrders(prevOrders =>

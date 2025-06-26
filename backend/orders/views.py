@@ -6,9 +6,14 @@ from django.utils import timezone
 from rest_framework.response import Response
 
 class OrderListView(generics.ListCreateAPIView):
-    queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return Order.objects.filter(created_by=user)
+        return Order.objects.none()
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None

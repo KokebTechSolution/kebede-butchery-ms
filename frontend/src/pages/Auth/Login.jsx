@@ -12,12 +12,12 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   const roleRedirectMap = {
-    manager: '/',
-    waiter: '/',
-    cashier: '/',
-    bartender: '/',
-    meat: '/',
-    owner: '/',
+    manager: '/dashboard',
+    waiter: '/dashboard',
+    cashier: '/dashboard',
+    bartender: '/dashboard',
+    meat: '/dashboard',
+    owner: '/dashboard',
     admin: '/admin-dashboard',
     staff: '/staff-dashboard',
   };
@@ -55,10 +55,7 @@ const LoginPage = () => {
       const userWithAuth = { ...data.user, isAuthenticated: true };
 
       // Update context and localStorage
-      login({ ...data, user: userWithAuth });
-      localStorage.setItem('access', data.access);
-      localStorage.setItem('refresh', data.refresh);
-      localStorage.setItem('user', JSON.stringify(userWithAuth));
+      login({ access: data.access, refresh: data.refresh, user: userWithAuth });
 
       // Determine redirect path based on role
       const redirectTo = roleRedirectMap[userWithAuth.role];

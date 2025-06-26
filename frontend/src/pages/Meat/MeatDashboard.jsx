@@ -1,6 +1,7 @@
 // src/pages/Meat/MeatDashboard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaDrumstickBite, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell } from "react-icons/fa";
+import { useNotifications } from "../../context/NotificationContext";
 
 import { Pending } from "./screens/Pending/Pending";
 import { Inventory } from "./screens/Inventory/Inventory";
@@ -9,6 +10,13 @@ import { Reports } from "./screens/Reports/Reports";
 export default function MeatDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
   const userName = "Meat Manager"; // Replace with dynamic user name from auth
+  const { lastMessage } = useNotifications();
+
+  useEffect(() => {
+    if (lastMessage) {
+      alert(lastMessage.message);
+    }
+  }, [lastMessage]);
 
   const renderContent = () => {
     switch (activeSection) {

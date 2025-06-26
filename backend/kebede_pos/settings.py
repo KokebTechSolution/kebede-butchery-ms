@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'branches',
     'rest_framework.authtoken',
     'rest_framework',
+    'channels',
     'users',
     'products',
     'orders',
@@ -89,8 +90,13 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'kebede_pos.wsgi.application'
+ASGI_APPLICATION = 'kebede_pos.asgi.application'
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

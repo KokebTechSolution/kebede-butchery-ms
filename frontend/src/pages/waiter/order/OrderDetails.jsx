@@ -79,7 +79,22 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
             className="icon"
             onClick={() => {
               if (currentOrder && !isPrinted) {
+                // Mark as printed first
                 setPrintedOrders(prev => [...prev, currentOrder.id]);
+                
+                // Then, clear the table and delete the order
+                if (currentOrder.id && !String(currentOrder.id).startsWith('pending-')) {
+                  deleteOrder(currentOrder.id);
+                  if (onOrderDeleted) {
+                    onOrderDeleted(); // This will navigate back to tables
+                  }
+                } else {
+                  // If it's a pending order, just clear the cart
+                  clearCart();
+                  if (onOrderDeleted) {
+                    onOrderDeleted();
+                  }
+                }
               }
             }}
             style={{ cursor: 'pointer' }}

@@ -7,13 +7,20 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['order_number', 'food_status', 'drink_status', 'created_by', 'branch', 'created_at']
+    list_display = ['order_number', 'food_status', 'drink_status', 'created_by', 'branch', 'created_at', 'total_money']
     list_filter = ['food_status', 'drink_status', 'branch', 'created_at']
     search_fields = ['order_number']
     inlines = [OrderItemInline]
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ['name', 'quantity', 'price', 'item_type', 'order']
+    list_display = ['name', 'quantity', 'price', 'item_type', 'order', 'get_waiter_name']
     list_filter = ['item_type']
     search_fields = ['name']
+
+    def get_waiter_name(self, obj):
+        if obj.order and obj.order.created_by:
+            return obj.order.created_by.username
+        return 'N/A'
+    get_waiter_name.short_description = 'Waiter'
+    get_waiter_name.admin_order_field = 'order__created_by'
