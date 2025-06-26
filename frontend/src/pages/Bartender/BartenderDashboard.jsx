@@ -1,6 +1,7 @@
 // src/pages/Bartender/BartenderDashboard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell } from "react-icons/fa";
+import { useNotifications } from "../../context/NotificationContext";
 
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./screens/Inventory";
@@ -9,6 +10,13 @@ import Reports from "./screens/Reports";
 export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
   const userName = "Bartender"; // Replace with dynamic user name from auth
+  const { lastMessage } = useNotifications();
+
+  useEffect(() => {
+    if (lastMessage) {
+      alert(lastMessage.message);
+    }
+  }, [lastMessage]);
 
   const renderContent = () => {
     switch (activeSection) {

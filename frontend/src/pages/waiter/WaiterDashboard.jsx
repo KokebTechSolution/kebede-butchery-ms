@@ -8,6 +8,8 @@ import OrderDetails from './order/OrderDetails.jsx';
 import OrderList from './order/OrderList.jsx';
 import '../../App.css';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import axiosInstance from '../../api/axiosInstance';
 
 const WaiterDashboard = () => {
   const location = useLocation();
@@ -28,8 +30,10 @@ const WaiterDashboard = () => {
     loadCartForEditing, 
     updateOrder, 
     deleteOrder, 
-    clearCart 
+    clearCart,
+    user
   } = useCart();
+  const { tokens } = useAuth();
 
   useEffect(() => {
     // If no table is active, select the first one by default
@@ -39,6 +43,10 @@ const WaiterDashboard = () => {
   }, [activeTableId, setActiveTable]);
 
   const handleNavigate = (page) => {
+    if (page === 'order') {
+      setCurrentPage('orderDetails');
+      return;
+    }
     if (page === 'orderDetails') {
       if (!activeTableId && !selectedOrderId) {
         setMessage('Please select a table or an existing order to view order details.');
@@ -72,8 +80,7 @@ const WaiterDashboard = () => {
       // If editing, deleting the last item should DELETE the order
       if (editingOrderId) {
         try {
-          const response = await fetch(`/api/orders/${editingOrderId}/`, { method: 'DELETE' });
-          if (!response.ok) { throw new Error('Failed to delete order'); }
+          await axiosInstance.delete(`/orders/${editingOrderId}/`);
           deleteOrder(editingOrderId); // Update local state
           setMessage('Order cancelled and deleted.');
         } catch (error) {
@@ -101,17 +108,9 @@ const WaiterDashboard = () => {
       };
 
       try {
-        const response = await fetch(`/api/orders/${editingOrderId}/`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedOrderData)
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update order');
-        }
+        const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
         
-        const updatedOrder = await response.json();
+        const updatedOrder = response.data;
         updateOrder(editingOrderId, updatedOrder.items);
         setSelectedOrderId(editingOrderId);
         setMessage('Order updated successfully!');
@@ -136,18 +135,13 @@ const WaiterDashboard = () => {
       };
 
       try {
-        const response = await fetch('/api/orders/order-list/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newOrderData),
-        });
+        const response = await axiosInstance.post('/orders/order-list/', newOrderData);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Failed to place order: ${JSON.stringify(errorData)}`);
+        if (response.status !== 201) {
+          throw new Error(`Failed to place order: ${JSON.stringify(response.data)}`);
         }
 
-        const newOrder = await response.json();
+        const newOrder = response.data;
         placeOrder(newOrder);
         setSelectedOrderId(newOrder.id);
         setMessage('Order placed successfully!');
@@ -253,9 +247,9 @@ const WaiterDashboard = () => {
 };
 
 const WaiterDashboardWrapper = () => (
-  <CartProvider>
+  
     <WaiterDashboard />
-  </CartProvider>
+  
 );
 
-export default WaiterDashboardWrapper;
+export default WaiterDashboard;

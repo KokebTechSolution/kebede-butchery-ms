@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { updateTokens } from '../api/auth';
 
 // Create the context
 const AuthContext = createContext();
@@ -12,41 +13,38 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [accessToken, setAccessToken] = useState(null);
+  const [tokens, setTokens] = useState(null);
 
   // Load from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const access = localStorage.getItem('access');
+    const refresh = localStorage.getItem('refresh');
 
-    if (storedUser && access) {
+    if (storedUser && access && refresh) {
       setUser({ ...JSON.parse(storedUser), isAuthenticated: true });
-      setAccessToken(access);
+      setTokens({ access, refresh });
     }
   }, []);
 
   const login = ({ access, refresh, user }) => {
-    localStorage.setItem('access', access);
-    localStorage.setItem('refresh', refresh);
+    updateTokens({ access, refresh });
     localStorage.setItem('user', JSON.stringify(user));
 
-    setAccessToken(access);
     setUser({ ...user, isAuthenticated: true });
   };
 
   const logout = () => {
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
+    updateTokens(null);
     localStorage.removeItem('user');
 
-    setAccessToken(null);
     setUser(null);
     navigate('/login');
   };
 
   const value = {
     user,
-    accessToken,
+    tokens,
     login,
     logout,
     isAuthenticated: !!user?.isAuthenticated,

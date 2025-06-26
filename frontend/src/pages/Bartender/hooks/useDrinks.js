@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export const useDrinks = () => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders/drinks/');
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders');
-      }
-      const data = await response.json();
-      setOrders(data);
+      const response = await axios.get('http://localhost:8000/api/orders/drinks/');
+      setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
     }
@@ -30,15 +27,7 @@ export const useDrinks = () => {
         // This part would need backend support for rejection reasons
       }
 
-      const response = await fetch(`/api/orders/${orderId}/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update order status: ${response.statusText}`);
-      }
+      await axios.patch(`http://localhost:8000/api/orders/${orderId}/`, payload);
       
       setOrders(prevOrders =>
         prevOrders.map(order =>

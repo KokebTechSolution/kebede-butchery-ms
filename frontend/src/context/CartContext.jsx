@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext'; // Assuming AuthContext is in the same folder
+import axiosInstance from '../api/axiosInstance';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children, initialActiveTableId }) => {
-  const { user } = useAuth(); // Get user from AuthContext
+  const { user, tokens } = useAuth(); // Get user and tokens from AuthContext
   const [tableCarts, setTableCarts] = useState(() => {
     try {
       const localData = localStorage.getItem('tableCarts');
@@ -34,20 +35,20 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   // Fetch orders from the database on component mount
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!tokens) {
+        setOrders([]); // Clear orders if no token
+        return;
+      }
       try {
-        const response = await fetch('/api/orders/order-list/');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        setOrders(data);
+        const response = await axiosInstance.get('/orders/order-list/');
+        setOrders(response.data);
       } catch (error) {
         console.error("Failed to fetch orders:", error);
       }
     };
 
     fetchOrders();
-  }, []); // The empty dependency array ensures this runs only once on mount
+  }, [tokens]); // Rerun when tokens change (login/logout)
 
   useEffect(() => {
     try {

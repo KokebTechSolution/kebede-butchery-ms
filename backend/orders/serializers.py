@@ -20,8 +20,12 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         order = Order.objects.create(**validated_data)
+        total = 0
         for item_data in items_data:
-            OrderItem.objects.create(order=order, **item_data)
+            item = OrderItem.objects.create(order=order, **item_data)
+            total += item.price * item.quantity
+        order.total_money = total
+        order.save()
         return order
 
     @transaction.atomic
@@ -38,9 +42,12 @@ class OrderSerializer(serializers.ModelSerializer):
             # First, remove old items
             instance.items.all().delete()
             # Then, create new items
+            total = 0
             for item_data in items_data:
-                OrderItem.objects.create(order=instance, **item_data)
-
+                item = OrderItem.objects.create(order=instance, **item_data)
+                total += item.price * item.quantity
+            instance.total_money = total
+            instance.save()
         return instance
 
 class FoodOrderItemSerializer(serializers.ModelSerializer):
