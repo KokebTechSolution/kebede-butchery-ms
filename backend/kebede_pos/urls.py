@@ -1,32 +1,27 @@
-"""
-URL configuration for kebede_pos project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # User authentication and management
     path('api/users/', include('users.urls')),
+
+    # Order management
     path('api/orders/', include('orders.urls')),
+
+    # Inventory (this is your current working module)
     path('api/inventory/', include('inventory.urls')),
+
+    # Payments
     path('api/payments/', include('payments.urls')),
-    path('api/inventory/', include('inventory.urls')),
+
+    # Products (separated from inventory)
     path('api/products/', include('products.urls')),
+
+    # Activity logs
     path('api/activity/', include('activity.urls')),
-
-
+    # Menu management
+    path('api/menu/', include('menu.urls')),
 ]
