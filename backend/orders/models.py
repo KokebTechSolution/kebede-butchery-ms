@@ -28,6 +28,11 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     total_money = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     waiter_notified_drink = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', null=True, blank=True)
+    cashier_status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('printed', 'Printed')],
+        default='pending'
+    )
 
     def __str__(self):
         return self.order_number

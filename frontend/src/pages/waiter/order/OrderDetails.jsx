@@ -64,7 +64,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   }
 
   return (
-    <div className="order-details-container">
+    <div className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
       <div className="order-details-header">
         <div className="icon-buttons">
           {/* Icons for edit, print, share, delete */}
@@ -77,27 +77,25 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           </span>
           <span
             className="icon"
-            onClick={() => {
+            onClick={!isPrinted ? async () => {
               if (currentOrder && !isPrinted) {
-                // Mark as printed first
-                setPrintedOrders(prev => [...prev, currentOrder.id]);
-                
-                // Then, clear the table and delete the order
-                if (currentOrder.id && !String(currentOrder.id).startsWith('pending-')) {
-                  deleteOrder(currentOrder.id);
-                  if (onOrderDeleted) {
-                    onOrderDeleted(); // This will navigate back to tables
+                try {
+                  const response = await fetch(`http://localhost:8000/api/orders/${currentOrder.id}/update-cashier-status/`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  if (!response.ok) {
+                    throw new Error('Failed to update cashier status');
                   }
-                } else {
-                  // If it's a pending order, just clear the cart
-                  clearCart();
-                  if (onOrderDeleted) {
-                    onOrderDeleted();
-                  }
+                  setPrintedOrders(prev => [...prev, currentOrder.id]);
+                } catch (error) {
+                  console.error('Error updating cashier status:', error);
                 }
               }
-            }}
-            style={{ cursor: 'pointer' }}
+            } : undefined}
+            style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
           >
             🖨️
           </span>

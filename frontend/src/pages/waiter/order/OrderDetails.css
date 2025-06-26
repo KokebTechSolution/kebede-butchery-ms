@@ -112,4 +112,9 @@
   font-weight: bold;
   font-size: 1.4em;
   color: #333;
+}
+
+.order-printed {
+  opacity: 0.5;
+  pointer-events: none;
 } 

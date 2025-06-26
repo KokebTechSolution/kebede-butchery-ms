@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
 import {
@@ -9,67 +9,24 @@ import {
   TableHeader,
   TableRow,
 } from "../../../../components/ui/table";
+import { getPrintedOrders } from "../../../../../../api/cashier";
 
 export const SidebarSection = () => {
-  // Initial order data for the table with detailed items
-  const initialOrders = [
-    {
-      waiterId: "W001",
-      waiterName: "John Smith",
-      table: "Table 5",
-      items: [
-        { name: "Cappuccino", quantity: 1, price: "$4.50" },
-        { name: "Croissant", quantity: 1, price: "$3.50" }
-      ],
-      paymentOption: "Online"
-    },
-    {
-      waiterId: "W002",
-      waiterName: "Sarah Johnson",
-      table: "Table 2",
-      items: [
-        { name: "Espresso", quantity: 2, price: "$3.00" },
-        { name: "Latte", quantity: 1, price: "$4.00" },
-        { name: "Chocolate Cake", quantity: 1, price: "$6.00" }
-      ],
-      paymentOption: "Cash"
-    },
-    {
-      waiterId: "W003",
-      waiterName: "Mike Davis",
-      table: "Table 8",
-      items: [
-        { name: "Americano", quantity: 1, price: "$3.50" }
-      ],
-      paymentOption: "Online"
-    },
-    {
-      waiterId: "W004",
-      waiterName: "Emma Wilson",
-      table: "Table 3",
-      items: [
-        { name: "Mocha", quantity: 2, price: "$5.00" },
-        { name: "Blueberry Muffin", quantity: 1, price: "$4.50" },
-        { name: "Tea", quantity: 1, price: "$3.00" },
-        { name: "Sandwich", quantity: 1, price: "$8.50" }
-      ],
-      paymentOption: "Cash"
-    },
-    {
-      waiterId: "W005",
-      waiterName: "Alex Brown",
-      table: "Table 1",
-      items: [
-        { name: "Cappuccino", quantity: 1, price: "$4.50" },
-        { name: "Danish Pastry", quantity: 1, price: "$4.00" }
-      ],
-      paymentOption: "Online"
-    },
-  ];
-
-  // State to manage orders and button click state
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const printedOrders = await getPrintedOrders();
+        setOrders(printedOrders);
+      } catch (error) {
+        // Handle error appropriately
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   // Calculate the total amount for an order based on its items
   const calculateTotal = (items) => {
@@ -79,15 +36,6 @@ export const SidebarSection = () => {
         return sum + item.quantity * price;
       }, 0)
       .toFixed(2);
-  };
-
-  // Handle Print Receipt click
-  const handlePrintReceipt = (index, paymentOption) => {
-    setClickedIndex(index);
-    setTimeout(() => {
-      setClickedIndex(null);
-      setOrders((prev) => prev.filter((_, i) => i !== index));
-    }, 300); // Button color change duration
   };
 
   return (
@@ -134,7 +82,7 @@ export const SidebarSection = () => {
                       {order.waiterName}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
-                      {order.table}
+                      {order.table_number}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       <ul className="space-y-1">
@@ -147,7 +95,7 @@ export const SidebarSection = () => {
                       </ul>
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
-                      {`$${calculateTotal(order.items)}`}
+                      {`$${order.total_money}`}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
                       <span className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -165,9 +113,11 @@ export const SidebarSection = () => {
                             ? 'bg-red-600 text-white'
                             : 'bg-red-100 text-red-700 hover:bg-red-200'}
                         `}
-                        onClick={() => handlePrintReceipt(index, order.paymentOption)}
+                        onClick={() => {
+                          // TODO: Implement payment processing logic
+                        }}
                       >
-                        Print Receipt
+                        Process Payment
                       </button>
                     </TableCell>
                   </TableRow>

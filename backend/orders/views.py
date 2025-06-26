@@ -70,3 +70,23 @@ class DrinkOrderListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Order.objects.filter(drink_status__in=['pending', 'preparing']).distinct()
+
+
+class UpdateCashierStatusView(generics.UpdateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [AllowAny]
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.cashier_status = 'printed'
+        instance.save()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+class PrintedOrderListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Order.objects.filter(cashier_status='printed')

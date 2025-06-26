@@ -10,11 +10,11 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
-    created_by = serializers.CharField(source='created_by.username', read_only=True)
+    waiterName = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at']
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
