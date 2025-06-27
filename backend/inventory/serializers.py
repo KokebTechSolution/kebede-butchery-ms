@@ -1,12 +1,15 @@
 from rest_framework import serializers
-from .models import ItemType, Category, Product, Sale, StockMovement
+from .models import ItemType, Category, Product, InventoryTransaction
+
 
 class ItemTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemType
         fields = '__all__'
 
+
 class CategorySerializer(serializers.ModelSerializer):
+    # Display item type name in the response
     item_type_name = serializers.CharField(source='item_type.type_name', read_only=True)
 
     class Meta:
@@ -17,17 +20,29 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.category_name', read_only=True)
     item_type_name = serializers.CharField(source='category.item_type.type_name', read_only=True)
+    total_bottles_in_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = [
+            'id', 'name', 'category', 'price_per_unit', 'uses_carton', 'bottles_per_carton',
+            'carton_quantity', 'bottle_quantity', 'unit_quantity', 'minimum_threshold',
+            'running_out', 'receipt_image', 'created_at', 'updated_at',
+            'category_name', 'item_type_name', 'total_bottles_in_stock'
+        ]
 
-class SaleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Sale
-        fields = '__all__'
+    def get_total_bottles_in_stock(self, obj):
+        return obj.total_bottles_in_stock if obj.uses_carton else None
 
-class StockMovementSerializer(serializers.ModelSerializer):
+class InventoryTransactionSerializer(serializers.ModelSerializer):
+    # Display product name in transaction list
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    category_name = serializers.CharField(source='product.category.category_name', read_only=True)
+    item_type_name = serializers.CharField(source='product.category.item_type.type_name', read_only=True)
+
     class Meta:
-        model = StockMovement
-        fields = '__all__'
+        model = InventoryTransaction
+        fields = [
+            'id', 'product', 'product_name', 'category_name', 'item_type_name',
+            'transaction_type', 'quantity', 'unit_type', 'transaction_date'
+        ]

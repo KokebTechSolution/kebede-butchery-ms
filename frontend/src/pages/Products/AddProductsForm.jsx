@@ -9,7 +9,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
     unit: '',
     price_per_unit: '',
     stock_qty: '',
-    branch: '', // ✅ Correct field name
+    branch_id: '', // ✅ Correct field name
     is_active: true,
     expiration_date: '',
   });
@@ -48,7 +48,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
 
     try {
       // Basic validation
-      if (!formData.name || !formData.category || !formData.type_id || !formData.unit || !formData.price_per_unit || !formData.stock_qty || !formData.expiration_date || !formData.branch) {
+      if (!formData.name || !formData.category || !formData.type_id || !formData.unit || !formData.price_per_unit || !formData.stock_qty || !formData.expiration_date || !formData.branch_id) {
         setError('Please fill all required fields.');
         setLoading(false);
         return;
@@ -146,7 +146,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
       <input
         type="text"
         name="branch"
-        value={formData.branch}
+        value={formData.branch_id}
         onChange={handleChange}
         placeholder="Branch ID"
         className="w-full border px-4 py-2 rounded"
