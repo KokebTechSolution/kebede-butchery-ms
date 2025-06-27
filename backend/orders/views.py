@@ -90,3 +90,18 @@ class PrintedOrderListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Order.objects.filter(cashier_status='printed')
+
+class UpdatePaymentOptionView(generics.UpdateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [AllowAny]
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        payment_option = request.data.get('payment_option')
+        if payment_option in ['cash', 'online']:
+            instance.payment_option = payment_option
+            instance.save()
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        return Response({'error': 'Invalid payment option'}, status=400)

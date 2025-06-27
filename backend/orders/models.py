@@ -33,6 +33,11 @@ class Order(models.Model):
         choices=[('pending', 'Pending'), ('printed', 'Printed')],
         default='pending'
     )
+    payment_option = models.CharField(
+        max_length=20,
+        choices=[('cash', 'Cash'), ('online', 'Online')],
+        null=True, blank=True
+    )
 
     def __str__(self):
         return self.order_number

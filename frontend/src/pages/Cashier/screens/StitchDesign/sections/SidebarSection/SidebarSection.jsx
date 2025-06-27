@@ -25,18 +25,11 @@ export const SidebarSection = () => {
       }
     };
 
-    fetchOrders();
-  }, []);
+    const interval = setInterval(fetchOrders, 5000); // Fetch every 5 seconds
+    fetchOrders(); // Initial fetch
 
-  // Calculate the total amount for an order based on its items
-  const calculateTotal = (items) => {
-    return items
-      .reduce((sum, item) => {
-        const price = parseFloat(item.price.replace(/[^0-9.-]+/g, ""));
-        return sum + item.quantity * price;
-      }, 0)
-      .toFixed(2);
-  };
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
 
   return (
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
@@ -87,7 +80,7 @@ export const SidebarSection = () => {
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       <ul className="space-y-1">
                         {order.items.map((item, itemIndex) => (
-                          <li key={itemIndex} className="text-sm">
+                          <li key={item.id} className="text-sm">
                             <span className="font-medium">{item.quantity}x</span> {item.name}
                             <span className="text-[#876363] ml-2">({item.price})</span>
                           </li>
@@ -99,11 +92,11 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
                       <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                        order.paymentOption === 'Online' 
+                        order.payment_option === 'online' 
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {order.paymentOption}
+                        {order.payment_option ? (order.payment_option.charAt(0).toUpperCase() + order.payment_option.slice(1)) : 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 align-top">

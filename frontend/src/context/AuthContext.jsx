@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateTokens } from '../api/auth';
 
 // Create the context
 const AuthContext = createContext();
@@ -10,9 +9,13 @@ export const useAuth = () => useContext(AuthContext);
 
 // Provider
 export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null);
   const [tokens, setTokens] = useState(null);
 
   // Load from localStorage on mount
@@ -27,20 +30,30 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = ({ access, refresh, user }) => {
-    updateTokens({ access, refresh });
-    localStorage.setItem('user', JSON.stringify(user));
-
-    setUser({ ...user, isAuthenticated: true });
+  const login = (authData) => {
+    localStorage.setItem('access_token', authData.access);
+    localStorage.setItem('refresh_token', authData.refresh);
+    localStorage.setItem('user', JSON.stringify(authData.user));
+    setUser(authData.user);
   };
 
   const logout = () => {
-    updateTokens(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
-
     setUser(null);
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
+
+  useEffect(() => {
+    const handleLogoutEvent = () => logout();
+    
+    window.addEventListener('logout', handleLogoutEvent);
+    
+    return () => {
+      window.removeEventListener('logout', handleLogoutEvent);
+    };
+  }, []);
 
   const value = {
     user,

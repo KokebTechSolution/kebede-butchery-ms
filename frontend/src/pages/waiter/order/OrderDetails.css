@@ -117,4 +117,27 @@
 .order-printed {
   opacity: 0.5;
   pointer-events: none;
+}
+
+.payment-options {
+  text-align: center;
+  margin: 15px 0;
+}
+
+.payment-button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.payment-button.cash {
+  background-color: #4CAF50; /* Green */
+}
+
+.payment-button.online {
+  background-color: #008CBA; /* Blue */
 } 

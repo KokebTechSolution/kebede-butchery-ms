@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './OrderDetails.css'; // We will create this file next
 import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
+import { updatePaymentOption, getOrderById } from '../../../api/cashier';
 
 const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
@@ -16,21 +17,28 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   }, [printedOrders]);
 
   useEffect(() => {
-    if (selectedOrderId) {
-      const foundOrder = orders.find(order => order.id === selectedOrderId);
-      setCurrentOrder(foundOrder);
-    } else if (activeTableId) {
-      // If no specific order is selected, show the current active cart as a 'pending' order
-      const currentPendingOrder = {
-        id: `pending-${activeTableId}`, // Use a unique ID for pending order
-        tableId: activeTableId,
-        items: cartItems, // Use cartItems directly from context
-        timestamp: new Date().toISOString(),
-      };
-      setCurrentOrder(currentPendingOrder);
-    } else {
-      setCurrentOrder(null);
-    }
+    const fetchOrder = async () => {
+      if (selectedOrderId) {
+        try {
+          const order = await getOrderById(selectedOrderId);
+          setCurrentOrder(order);
+        } catch (error) {
+          setCurrentOrder(null);
+        }
+      } else if (activeTableId) {
+        // If no specific order is selected, show the current active cart as a 'pending' order
+        const currentPendingOrder = {
+          id: `pending-${activeTableId}`, // Use a unique ID for pending order
+          tableId: activeTableId,
+          items: cartItems, // Use cartItems directly from context
+          timestamp: new Date().toISOString(),
+        };
+        setCurrentOrder(currentPendingOrder);
+      } else {
+        setCurrentOrder(null);
+      }
+    };
+    fetchOrder();
   }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
 
   const getTotalPrice = (items) => {
@@ -49,6 +57,17 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       if (onOrderDeleted) {
         onOrderDeleted();
       }
+    }
+  };
+
+  const handlePaymentOptionChange = async (orderId, paymentOption) => {
+    try {
+      // We need to refetch or update the order in the parent component's state
+      // For now, let's just update the local state for immediate feedback
+      const updatedOrder = await updatePaymentOption(orderId, paymentOption);
+      setCurrentOrder(updatedOrder);
+    } catch (error) {
+      console.error('Failed to update payment option:', error);
     }
   };
 
@@ -111,6 +130,19 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
       <div className="order-summary">
         <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
+        <div className="payment-options">
+          {currentOrder.payment_option ? (
+            <p>
+              Payment Method: <strong>{currentOrder.payment_option.charAt(0).toUpperCase() + currentOrder.payment_option.slice(1)}</strong>
+            </p>
+          ) : (
+            <div>
+              <span>Select Payment Method: </span>
+              <button onClick={() => handlePaymentOptionChange(currentOrder.id, 'cash')} className="payment-button cash">Cash</button>
+              <button onClick={() => handlePaymentOptionChange(currentOrder.id, 'online')} className="payment-button online">Online</button>
+            </div>
+          )}
+        </div>
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>

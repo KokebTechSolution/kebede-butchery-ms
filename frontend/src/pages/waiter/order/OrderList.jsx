@@ -1,9 +1,21 @@
-import React from 'react';
-import { useCart } from '../../../context/CartContext';
+import React, { useEffect, useState } from 'react';
+import { getMyOrders } from '../../../api/cashier'; // adjust path as needed
 import './OrderList.css';
 
 const OrderList = ({ onSelectOrder, selectedOrderId }) => {
-  const { orders } = useCart();
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const data = await getMyOrders();
+        setOrders(data);
+      } catch (error) {
+        setOrders([]);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   return (
     <div className="order-list-container">
