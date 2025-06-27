@@ -4,6 +4,8 @@ from .models import Order
 from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer
 from django.utils import timezone
 from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.views import APIView
 
 class OrderListView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
@@ -105,3 +107,17 @@ class UpdatePaymentOptionView(generics.UpdateAPIView):
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         return Response({'error': 'Invalid payment option'}, status=400)
+
+class AcceptDrinkOrderView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+        if order.drink_status == 'pending':
+            order.drink_status = 'preparing'
+            order.save()
+            return Response({'message': 'Drink order accepted and set to preparing.'}, status=status.HTTP_200_OK)
+        return Response({'error': 'Order is not in pending state.'}, status=status.HTTP_400_BAD_REQUEST)

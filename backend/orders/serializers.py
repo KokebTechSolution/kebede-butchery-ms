@@ -32,7 +32,10 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Update order instance fields
         instance.food_status = validated_data.get('food_status', instance.food_status)
-        instance.drink_status = validated_data.get('drink_status', instance.drink_status)
+        # Only update drink_status if not already 'preparing'
+        new_drink_status = validated_data.get('drink_status', instance.drink_status)
+        if instance.drink_status != 'preparing':
+            instance.drink_status = new_drink_status
         instance.assigned_to = validated_data.get('assigned_to', instance.assigned_to)
         instance.save()
 
