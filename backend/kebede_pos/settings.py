@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'inventory',
     "django_extensions",
     'payments',
+    'activity',
+    'menu',
     'reports',
     'core',
     'api',

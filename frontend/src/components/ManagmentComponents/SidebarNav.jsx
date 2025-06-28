@@ -9,7 +9,6 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-
 export default function SidebarNav() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -17,7 +16,8 @@ const navItems = [
   { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
   { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
   { label: "Product", icon: <FaBoxes />, path: "/branch-manager/products" },
-  { label: "Requests", icon: <FaBell />, path: "/branch-manager/requests" },
+  { label: "Inventory", icon: <FaBoxes />, path: "/branch-manager/inventory" },
+  { label: "Menu Management", icon: <FaBoxes />, path: "/branch-manager/menu" },
 ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
