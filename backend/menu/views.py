@@ -50,8 +50,8 @@ class MenuItemViewSet(viewsets.ModelViewSet):
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Menu, MenuItem, MenuSection
-from .serializers import MenuSerializer, MenuItemSerializer, MenuSectionSerializer
+from .models import Menu, MenuItem, MenuSection, MenuCategory
+from .serializers import MenuSerializer, MenuItemSerializer, MenuSectionSerializer, MenuCategorySerializer
 
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all()
@@ -93,3 +93,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
 class MenuSectionViewSet(viewsets.ModelViewSet):
     queryset = MenuSection.objects.all()
     serializer_class = MenuSectionSerializer
+
+class MenuCategoryViewSet(viewsets.ModelViewSet):
+    queryset = MenuCategory.objects.all()
+    serializer_class = MenuCategorySerializer

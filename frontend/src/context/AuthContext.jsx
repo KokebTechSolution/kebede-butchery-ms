@@ -21,8 +21,8 @@ export const AuthProvider = ({ children }) => {
   // Load from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const access = localStorage.getItem('access');
-    const refresh = localStorage.getItem('refresh');
+    const access = localStorage.getItem('access') || localStorage.getItem('access_token');
+    const refresh = localStorage.getItem('refresh') || localStorage.getItem('refresh_token');
 
     if (storedUser && access && refresh) {
       setUser({ ...JSON.parse(storedUser), isAuthenticated: true });
@@ -33,6 +33,8 @@ export const AuthProvider = ({ children }) => {
   const login = (authData) => {
     localStorage.setItem('access_token', authData.access);
     localStorage.setItem('refresh_token', authData.refresh);
+    localStorage.setItem('access', authData.access);
+    localStorage.setItem('refresh', authData.refresh);
     localStorage.setItem('user', JSON.stringify(authData.user));
     setUser(authData.user);
   };
@@ -40,6 +42,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
     localStorage.removeItem('user');
     setUser(null);
     navigate('/login', { replace: true });

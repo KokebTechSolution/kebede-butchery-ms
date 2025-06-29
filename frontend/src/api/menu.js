@@ -159,4 +159,26 @@ export const deleteMenuItem = async (id) => {
     }
 };
 
+// Fetch all menu categories
+export const fetchMenuCategories = async () => {
+    try {
+        const response = await api.get('menucategories/');
+        return response.data;
+    } catch (error) {
+        console.error('❌ Error fetching menu categories:', error);
+        throw error;
+    }
+};
+
+// Create a new menu category
+export const createMenuCategory = async (categoryData) => {
+    try {
+        const response = await api.post('menucategories/', categoryData);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Error creating menu category:', error);
+        throw error;
+    }
+};
+
 

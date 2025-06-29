@@ -1,33 +1,15 @@
 // src/pages/MenuManagement/MenuManagerPage.jsx
 
-import React, { useState, useEffect } from 'react';
-import { fetchMenus, deleteMenuItem } from '../../api/menu';
+import React, { useState } from 'react';
+import { deleteMenuItem } from '../../api/menu';
 import MenuForm from './MenuForm';
 import MenuTable from './MenuTable';
 
 const MenuManagerPage = () => {
-    const [menuItems, setMenuItems] = useState([]);
     const [selectedItem, setSelectedItem] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [refreshFlag, setRefreshFlag] = useState(0); // 🔥 Added refresh flag
-
-    // Fetch menu items
-    const loadMenu = async () => {
-        try {
-            const menus = await fetchMenus();
-            const allItems = menus.flatMap(menu => menu.items);
-            setMenuItems(allItems);
-        } catch (error) {
-            console.error('Error loading menu:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadMenu();
-    }, []);
 
     // Open modal for editing
     const handleEdit = (item) => {

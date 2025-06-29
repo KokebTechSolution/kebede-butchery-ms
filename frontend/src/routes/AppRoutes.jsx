@@ -1,12 +1,19 @@
-import StaffListPage from './pages/staff/StaffListPage';
-import AddStaffForm from './pages/staff/AddStaffForm'; // Make sure this exists
 import { Routes, Route } from 'react-router-dom';
-import BranchManagerRoutes from './routes/BranchManagerRoutes';
-import BranchManagerDashboard from './pages/BranchManager/BranchManagerDashboard';
-import DashboardHome from './pages/BranchManager/DashboardHome'; // Ensure this file exists 
+import ProtectedRoute from '../components/ProtectedRoute';
+import BranchManagerRoutes from './BranchManagerRoutes';
 
-
-<Routes>
-  <Route path="/branch-manager/staff" element={<StaffListPage />} />
-  <Route path="/branch-manager/addstaff" element={<AddStaffForm />} />
-</Routes>
+export default function AppRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="branch-manager/*"
+        element={
+          <ProtectedRoute requiredRole="branch_manager">
+            <BranchManagerRoutes />
+          </ProtectedRoute>
+        }
+      />
+      {/* Add other top-level routes here */}
+    </Routes>
+  );
+}

@@ -20,6 +20,7 @@ import RoleBasedDashboard from './pages/RoleBasedDashboard';
 
 // Role-specific route groups
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
+import AppRoutes from './routes/AppRoutes';
 // You can create: StaffRoutes, WaiterRoutes, etc. later
 
 // Common Components
@@ -57,11 +58,13 @@ const App = () => {
             
             {/* Role-specific routes */}
             <Route path="/owner-dashboard" element={<ProtectedRoute requiredRole="owner"><OwnerDashboard /></ProtectedRoute>} />
-            <Route path="/branch-manager-dashboard" element={<ProtectedRoute requiredRole="branch_manager"><BranchManagerDashboard /></ProtectedRoute>} />
             <Route path="/waiter-dashboard" element={<ProtectedRoute requiredRole="waiter"><WaiterDashboard /></ProtectedRoute>} />
             <Route path="/cashier-dashboard" element={<ProtectedRoute requiredRole="cashier"><CashierDashboard /></ProtectedRoute>} />
             <Route path="/bartender-dashboard" element={<ProtectedRoute requiredRole="bartender"><BartenderDashboard /></ProtectedRoute>} />
             <Route path="/meat-dashboard" element={<ProtectedRoute requiredRole="meat_area"><MeatDashboard /></ProtectedRoute>} />
+
+            {/* Main App Routes for all other paths */}
+            <Route path="/*" element={<AppRoutes />} />
 
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="*" element={<NotFound />} />

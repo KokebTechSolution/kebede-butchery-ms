@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { MdArrowBack } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
-import { fetchMenuById } from '../../../api/menu'; // ✅ Import from your backend API
+import { fetchMenuItems } from '../../../api/menu'; // Updated import
 import './MenuPage.css';
 
 const MenuPage = ({ table, onBack }) => {
-    const [menu, setMenu] = useState(null);
-    const [activeTab, setActiveTab] = useState('');
+    const [menuItems, setMenuItems] = useState([]);
+    const [activeTab, setActiveTab] = useState('food');
     const { setActiveTable } = useCart();
 
     useEffect(() => {
@@ -17,28 +17,22 @@ const MenuPage = ({ table, onBack }) => {
     }, [table, setActiveTable]);
 
     useEffect(() => {
-        const loadMenu = async () => {
+        const loadMenuItems = async () => {
             try {
-                // ✅ Change 1 to the ID of your current menu, or pass as prop
-                const menuData = await fetchMenuById(1);
-                setMenu(menuData);
-
-                if (menuData.sections.length > 0) {
-                    setActiveTab(menuData.sections[0].name); // ✅ Auto-select first section
-                }
+                const items = await fetchMenuItems();
+                setMenuItems(items);
             } catch (error) {
-                console.error('❌ Error loading menu:', error);
+                console.error('❌ Error loading menu items:', error);
             }
         };
-
-        loadMenu();
+        loadMenuItems();
     }, []);
 
-    if (!menu) return <div>Loading menu...</div>;
+    if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
 
-    const tabs = menu.sections.map(section => section.name);
-
-    const filteredSections = menu.sections.filter(section => section.name === activeTab);
+    // Group items by type
+    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
+    const drinkItems = menuItems.filter(item => item.item_type === 'drink' && item.is_available);
 
     return (
         <div className="menu-container">
@@ -48,29 +42,40 @@ const MenuPage = ({ table, onBack }) => {
             </div>
 
             <div className="menu-tabs">
-                {tabs.map(tab => (
-                    <button
-                        key={tab}
-                        className={`menu-tab ${tab === activeTab ? 'active' : ''}`}
-                        onClick={() => setActiveTab(tab)}
-                    >
-                        {tab}
-                    </button>
-                ))}
+                <button
+                    className={`menu-tab ${activeTab === 'food' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('food')}
+                >
+                    Food
+                </button>
+                <button
+                    className={`menu-tab ${activeTab === 'drink' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('drink')}
+                >
+                    Drinks
+                </button>
             </div>
 
-            {filteredSections.map(section => (
-                <div key={section.id} className="menu-section">
-                    <h2>{section.name}</h2>
+            {activeTab === 'food' && (
+                <div className="menu-section">
+                    <h2>Food</h2>
                     <div className="menu-items-grid">
-                        {section.items
-                            .filter(item => item.is_available)
-                            .map(item => (
-                                <MenuItem key={item.id} item={item} />
-                            ))}
+                        {foodItems.map(item => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
                     </div>
                 </div>
-            ))}
+            )}
+            {activeTab === 'drink' && (
+                <div className="menu-section">
+                    <h2>Drinks</h2>
+                    <div className="menu-items-grid">
+                        {drinkItems.map(item => (
+                            <MenuItem key={item.id} item={item} />
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
