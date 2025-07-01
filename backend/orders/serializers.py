@@ -11,10 +11,11 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     waiterName = serializers.CharField(source='created_by.username', read_only=True)
+    has_payment = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option']
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
@@ -52,6 +53,10 @@ class OrderSerializer(serializers.ModelSerializer):
             instance.total_money = total
             instance.save()
         return instance
+
+    def get_has_payment(self, obj):
+        from payments.models import Payment
+        return Payment.objects.filter(order=obj).exists()
 
 class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:

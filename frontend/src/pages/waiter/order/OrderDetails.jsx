@@ -146,13 +146,15 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>
-            <p>The Cozy Bistro 123 Food Street</p>
-            <p>NY 10001 +123 456 7890</p>
+            <p>Mickey leland Street</p>
+            <p></p>
           </div>
           <div className="order-to">
-            <h3>Issued to</h3>
-            <p>Delicious Diner 456 Eatery</p>
-            <p>Ave NY 10002 +123 456 7891</p>
+            <h3>Order Info</h3>
+            <p>Table: {currentOrder.table_number || currentOrder.tableId || 'N/A'}</p>
+            <p>Branch: {currentOrder.branch || 'N/A'}</p>
+            <p>Created By: {currentOrder.created_by || user?.username || 'N/A'}</p>
+            <p>Location: Mickey Lelan Street</p>
           </div>
         </div>
 
