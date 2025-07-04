@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { Children } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -35,9 +35,7 @@ const Layout = ({ children }) => {
     <div className="flex min-h-screen bg-gray-50">
       {/* Optional: Add SidebarNav based on role */}
       {/* {user?.role === 'manager' && <SidebarNav />} */}
-
       <div className="flex-1 flex flex-col">
-        {user?.isAuthenticated && <Topbar />}
         <main className="p-4 flex-grow">{children}</main>
       </div>
     </div>
@@ -45,10 +43,14 @@ const Layout = ({ children }) => {
 };
 
 const App = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const hideTopbar = location.pathname === '/login' || location.pathname === '/logout';
   return (
     <AuthProvider>
       <CartProvider>
         <NotificationProvider>
+          {user?.isAuthenticated && !hideTopbar && <Topbar />}
           <Routes>
             <Route path="/" element={<Navigate to="/login" />} />
             <Route path="/login" element={<Login />} />

@@ -128,7 +128,6 @@ const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal }) => 
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         className="border p-2 w-full rounded"
-                        required
                     >
                         <option value="">Select Category</option>
                         {categories.map(category => (
