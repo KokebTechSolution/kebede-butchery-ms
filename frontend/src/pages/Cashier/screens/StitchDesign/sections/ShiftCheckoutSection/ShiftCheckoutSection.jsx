@@ -1,28 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Card, CardContent } from "../../../../components/ui/card";
+import axiosInstance from "../../../../../../api/axiosInstance";
 
 export const ShiftCheckoutSection = () => {
-  const shiftData = {
-    startTime: "08:00 AM",
-    endTime: "04:00 PM",
-    totalOrders: 45,
-    totalSales: 1250.75,
-    cashSales: 450.25,
-    cardSales: 800.50,
-    tips: 125.30,
-    refunds: 25.00,
-  };
-
-  const summaryItems = [
-    { label: "Total Orders", value: shiftData.totalOrders.toString(), color: "text-blue-600" },
-    { label: "Total Sales", value: `$${shiftData.totalSales.toFixed(2)}`, color: "text-green-600" },
-    { label: "Cash Sales", value: `$${shiftData.cashSales.toFixed(2)}`, color: "text-gray-600" },
-    { label: "Online Payments", value: `$${shiftData.cardSales.toFixed(2)}`, color: "text-gray-600" },
-  ];
-
+  const [summary, setSummary] = useState({ total_orders: 0, total_sales: 0, cash_sales: 0, online_sales: 0 });
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [showZReport, setShowZReport] = useState(false);
   const [dayClosed, setDayClosed] = useState(false);
+
+  useEffect(() => {
+    async function fetchSummary() {
+      try {
+        const res = await axiosInstance.get(`/orders/sales-summary/?date=${date}`);
+        setSummary(res.data);
+      } catch (e) {
+        setSummary({ total_orders: 0, total_sales: 0, cash_sales: 0, online_sales: 0 });
+      }
+    }
+    fetchSummary();
+  }, [date]);
+
+  const summaryItems = [
+    { label: "Total Orders", value: summary.total_orders ?? 0, color: "text-blue-600" },
+    { label: "Total Sales", value: `$${Number(summary.total_sales ?? 0).toFixed(2)}`, color: "text-green-600" },
+    { label: "Cash Sales", value: `$${Number(summary.cash_sales ?? 0).toFixed(2)}`, color: "text-gray-600" },
+    { label: "Online Payments", value: `$${Number(summary.online_sales ?? 0).toFixed(2)}`, color: "text-gray-600" },
+  ];
 
   const waiterSales = [
     { name: "John Smith", total: 250.5 },
@@ -38,8 +42,8 @@ export const ShiftCheckoutSection = () => {
 
   const zReportItems = [
     ...summaryItems,
-    { label: "Tips", value: `$${shiftData.tips.toFixed(2)}`, color: "text-gray-600" },
-    { label: "Refunds", value: `$${shiftData.refunds.toFixed(2)}`, color: "text-gray-600" },
+    { label: "Tips", value: `$${Number(summary.tips ?? 0).toFixed(2)}`, color: "text-gray-600" },
+    { label: "Refunds", value: `$${Number(summary.refunds ?? 0).toFixed(2)}`, color: "text-gray-600" },
   ];
 
   return (
@@ -85,9 +89,14 @@ export const ShiftCheckoutSection = () => {
         <h2 className="font-bold text-[#161111] text-[22px] leading-7 [font-family:'Work_Sans',Helvetica]">
           Shift Checkout
         </h2>
-        <p className="text-sm text-[#876363] [font-family:'Work_Sans',Helvetica] mt-1">
-          {shiftData.startTime} - {shiftData.endTime}
-        </p>
+        <label htmlFor="shift-date" className="mb-2 font-medium">Select Date:</label>
+        <input
+          id="shift-date"
+          type="date"
+          value={date}
+          onChange={e => setDate(e.target.value)}
+          className="mb-4 p-2 border rounded"
+        />
       </div>
 
       <div className="px-4 py-3 w-full space-y-6">

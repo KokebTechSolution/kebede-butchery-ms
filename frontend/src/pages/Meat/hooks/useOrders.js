@@ -55,12 +55,44 @@ export const useOrders = () => {
   const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
+  const getClosedOrders = () =>
+    orders.filter(order =>
+      order.has_payment &&
+      order.items.length > 0 &&
+      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+    );
+
+  const updateOrderItemStatus = async (itemId, status) => {
+    try {
+      const response = await axios.patch(
+        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
+        { status }
+      );
+      setOrders(prevOrders =>
+        prevOrders.map(order => ({
+          ...order,
+          items: order.items.map(item =>
+            item.id === itemId ? { ...item, status: response.data.status } : item
+          )
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to update item status', error);
+    }
+  };
+
+  const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
+  const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
+
   return {
     orders,
     acceptOrder,
     rejectOrder,
     getPendingOrders,
     getPreparingOrders,
-    getRejectedOrders
+    getRejectedOrders,
+    getClosedOrders,
+    acceptOrderItem,
+    rejectOrderItem
   };
 };

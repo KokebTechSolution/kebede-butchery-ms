@@ -8,15 +8,19 @@ import {
   FaUsers,
   FaBell,
   FaBars,
+  FaLock,
 } from "react-icons/fa";
 
 import { Pending } from "./screens/Pending/Pending";
 import { Inventory } from "./screens/Inventory/Inventory";
 import { Reports } from "./screens/Reports/Reports";
+import ClosedOrders from "./screens/Pending/ClosedOrders";
+import { useOrders } from "./hooks/useOrders";
 
 export default function MeatDashboard() {
   const [activeSection, setActiveSection] = useState("Orders");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { getClosedOrders } = useOrders();
 
   const renderContent = () => {
     switch (activeSection) {
@@ -24,6 +28,8 @@ export default function MeatDashboard() {
         return <Inventory />;
       case "Reports":
         return <Reports />;
+      case "Closed":
+        return <ClosedOrders orders={getClosedOrders()} />;
       case "Orders":
       default:
         return <Pending />;
@@ -32,6 +38,7 @@ export default function MeatDashboard() {
 
   const navItems = [
     { label: "Orders", icon: <FaClipboardList />, section: "Orders" },
+    { label: "Closed", icon: <FaLock />, section: "Closed" },
     { label: "Inventory", icon: <FaBoxes />, section: "Inventory" },
     { label: "Reports", icon: <FaChartBar />, section: "Reports" },
   ];
@@ -94,62 +101,6 @@ export default function MeatDashboard() {
       <main className="flex-1 pl-0 pr-2 md:pl-0 md:pr-4 lg:pl-0 lg:pr-6 pt-4 md:pt-6 lg:pt-8 space-y-6 overflow-y-auto">
         {/* Main Content Area */}
         <div className="bg-white rounded-r-lg shadow">{renderContent()}</div>
-
-        {/* Quick Stats (moved below main content) */}
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          {/* Pending Orders - now with thin accent border & flush left */}
-          <div className="bg-white rounded-lg shadow p-4 border-l-[1px] border-blue-600">
-            <div className="flex items-center gap-3 mb-2">
-              <FaClipboardList className="text-2xl text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Pending Orders
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-blue-600">12</p>
-            <p className="text-sm text-gray-500">Awaiting processing</p>
-          </div>
-
-          {/* Inventory Items */}
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-600">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBoxes className="text-2xl text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Inventory Items
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-green-600">45</p>
-            <p className="text-sm text-gray-500">Available items</p>
-          </div>
-
-          {/* Low Stock Alerts */}
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-600">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBell className="text-2xl text-red-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Low Stock</h3>
-            </div>
-            <p className="text-3xl font-bold text-red-600">3</p>
-            <p className="text-sm text-gray-500">Items need restocking</p>
-          </div>
-
-          {/* Staff Available */}
-          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-600">
-            <div className="flex items-center gap-3 mb-2">
-              <FaUsers className="text-2xl text-purple-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Staff Available
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-purple-600">8</p>
-            <p className="text-sm text-gray-500">Processing staff</p>
-          </div>
-        </div>
-
-        {/* Tip Banner */}
-        <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg text-orange-700 text-sm">
-          💡 <strong>Tip:</strong> Process orders in priority sequence. Check
-          inventory levels before starting new orders. Update order status
-          promptly to keep the system current.
-        </div>
       </main>
     </div>
   );

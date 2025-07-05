@@ -1,7 +1,12 @@
 # payments/urls.py
-from django.urls import path
-from .views import transaction_list_view
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PaymentViewSet, IncomeViewSet
+
+router = DefaultRouter()
+router.register(r'payments', PaymentViewSet)
+router.register(r'incomes', IncomeViewSet)
 
 urlpatterns = [
-    path('transactions/', transaction_list_view, name='transaction-list'),
+    path('', include(router.urls)),
 ]

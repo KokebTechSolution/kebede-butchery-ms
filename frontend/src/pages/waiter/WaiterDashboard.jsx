@@ -125,7 +125,6 @@ const WaiterDashboard = () => {
       const newOrderData = {
         branch: 1, 
         table_number: activeTableId,
-        status: 'pending',
         items: cartItems.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -135,17 +134,12 @@ const WaiterDashboard = () => {
       };
 
       try {
-        const response = await axiosInstance.post('/orders/order-list/', newOrderData);
-
-        if (response.status !== 201) {
-          throw new Error(`Failed to place order: ${JSON.stringify(response.data)}`);
+        const newOrderId = await placeOrder(newOrderData);
+        if (!newOrderId) {
+          throw new Error('Failed to place order.');
         }
-
-        const newOrder = response.data;
-        placeOrder(newOrder);
-        setSelectedOrderId(newOrder.id);
+        setSelectedOrderId(newOrderId);
         setMessage('Order placed successfully!');
-
       } catch (error) {
         console.error('Order submission error:', error);
         setMessage(error.message || 'There was an issue placing your order.');
@@ -178,7 +172,8 @@ const WaiterDashboard = () => {
   const handleEditOrder = (orderToEdit) => {
     if (orderToEdit && orderToEdit.branch) {
       const tableId = orderToEdit.branch;
-
+      clearCart(); // Clear the cart before loading items for editing
+      // Load ALL items (not just pending) into the cart for editing
       loadCartForEditing(tableId, orderToEdit.items);
       setSelectedTable(tables.find(table => table.id === tableId));
       setActiveTable(tableId);

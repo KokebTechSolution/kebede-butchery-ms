@@ -56,11 +56,17 @@ class OrderItem(models.Model):
         ('drink', 'Drink'),
         ('meat', 'Meat'),
     ]
+    ITEM_STATUS = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     item_type = models.CharField(max_length=20, choices=ORDER_ITEM_TYPE)
+    status = models.CharField(max_length=20, choices=ITEM_STATUS, default='pending')
 
     def __str__(self):
         return f"{self.name} x {self.quantity}"

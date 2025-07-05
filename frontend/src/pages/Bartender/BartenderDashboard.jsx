@@ -1,7 +1,9 @@
 // src/pages/Bartender/BartenderDashboard.jsx
 import React, { useState, useEffect } from "react";
-import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell } from "react-icons/fa";
+import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell, FaLock } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
+import ClosedOrders from "./screens/Pending/ClosedOrders";
+import { useDrinks } from "./hooks/useDrinks";
 
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./screens/Inventory";
@@ -11,6 +13,7 @@ export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
   const userName = "Bartender"; // Replace with dynamic user name from auth
   const { lastMessage } = useNotifications();
+  const { orders } = useDrinks();
 
   useEffect(() => {
     if (lastMessage) {
@@ -18,12 +21,22 @@ export default function BartenderDashboard() {
     }
   }, [lastMessage]);
 
+  // Helper to get closed orders: all items accepted or rejected (no pending/preparing) AND payment processed
+  const getClosedOrders = () =>
+    orders.filter(order =>
+      order.has_payment &&
+      order.items.length > 0 &&
+      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+    );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'Inventory':
         return <Inventory />;
       case 'Reports':
         return <Reports />;
+      case 'Closed':
+        return <ClosedOrders orders={getClosedOrders()} />;
       case 'Orders':
       default:
         return <Pending />;
@@ -32,6 +45,7 @@ export default function BartenderDashboard() {
 
   const navItems = [
     { label: 'Orders', icon: <FaClipboardList />, section: 'Orders' },
+    { label: 'Closed', icon: <FaLock />, section: 'Closed' },
     { label: 'Inventory', icon: <FaBoxes />, section: 'Inventory' },
     { label: 'Reports', icon: <FaChartBar />, section: 'Reports' },
   ];
