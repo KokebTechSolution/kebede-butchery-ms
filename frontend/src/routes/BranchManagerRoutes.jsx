@@ -17,6 +17,7 @@ import SalesForm from '../pages/Inventory/SalesForm';
 import MenuManagerPage from '../pages/MenuManagment/MenuManagerPage';
 import MenuTable from '../pages/MenuManagment/MenuTable';
 
+
 export default function BranchManagerRoutes() {
   return (
     <Routes>
@@ -26,7 +27,7 @@ export default function BranchManagerRoutes() {
         <Route path="staff/add" element={<AddStaffForm />} />
         <Route path="products" element={<ProductListPage />} />
         <Route path="products/add" element={<AddProductsItem />} />
-        <Route path="requests" element={<RequestsPage />} />
+        <Route path="request" element={<RequestsPage />} />
         <Route path="/menu" element={<MenuManagerPage />} />
         <Route path="/menu/table" element={<MenuTable />} />
         <Route path="/inventory" element={<InventoryListPage />} />

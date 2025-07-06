@@ -3,84 +3,81 @@ import { NavLink } from "react-router-dom";
 import {
   FaTachometerAlt,
   FaUserFriends,
-  FaBoxes,
+  FaBoxOpen,
+  FaClipboardList,
+  FaUtensils,
   FaSignOutAlt,
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-export default function SidebarNav() {
-  const [isOpen, setIsOpen] = useState(false);
 
 const navItems = [
   { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
   { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
-  { label: "Product", icon: <FaBoxes />, path: "/branch-manager/products" },
-  { label: "Inventory", icon: <FaBoxes />, path: "/branch-manager/inventory" },
-  { label: "Menu Management", icon: <FaBoxes />, path: "/branch-manager/menu" },
+  { label: "Product", icon: <FaBoxOpen />, path: "/branch-manager/products" },
+  { label: "Inventory", icon: <FaClipboardList />, path: "/branch-manager/inventory" },
+  { label: "Request", icon: <FaClipboardList />, path: "/branch-manager/request" },
+  { label: "Menu Management", icon: <FaUtensils />, path: "/branch-manager/menu" },
 ];
 
+export default function SidebarNav() {
+  const [isOpen, setIsOpen] = useState(false);
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   return (
     <>
+      {/* Toggle Button - Mobile Only */}
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
         className="fixed top-4 left-4 z-50 p-2 bg-indigo-600 text-white rounded-md md:hidden focus:outline-none focus:ring-2 focus:ring-indigo-400"
       >
-        {isOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+        {isOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
       </button>
 
+      {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 h-screen bg-white border-r shadow-lg
-          w-64 p-6 flex flex-col min-h-0
-          transform transition-transform duration-300 ease-in-out
-          md:static md:translate-x-0
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          z-40
-        `}
+        className={`fixed top-0 left-0 h-screen bg-white border-r shadow-lg w-64 p-6 flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        md:translate-x-0 md:static
+        ${isOpen ? "translate-x-0" : "-translate-x-full"} z-40`}
       >
-        <h2 className="text-3xl font-bold text-indigo-600 mb-10 text-center select-none">
+        <h1 className="text-3xl font-bold text-indigo-600 mb-10 text-center select-none">
           🏢 Branch Panel
-        </h2>
+        </h1>
 
-        <div className="flex flex-col flex-grow min-h-0">
-          <nav className="flex flex-col space-y-3 overflow-auto">
-            {navItems.map(({ label, icon, path }) => (
-              <NavLink
-                key={path}
-                to={path}
-                className={({ isActive }) =>
-                  `flex items-center gap-4 px-4 py-3 rounded-md text-lg font-semibold
-                   transition-colors
-                   ${
-                     isActive
-                       ? "bg-indigo-100 text-indigo-700 shadow"
-                       : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
-                   }`
-                }
-                onClick={() => setIsOpen(false)}
-              >
-                <span className="text-xl">{icon}</span>
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+        <nav className="flex flex-col space-y-2 flex-grow overflow-auto">
+          {navItems.map(({ label, icon, path }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-md text-base font-medium transition
+                 ${
+                   isActive
+                     ? "bg-indigo-100 text-indigo-700 shadow"
+                     : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
+                 }`
+              }
+              onClick={() => setIsOpen(false)} // Close on mobile
+            >
+              <span className="text-lg">{icon}</span>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
 
-          <button
-            className="mt-auto flex items-center gap-3 px-4 py-3 text-red-600 font-semibold rounded-md hover:bg-red-50 transition-colors text-lg"
-            onClick={() => {
-              alert("Logging out...");
-            }}
-            aria-label="Logout"
-          >
-            <FaSignOutAlt className="text-xl" />
-            Logout
-          </button>
-        </div>
+        {/* Logout */}
+        <button
+          onClick={() => alert("Logging out...")}
+          className="mt-8 flex items-center gap-3 px-4 py-3 text-red-600 font-semibold rounded-md hover:bg-red-50 transition-colors text-base"
+        >
+          <FaSignOutAlt className="text-lg" />
+          Logout
+        </button>
       </aside>
 
+      {/* Overlay - Only for Mobile */}
       {isOpen && (
         <div
           onClick={toggleSidebar}
