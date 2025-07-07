@@ -42,7 +42,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
 
   const getTotalPrice = (items) => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const handleDeleteOrder = () => {
@@ -72,6 +72,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   };
 
   const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
+  const canPrint = currentOrder && currentOrder.items.every(item => item.status !== 'pending');
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
@@ -96,8 +97,12 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           </span>
           <span
             className="icon"
-            onClick={!isPrinted ? async () => {
-              if (currentOrder && !isPrinted) {
+            onClick={!isPrinted && canPrint ? async () => {
+              if (currentOrder && !isPrinted && canPrint) {
+                if (!currentOrder.payment_option) {
+                  alert('Please select a payment method (Cash or Online) before printing.');
+                  return;
+                }
                 try {
                   const response = await fetch(`http://localhost:8000/api/orders/${currentOrder.id}/update-cashier-status/`, {
                     method: 'PATCH',
@@ -114,7 +119,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                 }
               }
             } : undefined}
-            style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
+            style={{ color: (!isPrinted && !canPrint) ? '#b0b0b0' : isPrinted ? '#b0b0b0' : 'inherit', cursor: (!isPrinted && !canPrint) || isPrinted ? 'not-allowed' : 'pointer' }}
           >
             🖨️
           </span>
@@ -146,13 +151,15 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>
-            <p>The Cozy Bistro 123 Food Street</p>
-            <p>NY 10001 +123 456 7890</p>
+            <p>Mickey leland Street</p>
+            <p></p>
           </div>
           <div className="order-to">
-            <h3>Issued to</h3>
-            <p>Delicious Diner 456 Eatery</p>
-            <p>Ave NY 10002 +123 456 7891</p>
+            <h3>Order Info</h3>
+            <p>Table: {currentOrder.table_number || currentOrder.tableId || 'N/A'}</p>
+            <p>Branch: {currentOrder.branch || 'N/A'}</p>
+            <p>Created By: {currentOrder.created_by || currentOrder.waiterName || 'N/A'}</p>
+            <p>Location: Mickey Lelan Street</p>
           </div>
         </div>
 
@@ -168,13 +175,13 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
               </tr>
             </thead>
             <tbody>
-              {currentOrder.items.map((item) => (
-                <tr key={item.name}>
+              {currentOrder.items.map((item, index) => (
+                <tr key={item.id || item.name + '-' + index}>
                   <td>{currentOrder.table_number || 'N/A'}</td>
                   <td>{item.name}</td>
                   <td>{item.quantity}</td>
                   <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
-                  <td>{currentOrder.created_by || user?.username || 'N/A'}</td>
+                  <td>{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchMenuItems, updateMenuItem, deleteMenuItem } from '../../api/menu';
+import { fetchMenuItems, updateMenuItem, deleteMenuItem, fetchMenuCategories } from '../../api/menu';
 import { format } from 'date-fns';
 
 const MenuTable = ({ refreshFlag }) => {
@@ -10,6 +10,8 @@ const MenuTable = ({ refreshFlag }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [discountValue, setDiscountValue] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
     const loadMenuItems = async () => {
         setLoading(true);
@@ -24,8 +26,18 @@ const MenuTable = ({ refreshFlag }) => {
         }
     };
 
+    const loadCategories = async () => {
+        try {
+            const data = await fetchMenuCategories();
+            setCategories(data);
+        } catch (err) {
+            console.error('Error fetching categories:', err);
+        }
+    };
+
     useEffect(() => {
         loadMenuItems();
+        loadCategories();
     }, []);
 
     // Refresh table when refreshFlag changes (insertion happens)
@@ -97,7 +109,7 @@ const MenuTable = ({ refreshFlag }) => {
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">Menu Items List</h1>
 
-            <div className="mb-4 flex space-x-2">
+            <div className="mb-4 flex space-x-2 items-center">
                 <input
                     type="number"
                     placeholder="Discount %"
@@ -111,6 +123,16 @@ const MenuTable = ({ refreshFlag }) => {
                 >
                     Apply Discount
                 </button>
+                <select
+                    className="border p-2 rounded ml-4"
+                    value={selectedCategory}
+                    onChange={e => setSelectedCategory(e.target.value)}
+                >
+                    <option value="all">All Categories</option>
+                    {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                </select>
             </div>
 
             <table className="min-w-full bg-white border border-gray-200 rounded-xl">
@@ -127,31 +149,33 @@ const MenuTable = ({ refreshFlag }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {menuItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                            <td className="p-2 border text-center">{item.id}</td>
-                            <td className="p-2 border text-center">{item.name}</td>
-                            <td className="p-2 border text-center">{item.price}</td>
-                            <td className="p-2 border text-center">{item.is_available ? 'Yes' : 'No'}</td>
-                            <td className="p-2 border text-center">{item.item_type}</td>
-                            <td className="p-2 border text-center">{renderDate(item.created_at)}</td>
-                            <td className="p-2 border text-center">{renderDate(item.updated_at)}</td>
-                            <td className="p-2 border text-center space-x-2">
-                                <button
-                                    onClick={() => handleEdit(item)}
-                                    className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(item)}
-                                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                    {menuItems
+                        .filter(item => selectedCategory === 'all' || String(item.category) === String(selectedCategory))
+                        .map((item) => (
+                            <tr key={item.id} className="hover:bg-gray-50">
+                                <td className="p-2 border text-center">{item.id}</td>
+                                <td className="p-2 border text-center">{item.name}</td>
+                                <td className="p-2 border text-center">{item.price}</td>
+                                <td className="p-2 border text-center">{item.is_available ? 'Yes' : 'No'}</td>
+                                <td className="p-2 border text-center">{item.item_type}</td>
+                                <td className="p-2 border text-center">{renderDate(item.created_at)}</td>
+                                <td className="p-2 border text-center">{renderDate(item.updated_at)}</td>
+                                <td className="p-2 border text-center space-x-2">
+                                    <button
+                                        onClick={() => handleEdit(item)}
+                                        className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(item)}
+                                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                 </tbody>
             </table>
 

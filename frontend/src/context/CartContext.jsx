@@ -156,35 +156,28 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     console.log('CartContext: Cart cleared for table', activeTableId);
   };
 
-  const placeOrder = (newOrder) => {
-    if (!newOrder || !newOrder.id) {
-      console.warn("Cannot place order: Invalid order object provided.");
+  const placeOrder = async (orderData) => {
+    try {
+      // Send POST request to backend to create a new order
+      const response = await axiosInstance.post('/orders/order-list/', orderData);
+      const newOrder = response.data;
+
+      // Update local state with the new order
+      setOrders(prevOrders => [...prevOrders, newOrder]);
+
+      // Clear the cart for the active table
+      if (activeTableId) {
+        setTableCarts(prev => ({
+          ...prev,
+          [activeTableId]: [],
+        }));
+      }
+
+      return newOrder.id;
+    } catch (error) {
+      console.error('Failed to place order:', error);
       return null;
     }
-
-    console.log('Placing order:', newOrder);
-
-    setOrders(prevOrders => {
-      const updatedOrders = [...prevOrders, newOrder];
-      console.log('Updated orders:', updatedOrders);
-      return updatedOrders;
-    });
-
-    // Only clear the cart after successfully creating the order
-    if (newOrder.branch) { // A simple check to see if it's a real order
-        const tableIdToClear = newOrder.branch; // Assuming branch ID can be used to identify the cart. This might need refinement.
-        setTableCarts(prev => {
-            const newTableCarts = { ...prev };
-            // We need a reliable way to know which table's cart to clear.
-            // For now, let's clear the active one.
-            if(activeTableId) {
-                newTableCarts[activeTableId] = [];
-            }
-            return newTableCarts;
-        });
-    }
-
-    return newOrder.id;
   };
 
   const updateOrder = (orderId, updatedItems) => {
@@ -204,7 +197,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     setActiveTableId(tableId);
     setTableCarts(prev => ({
       ...prev,
-      [tableId]: items
+      [tableId]: [] // Clear the cart first
+    }));
+    setTableCarts(prev => ({
+      ...prev,
+      [tableId]: items // Then load only the items you want to edit
     }));
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };

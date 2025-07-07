@@ -5,16 +5,17 @@ from django.db import transaction
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'item_type']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
 
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     waiterName = serializers.CharField(source='created_by.username', read_only=True)
+    has_payment = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option']
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
@@ -23,8 +24,13 @@ class OrderSerializer(serializers.ModelSerializer):
         total = 0
         for item_data in items_data:
             item = OrderItem.objects.create(order=order, **item_data)
-            total += item.price * item.quantity
+            if item.status == 'accepted':
+                total += item.price * item.quantity
         order.total_money = total
+        # Set status to completed only if all items are accepted
+        if order.all_items_completed():
+            order.food_status = 'completed'
+            order.drink_status = 'completed'
         order.save()
         return order
 
@@ -42,38 +48,79 @@ class OrderSerializer(serializers.ModelSerializer):
         # Update order items
         items_data = validated_data.get('items')
         if items_data is not None:
-            # First, remove old items
-            instance.items.all().delete()
-            # Then, create new items
-            total = 0
+            existing_items = {item.id: item for item in instance.items.all()}
+            new_total = 0
+            new_drink_item_added = False
+            new_food_item_added = False
             for item_data in items_data:
-                item = OrderItem.objects.create(order=instance, **item_data)
-                total += item.price * item.quantity
-            instance.total_money = total
+                item_id = item_data.get('id')
+                if item_id and item_id in existing_items:
+                    # Update existing item (preserve status unless explicitly changed)
+                    item = existing_items[item_id]
+                    item.name = item_data.get('name', item.name)
+                    item.quantity = item_data.get('quantity', item.quantity)
+                    item.price = item_data.get('price', item.price)
+                    item.item_type = item_data.get('item_type', item.item_type)
+                    if 'status' in item_data:
+                        item.status = item_data['status']
+                    item.save()
+                    if item.status == 'accepted':
+                        new_total += item.price * item.quantity
+                    del existing_items[item_id]
+                else:
+                    # Create new item
+                    if 'status' not in item_data:
+                        item_data['status'] = 'pending'
+                    item = OrderItem.objects.create(order=instance, **item_data)
+                    if item.status == 'accepted':
+                        new_total += item.price * item.quantity
+                    if item.item_type == 'drink':
+                        new_drink_item_added = True
+                    if item.item_type == 'food':
+                        new_food_item_added = True
+            # Optionally, delete items not in the update (if you want to support removal)
+            # for item in existing_items.values():
+            #     item.delete()
+            instance.total_money = new_total
+            # If a new drink item was added and drink_status is not 'preparing', set to 'pending'
+            if new_drink_item_added and instance.drink_status != 'preparing':
+                instance.drink_status = 'pending'
+            # If a new food item was added and food_status is not 'preparing', set to 'pending'
+            if new_food_item_added and instance.food_status != 'preparing':
+                instance.food_status = 'pending'
+            instance.save()
+            # After updating items, check if all items are completed
+            if instance.all_items_completed():
+                instance.food_status = 'completed'
+                instance.drink_status = 'completed'
             instance.save()
         return instance
+
+    def get_has_payment(self, obj):
+        from payments.models import Payment
+        return Payment.objects.filter(order=obj).exists()
 
 class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price']
+        fields = ['id', 'name', 'quantity', 'price', 'status']
 
 class FoodOrderSerializer(OrderSerializer):
     items = FoodOrderItemSerializer(many=True, source='food_items')
     status = serializers.CharField(source='food_status')
 
     class Meta(OrderSerializer.Meta):
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at']
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
 
 
 class DrinkOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price']
+        fields = ['id', 'name', 'quantity', 'price', 'status']
 
 class DrinkOrderSerializer(OrderSerializer):
     items = DrinkOrderItemSerializer(many=True, source='drink_items')
     status = serializers.CharField(source='drink_status')
 
     class Meta(OrderSerializer.Meta):
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at']
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']

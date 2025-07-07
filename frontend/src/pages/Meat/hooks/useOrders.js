@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export const useOrders = () => {
+export const useOrders = (filterDate) => {
   const [orders, setOrders] = useState([]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (date) => {
     try {
-      const response = await axios.get('http://localhost:8000/api/orders/food/');
+      let url = 'http://localhost:8000/api/orders/food/';
+      if (date) {
+        url += `?date=${date}`;
+      }
+      const response = await axios.get(url);
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -14,12 +18,10 @@ export const useOrders = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
-    // Fetch every 10 seconds to look for new orders
-    const intervalId = setInterval(fetchOrders, 10000); 
-
+    fetchOrders(filterDate);
+    const intervalId = setInterval(() => fetchOrders(filterDate), 10000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filterDate]);
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
@@ -55,12 +57,50 @@ export const useOrders = () => {
   const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
+  const getClosedOrders = () =>
+    orders.filter(order =>
+      order.has_payment &&
+      order.items.length > 0 &&
+      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+    );
+
+  const getActiveOrders = () =>
+    orders.filter(order =>
+      !getClosedOrders().some(closed => closed.id === order.id)
+    );
+
+  const updateOrderItemStatus = async (itemId, status) => {
+    try {
+      const response = await axios.patch(
+        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
+        { status }
+      );
+      setOrders(prevOrders =>
+        prevOrders.map(order => ({
+          ...order,
+          items: order.items.map(item =>
+            item.id === itemId ? { ...item, status: response.data.status } : item
+          )
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to update item status', error);
+    }
+  };
+
+  const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
+  const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
+
   return {
     orders,
     acceptOrder,
     rejectOrder,
     getPendingOrders,
     getPreparingOrders,
-    getRejectedOrders
+    getRejectedOrders,
+    getClosedOrders,
+    getActiveOrders,
+    acceptOrderItem,
+    rejectOrderItem
   };
 };

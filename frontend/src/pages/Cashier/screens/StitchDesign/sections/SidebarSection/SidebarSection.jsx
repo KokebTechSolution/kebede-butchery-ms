@@ -10,26 +10,83 @@ import {
   TableRow,
 } from "../../../../components/ui/table";
 import { getPrintedOrders } from "../../../../../../api/cashier";
+import axiosInstance from "../../../../../../api/axiosInstance";
+
+// Helper to get today's date in yyyy-mm-dd format
+const getTodayDateString = () => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 export const SidebarSection = () => {
   const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
+  const [filterDate, setFilterDate] = useState(getTodayDateString());
+
+  const fetchOrders = async (date) => {
+    try {
+      const printedOrders = await getPrintedOrders(date);
+      setOrders(printedOrders);
+    } catch (error) {
+      // Handle error appropriately
+    }
+  };
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const printedOrders = await getPrintedOrders();
-        setOrders(printedOrders);
-      } catch (error) {
-        // Handle error appropriately
-      }
-    };
-
-    const interval = setInterval(fetchOrders, 5000); // Fetch every 5 seconds
-    fetchOrders(); // Initial fetch
-
+    const interval = setInterval(() => fetchOrders(filterDate), 5000); // Fetch every 5 seconds
+    fetchOrders(filterDate); // Initial fetch
     return () => clearInterval(interval); // Cleanup on unmount
-  }, []);
+  }, [filterDate]);
+
+  const handleProcessPayment = async (order, index) => {
+    setClickedIndex(index);
+    try {
+      let paymentMethod = order.payment_option;
+      if (Array.isArray(paymentMethod)) {
+        paymentMethod = paymentMethod[0];
+      }
+      if (typeof paymentMethod === "string" && paymentMethod.startsWith('"') && paymentMethod.endsWith('"')) {
+        paymentMethod = paymentMethod.slice(1, -1);
+      }
+      await axiosInstance.post('/payments/payments/', {
+        order: order.id,
+        payment_method: paymentMethod,
+        amount: order.total_money,
+      });
+      alert('Payment processed and saved!');
+      // Refetch orders from backend to get updated payment status
+      fetchOrders(filterDate);
+    } catch (error) {
+      let msg = 'Failed to process payment';
+      if (error.response && error.response.data) {
+        msg += ': ' + JSON.stringify(error.response.data);
+      }
+      alert(msg);
+      console.error(error);
+    } finally {
+      setClickedIndex(null);
+    }
+  };
+
+  // Sort: unprocessed first, then newest first by order_number
+  const sortedOrders = [...orders].sort((a, b) => {
+    // Unprocessed first
+    if (a.has_payment !== b.has_payment) {
+      return a.has_payment ? 1 : -1;
+    }
+    // Newest first by order_number (string compare, descending)
+    if (b.order_number && a.order_number) {
+      return b.order_number.localeCompare(a.order_number);
+    }
+    // Fallback to created_at if available
+    if (b.created_at && a.created_at) {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+    return 0;
+  });
 
   return (
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
@@ -37,6 +94,17 @@ export const SidebarSection = () => {
         <h2 className="font-bold text-[#161111] text-[22px] leading-7 [font-family:'Work_Sans',Helvetica]">
           Pending Orders
         </h2>
+        <label htmlFor="order-date-filter" className="mb-2 font-medium">Filter by Date:</label>
+        <input
+          id="order-date-filter"
+          type="date"
+          value={filterDate}
+          onChange={e => {
+            setFilterDate(e.target.value);
+            fetchOrders(e.target.value); // Immediately fetch orders for new date
+          }}
+          className="mb-4 p-2 border rounded"
+        />
       </div>
 
       <div className="px-4 py-3 w-full">
@@ -58,6 +126,9 @@ export const SidebarSection = () => {
                     Total
                   </TableHead>
                   <TableHead className="w-[120px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
+                    Order Number
+                  </TableHead>
+                  <TableHead className="w-[120px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
                     Payment Option
                   </TableHead>
                   <TableHead className="w-32 px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#82686b] text-sm">
@@ -66,9 +137,9 @@ export const SidebarSection = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order, index) => (
+                {sortedOrders.map((order, index) => (
                   <TableRow
-                    key={order.waiterId}
+                    key={order.id || `${order.waiterName}-${order.table_number}-${index}`}
                     className="border-t border-[#e5e8ea]"
                   >
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#161111] text-sm align-top">
@@ -80,7 +151,7 @@ export const SidebarSection = () => {
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       <ul className="space-y-1">
                         {order.items.map((item, itemIndex) => (
-                          <li key={item.id} className="text-sm">
+                          <li key={item.id || `${item.name}-${itemIndex}`} className="text-sm">
                             <span className="font-medium">{item.quantity}x</span> {item.name}
                             <span className="text-[#876363] ml-2">({item.price})</span>
                           </li>
@@ -89,6 +160,9 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       {`$${order.total_money}`}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#161111] text-sm align-top">
+                      {order.order_number}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
                       <span className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -100,18 +174,23 @@ export const SidebarSection = () => {
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 align-top">
-                      <button
-                        className={`w-full rounded-lg px-4 py-2 font-bold text-sm transition-colors duration-200 [font-family:'Work_Sans',Helvetica] 
-                          ${clickedIndex === index
-                            ? 'bg-red-600 text-white'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200'}
-                        `}
-                        onClick={() => {
-                          // TODO: Implement payment processing logic
-                        }}
-                      >
-                        Process Payment
-                      </button>
+                      {order.has_payment ? (
+                        <span className="w-full rounded-lg px-4 py-2 font-bold text-sm bg-green-100 text-green-700 block text-center">
+                          Processed
+                        </span>
+                      ) : (
+                        <button
+                          className={`w-full rounded-lg px-4 py-2 font-bold text-sm transition-colors duration-200 [font-family:'Work_Sans',Helvetica] 
+                            ${clickedIndex === index
+                              ? 'bg-red-600 text-white'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'}
+                          `}
+                          onClick={() => handleProcessPayment(order, index)}
+                          disabled={clickedIndex === index}
+                        >
+                          {clickedIndex === index ? 'Processing...' : 'Process Payment'}
+                        </button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import axiosInstance from '../../../api/axiosInstance';
 
 export const useDrinks = () => {
   const [orders, setOrders] = useState([]);
@@ -52,12 +53,50 @@ export const useDrinks = () => {
   const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
 
+  const getClosedOrders = () =>
+    orders.filter(order =>
+      order.has_payment &&
+      order.items.length > 0 &&
+      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+    );
+
+  const getActiveOrders = () =>
+    orders.filter(order =>
+      !getClosedOrders().some(closed => closed.id === order.id)
+    );
+
+  // Add item-level status update
+  const updateOrderItemStatus = async (itemId, status) => {
+    try {
+      const response = await axiosInstance.patch(`orders/order-item/${itemId}/update-status/`, { status });
+      // Update the item status in the local state
+      setOrders(prevOrders =>
+        prevOrders.map(order => ({
+          ...order,
+          items: order.items.map(item =>
+            item.id === itemId ? { ...item, status: response.data.status } : item
+          )
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to update item status', error);
+    }
+  };
+
+  const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
+  const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
+
   return {
     orders,
     acceptOrder,
     rejectOrder,
     getPendingOrders,
     getPreparingOrders,
-    getRejectedOrders
+    getRejectedOrders,
+    getClosedOrders,
+    getActiveOrders,
+    acceptOrderItem,
+    rejectOrderItem,
+    refetch: fetchOrders,
   };
 }; 
