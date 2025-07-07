@@ -8,7 +8,7 @@ import {
   FaUsers,
   FaBell,
   FaBars,
-  FaLock,
+  FaLock
 } from "react-icons/fa";
 
 import { Pending } from "./screens/Pending/Pending";

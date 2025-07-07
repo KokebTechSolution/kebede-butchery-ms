@@ -10,6 +10,20 @@ const getTodayDateString = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const getStatusLabel = (status) => {
+  if (!status) return 'N/A';
+  switch (status) {
+    case 'ready_for_payment':
+      return 'Ready to Pay';
+    case 'printed':
+      return 'Printed';
+    case 'pending':
+      return 'Pending';
+    default:
+      return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+};
+
 const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [orders, setOrders] = useState([]);
   const [filterDate, setFilterDate] = useState(getTodayDateString());
@@ -88,7 +102,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
               onClick={() => onSelectOrder(order.id)}
             >
               <span className="order-list-item-id">{order.order_number}</span>
-              <span className="order-list-item-status">{order.cashier_status || 'N/A'}</span>
+              <span className="order-list-item-status">{getStatusLabel(order.cashier_status)}</span>
             </div>
           ))}
         </div>

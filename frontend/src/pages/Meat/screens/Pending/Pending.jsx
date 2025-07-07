@@ -138,3 +138,5 @@ export const Pending = () => {
     </div>
   );
 };
+
+export default Pending;

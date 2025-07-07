@@ -43,6 +43,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
   const getTotalPrice = (items) => {
     return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
+    return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const handleDeleteOrder = () => {
@@ -151,6 +152,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
         <div className="order-info">
           <div className="order-from">
             <h3>From</h3>
+            <p>Mickey leland Street</p>
+            <p></p>
             <p>Mickey leland Street</p>
             <p></p>
           </div>

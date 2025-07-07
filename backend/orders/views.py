@@ -2,10 +2,18 @@ from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer, OrderItemSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .models import Order, OrderItem
+from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer, OrderItemSerializer
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
+from django.utils.dateparse import parse_date
+from payments.models import Payment
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Q
+from rest_framework.decorators import action
+from rest_framework import viewsets
 from django.utils.dateparse import parse_date
 from payments.models import Payment
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Q
@@ -99,6 +107,19 @@ class PrintedOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        queryset = Order.objects.filter(cashier_status='printed')
+        date = self.request.query_params.get('date')
+        start = self.request.query_params.get('start')
+        end = self.request.query_params.get('end')
+        if date:
+            parsed_date = parse_date(date)
+            queryset = queryset.filter(
+                Q(payment__processed_at__date=parsed_date) |
+                Q(payment__isnull=True, created_at__date=parsed_date)
+            )
+        if start and end:
+            queryset = queryset.filter(payment__processed_at__date__range=[parse_date(start), parse_date(end)])
+        return queryset
         queryset = Order.objects.filter(cashier_status='printed')
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')

@@ -6,15 +6,18 @@ class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
 
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     waiterName = serializers.CharField(source='created_by.username', read_only=True)
     has_payment = serializers.SerializerMethodField()
+    has_payment = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
         fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
@@ -24,6 +27,8 @@ class OrderSerializer(serializers.ModelSerializer):
         total = 0
         for item_data in items_data:
             item = OrderItem.objects.create(order=order, **item_data)
+            if item.status == 'accepted':
+                total += item.price * item.quantity
             if item.status == 'accepted':
                 total += item.price * item.quantity
         order.total_money = total
@@ -48,6 +53,10 @@ class OrderSerializer(serializers.ModelSerializer):
         # Update order items
         items_data = validated_data.get('items')
         if items_data is not None:
+            existing_items = {item.id: item for item in instance.items.all()}
+            new_total = 0
+            new_drink_item_added = False
+            new_food_item_added = False
             existing_items = {item.id: item for item in instance.items.all()}
             new_total = 0
             new_drink_item_added = False
@@ -100,9 +109,14 @@ class OrderSerializer(serializers.ModelSerializer):
         from payments.models import Payment
         return Payment.objects.filter(order=obj).exists()
 
+    def get_has_payment(self, obj):
+        from payments.models import Payment
+        return Payment.objects.filter(order=obj).exists()
+
 class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
+        fields = ['id', 'name', 'quantity', 'price', 'status']
         fields = ['id', 'name', 'quantity', 'price', 'status']
 
 class FoodOrderSerializer(OrderSerializer):
@@ -111,11 +125,13 @@ class FoodOrderSerializer(OrderSerializer):
 
     class Meta(OrderSerializer.Meta):
         fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
 
 
 class DrinkOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
+        fields = ['id', 'name', 'quantity', 'price', 'status']
         fields = ['id', 'name', 'quantity', 'price', 'status']
 
 class DrinkOrderSerializer(OrderSerializer):
@@ -123,4 +139,5 @@ class DrinkOrderSerializer(OrderSerializer):
     status = serializers.CharField(source='drink_status')
 
     class Meta(OrderSerializer.Meta):
+        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
         fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
