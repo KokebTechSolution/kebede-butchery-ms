@@ -452,3 +452,13 @@
 .profile-section {
   display: block;
 } 
+
+.app-container,
+.white-bg,
+.menu-cart-container,
+.order-details-layout,
+.menu-section,
+.cart-section,
+.navbar {          /* include Navbar too, in case it had a curve */
+  border-radius: 0 !important;
+}

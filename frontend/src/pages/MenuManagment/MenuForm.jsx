@@ -98,26 +98,8 @@ const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal, force
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="border p-2 w-full rounded"
-<<<<<<< HEAD
-                    >
-                        <option value="">Select Category</option>
-                        {categories.map(category => (
-                            <option key={category.id} value={category.id}>
-                                {category.name}
-                            </option>
-                        ))}
-                    </select>
-                    <button
-                        type="button"
-                        onClick={() => setAddingCategory(true)}
-                        className="bg-blue-500 text-white px-2 rounded"
-                    >
-                        +
-                    </button>
-=======
                         required
                     />
->>>>>>> b8091a2069fb7237cfe0af3fe8ea54b747de83f7
                 </div>
 
                 <div>
