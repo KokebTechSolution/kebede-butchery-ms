@@ -24,4 +24,7 @@ urlpatterns = [
     path('api/activity/', include('activity.urls')),
     # Menu management
     path('api/menu/', include('menu.urls')),
+
+    # Branches and tables
+    path('api/branches/', include('branches.urls')),
 ]

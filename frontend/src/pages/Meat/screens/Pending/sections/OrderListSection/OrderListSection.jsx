@@ -6,6 +6,7 @@ export const OrderListSection = ({ activeTab, onTabChange }) => {
     { value: 'pending', label: 'Pending' },
     { value: 'preparing', label: 'Preparing' },
     { value: 'rejected', label: 'Rejected' },
+    { value: 'closed', label: 'Closed' },
   ];
 
   return (
@@ -18,7 +19,9 @@ export const OrderListSection = ({ activeTab, onTabChange }) => {
               value={tab.value}
               className={`pt-4 pb-[13px] px-0 rounded-none border-b-[3px] border-[#e5e8ea] data-[state=active]:border-[#111416] data-[state=active]:shadow-none ${
                 activeTab === tab.value
-                  ? 'font-bold text-[#111416]'
+                  ? tab.value === 'closed'
+                    ? 'font-bold text-[#1d4ed8] border-b-4 border-[#1d4ed8] bg-blue-50'
+                    : 'font-bold text-[#111416]'
                   : 'font-bold text-[#6b7582]'
               } [font-family:'Work_Sans',Helvetica] text-sm leading-[21px]`}
             >

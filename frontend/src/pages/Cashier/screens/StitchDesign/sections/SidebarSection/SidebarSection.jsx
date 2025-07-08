@@ -12,10 +12,19 @@ import {
 import { getPrintedOrders } from "../../../../../../api/cashier";
 import axiosInstance from "../../../../../../api/axiosInstance";
 
+// Helper to get today's date in yyyy-mm-dd format
+const getTodayDateString = () => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export const SidebarSection = () => {
   const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDate, setFilterDate] = useState(getTodayDateString());
 
   const fetchOrders = async (date) => {
     try {
@@ -62,6 +71,23 @@ export const SidebarSection = () => {
     }
   };
 
+  // Sort: unprocessed first, then newest first by order_number
+  const sortedOrders = [...orders].sort((a, b) => {
+    // Unprocessed first
+    if (a.has_payment !== b.has_payment) {
+      return a.has_payment ? 1 : -1;
+    }
+    // Newest first by order_number (string compare, descending)
+    if (b.order_number && a.order_number) {
+      return b.order_number.localeCompare(a.order_number);
+    }
+    // Fallback to created_at if available
+    if (b.created_at && a.created_at) {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+    return 0;
+  });
+
   return (
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
       <div className="flex flex-col items-start pt-5 pb-3 px-4 w-full">
@@ -73,7 +99,10 @@ export const SidebarSection = () => {
           id="order-date-filter"
           type="date"
           value={filterDate}
-          onChange={e => setFilterDate(e.target.value)}
+          onChange={e => {
+            setFilterDate(e.target.value);
+            fetchOrders(e.target.value); // Immediately fetch orders for new date
+          }}
           className="mb-4 p-2 border rounded"
         />
       </div>
@@ -97,6 +126,9 @@ export const SidebarSection = () => {
                     Total
                   </TableHead>
                   <TableHead className="w-[120px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
+                    Order Number
+                  </TableHead>
+                  <TableHead className="w-[120px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
                     Payment Option
                   </TableHead>
                   <TableHead className="w-32 px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#82686b] text-sm">
@@ -105,7 +137,7 @@ export const SidebarSection = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order, index) => (
+                {sortedOrders.map((order, index) => (
                   <TableRow
                     key={order.id || `${order.waiterName}-${order.table_number}-${index}`}
                     className="border-t border-[#e5e8ea]"
@@ -128,6 +160,9 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       {`$${order.total_money}`}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#161111] text-sm align-top">
+                      {order.order_number}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
                       <span className={`px-4 py-2 rounded-full text-sm font-medium ${

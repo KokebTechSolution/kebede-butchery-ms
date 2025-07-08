@@ -1,0 +1,149 @@
+import React, { useState } from 'react';
+import { BarChart3, TrendingUp, DollarSign, Package, Calculator, Target } from 'lucide-react';
+import KpiCard from './KpiCard';
+import AnalyticsFilters from './AnalyticsFilters';
+import ProfitLossChart from './ProfitLossChart';
+import TopItemsChart from './TopItemsChart';
+
+const AnalyticsDashboard = () => {
+  const [analyticsData] = useState({
+    kpi: {
+      totalRevenue: 150000.00,
+      costOfGoods: 45000.00,
+      grossProfit: 105000.00,
+      operatingExpenses: 35000.00,
+      netProfit: 70000.00,
+      avgOrderValue: 850.50
+    },
+    profitTrend: [
+      { name: 'Week 1', revenue: 35000, costs: 20000, netProfit: 15000 },
+      { name: 'Week 2', revenue: 42000, costs: 22000, netProfit: 20000 },
+      { name: 'Week 3', revenue: 38000, costs: 21000, netProfit: 17000 },
+      { name: 'Week 4', revenue: 35000, costs: 17000, netProfit: 18000 }
+    ],
+    topSellingItems: [
+      { name: 'Special Kitfo', revenue: 25000 },
+      { name: 'Doro Wot', revenue: 18000 },
+      { name: 'Tibs Firfir', revenue: 15500 },
+      { name: 'St. George Beer', revenue: 12000 },
+      { name: 'Shiro', revenue: 9500 }
+    ]
+  });
+
+  return (
+    <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-3 mb-2">
+            <BarChart3 className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+          </div>
+          <p className="text-gray-600">Track your butchery business performance and key metrics</p>
+        </div>
+
+        {/* Filters */}
+        <AnalyticsFilters />
+
+        {/* KPI Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <KpiCard
+            title="Total Revenue"
+            value={analyticsData.kpi.totalRevenue}
+            isCurrency={true}
+          />
+          <KpiCard
+            title="Cost of Goods"
+            value={analyticsData.kpi.costOfGoods}
+            isCurrency={true}
+          />
+          <KpiCard
+            title="Gross Profit"
+            value={analyticsData.kpi.grossProfit}
+            isCurrency={true}
+            isProfitLoss={true}
+          />
+          <KpiCard
+            title="Operating Expenses"
+            value={analyticsData.kpi.operatingExpenses}
+            isCurrency={true}
+          />
+          <KpiCard
+            title="Net Profit"
+            value={analyticsData.kpi.netProfit}
+            isCurrency={true}
+            isProfitLoss={true}
+          />
+          <KpiCard
+            title="Avg Order Value"
+            value={analyticsData.kpi.avgOrderValue}
+            isCurrency={true}
+          />
+        </div>
+
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Profit & Loss Chart */}
+          <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Profit & Loss Trend</h2>
+            </div>
+            <ProfitLossChart data={analyticsData.profitTrend} />
+          </div>
+
+          {/* Top Selling Items Chart */}
+          <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6">
+              <Package className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Top Selling Items</h2>
+            </div>
+            <TopItemsChart data={analyticsData.topSellingItems} />
+          </div>
+        </div>
+
+        {/* Additional Insights */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-4">
+              <Calculator className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Profit Margin</h3>
+            </div>
+            <p className="text-2xl font-bold text-green-600 mb-2">
+              {((analyticsData.kpi.netProfit / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
+            </p>
+            <p className="text-sm text-gray-600">
+              Strong profit margins indicate efficient operations and good pricing strategy.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-4">
+              <Target className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Revenue Growth</h3>
+            </div>
+            <p className="text-2xl font-bold text-blue-600 mb-2">+12.5%</p>
+            <p className="text-sm text-gray-600">
+              Month-over-month revenue growth showing steady business expansion.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-4">
+              <DollarSign className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Cost Efficiency</h3>
+            </div>
+            <p className="text-2xl font-bold text-purple-600 mb-2">
+              {((analyticsData.kpi.costOfGoods / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
+            </p>
+            <p className="text-sm text-gray-600">
+              Cost of goods as percentage of revenue, indicating operational efficiency.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AnalyticsDashboard;

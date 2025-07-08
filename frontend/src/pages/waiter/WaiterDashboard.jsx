@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar.jsx';
-import TablesPage, { tables } from './tables/TablesPage.jsx';
+import TablesPage from './tables/TablesPage.jsx';
 import MenuPage from './menu/MenuPage.jsx';
 import Cart from '../../components/Cart/Cart.jsx';
 import { CartProvider, useCart } from '../../context/CartContext.jsx';
 import OrderDetails from './order/OrderDetails.jsx';
 import OrderList from './order/OrderList.jsx';
+import WaiterProfile from './WaiterProfile.jsx';
 import '../../App.css';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -35,28 +36,22 @@ const WaiterDashboard = () => {
   } = useCart();
   const { tokens } = useAuth();
 
-  useEffect(() => {
-    // If no table is active, select the first one by default
-    if (!activeTableId && tables.length > 0) {
-      setActiveTable(tables[0].id);
-    }
-  }, [activeTableId, setActiveTable]);
-
   const handleNavigate = (page) => {
     if (page === 'order') {
       setCurrentPage('orderDetails');
       return;
     }
-    if (page === 'orderDetails') {
-      if (!activeTableId && !selectedOrderId) {
-        setMessage('Please select a table or an existing order to view order details.');
-        setCurrentPage('tables');
-        return;
-      }
-    } else if (page === 'tables' || page === 'menu') {
+    if (page === 'tables' || page === 'menu') {
       setSelectedOrderId(null);
       setEditingOrderId(null);
     }
+    
+    if (page === 'profile') {
+      setCurrentPage('profile');
+      setMessage('');
+      return;
+    }
+    
     setCurrentPage(page);
     if (page === 'tables') setSelectedTable(null);
   };
@@ -125,7 +120,6 @@ const WaiterDashboard = () => {
       const newOrderData = {
         branch: 1, 
         table_number: activeTableId,
-        status: 'pending',
         items: cartItems.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -135,17 +129,12 @@ const WaiterDashboard = () => {
       };
 
       try {
-        const response = await axiosInstance.post('/orders/order-list/', newOrderData);
-
-        if (response.status !== 201) {
-          throw new Error(`Failed to place order: ${JSON.stringify(response.data)}`);
+        const newOrderId = await placeOrder(newOrderData);
+        if (!newOrderId) {
+          throw new Error('Failed to place order.');
         }
-
-        const newOrder = response.data;
-        placeOrder(newOrder);
-        setSelectedOrderId(newOrder.id);
+        setSelectedOrderId(newOrderId);
         setMessage('Order placed successfully!');
-
       } catch (error) {
         console.error('Order submission error:', error);
         setMessage(error.message || 'There was an issue placing your order.');
@@ -178,9 +167,9 @@ const WaiterDashboard = () => {
   const handleEditOrder = (orderToEdit) => {
     if (orderToEdit && orderToEdit.branch) {
       const tableId = orderToEdit.branch;
-
+      clearCart();
       loadCartForEditing(tableId, orderToEdit.items);
-      setSelectedTable(tables.find(table => table.id === tableId));
+      setSelectedTable(null);
       setActiveTable(tableId);
       setEditingOrderId(orderToEdit.id);
       setSelectedOrderId(null);
@@ -240,6 +229,9 @@ const WaiterDashboard = () => {
               onOrderDeleted={handleOrderDeleted}
             />
           </div>
+        )}
+        {currentPage === 'profile' && (
+          <WaiterProfile onBack={() => handleNavigate('tables')} />
         )}
       </div>
     </div>
