@@ -9,6 +9,7 @@ from .views import MyTokenObtainPairView
 router = DefaultRouter()
 router.register(r'orders', OrderViewSet)
 router.register(r'inventory', InventoryViewSet)
+router.register(r'branches', InventoryViewSet)
 router.register(r'inventory-requests', InventoryRequestViewSet)
 
 urlpatterns = [

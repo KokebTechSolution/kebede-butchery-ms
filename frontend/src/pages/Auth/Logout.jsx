@@ -8,6 +8,7 @@ export default function Logout() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log('Logging out...'); // <- Add this
     logout(); // Clear session
     const timeout = setTimeout(() => {
       navigate('/login', { replace: true }); // Redirect to login

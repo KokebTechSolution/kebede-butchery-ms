@@ -1,48 +1,178 @@
 from rest_framework import serializers
-from .models import ItemType, Category, Product, InventoryTransaction
+from .models import ItemType, Category, Product, Stock, InventoryTransaction, InventoryRequest
+from branches.models import Branch
+from decimal import Decimal
+from django.db import transaction as db_transaction
 
+# Branch
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = ['id', 'name', 'location']
 
+# Item Type
 class ItemTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemType
-        fields = '__all__'
+        fields = ['id', 'type_name']
 
-
+# Category
 class CategorySerializer(serializers.ModelSerializer):
-    # Display item type name in the response
-    item_type_name = serializers.CharField(source='item_type.type_name', read_only=True)
+    item_type = ItemTypeSerializer(read_only=True)
+    item_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=ItemType.objects.all(), source='item_type', write_only=True
+    )
 
     class Meta:
         model = Category
-        fields = ['id', 'category_name', 'item_type', 'item_type_name']
+        fields = ['id', 'category_name', 'item_type', 'item_type_id']
 
-
+# Product
 class ProductSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.category_name', read_only=True)
-    item_type_name = serializers.CharField(source='category.item_type.type_name', read_only=True)
-    total_bottles_in_stock = serializers.SerializerMethodField()
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', write_only=True
+    )
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'category', 'price_per_unit', 'uses_carton', 'bottles_per_carton',
-            'carton_quantity', 'bottle_quantity', 'unit_quantity', 'minimum_threshold',
-            'running_out', 'receipt_image', 'created_at', 'updated_at',
-            'category_name', 'item_type_name', 'total_bottles_in_stock'
+            'id',
+            'name',
+            'category',
+            'category_id',
+            'price_per_unit',
+            'uses_carton',
+            'bottles_per_carton',
+            'receipt_image',
+            'created_at',
+            'updated_at',
         ]
 
-    def get_total_bottles_in_stock(self, obj):
-        return obj.total_bottles_in_stock if obj.uses_carton else None
+# Stock
+class StockSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source='product', write_only=True
+    )
+    branch = BranchSerializer(read_only=True)
+    branch_id = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(), source='branch', write_only=True
+    )
 
+    class Meta:
+        model = Stock
+        fields = [
+            'id',
+            'product',
+            'product_id',
+            'branch',
+            'branch_id',
+            'carton_quantity',
+            'bottle_quantity',
+            'unit_quantity',
+            'minimum_threshold',
+            'running_out',
+        ]
+
+# Inventory Transaction (✔️ Enhanced with carton-to-bottle logic)
 class InventoryTransactionSerializer(serializers.ModelSerializer):
-    # Display product name in transaction list
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    category_name = serializers.CharField(source='product.category.category_name', read_only=True)
-    item_type_name = serializers.CharField(source='product.category.item_type.type_name', read_only=True)
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source='product', write_only=True
+    )
+    branch = BranchSerializer(read_only=True)
+    branch_id = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(), source='branch', write_only=True
+    )
 
     class Meta:
         model = InventoryTransaction
         fields = [
-            'id', 'product', 'product_name', 'category_name', 'item_type_name',
-            'transaction_type', 'quantity', 'unit_type', 'transaction_date'
+            'id',
+            'product',
+            'product_id',
+            'transaction_type',
+            'quantity',
+            'unit_type',
+            'transaction_date',
+            'branch',
+            'branch_id',
+        ]
+
+    def create(self, validated_data):
+        user = self.context['request'].user if self.context.get('request') else None
+
+        with db_transaction.atomic():
+            inventory_transaction = InventoryTransaction.objects.create(**validated_data)
+
+            product = validated_data['product']
+            branch = validated_data['branch']
+            qty = Decimal(validated_data['quantity'])
+            unit_type = validated_data['unit_type']
+            txn_type = validated_data['transaction_type']
+
+            bottles_per_carton = product.bottles_per_carton or 0
+            bottle_equivalent = qty * bottles_per_carton
+
+            stock, created = Stock.objects.select_for_update().get_or_create(
+                product=product,
+                branch=branch,
+                defaults={
+                    'carton_quantity': Decimal('0.00'),
+                    'bottle_quantity': Decimal('0.00'),
+                    'unit_quantity': Decimal('0.00'),
+                    'minimum_threshold': Decimal('0.00'),
+                }
+            )
+
+            # Determine + or - based on transaction type
+            if txn_type == 'restock':
+                sign = Decimal('1.00')
+            elif txn_type in ['sale', 'wastage']:
+                sign = Decimal('-1.00')
+            else:
+                sign = Decimal('0.00')
+
+            # Apply update
+            if unit_type == 'carton':
+                stock.carton_quantity += sign * qty
+                stock.bottle_quantity += sign * bottle_equivalent
+            elif unit_type == 'bottle':
+                stock.bottle_quantity += sign * qty
+            elif unit_type == 'unit':
+                stock.unit_quantity += sign * qty
+
+            # Ensure non-negative values
+            stock.carton_quantity = max(stock.carton_quantity, Decimal('0.00'))
+            stock.bottle_quantity = max(stock.bottle_quantity, Decimal('0.00'))
+            stock.unit_quantity = max(stock.unit_quantity, Decimal('0.00'))
+
+            stock.save()
+
+        return inventory_transaction
+
+# Inventory Request
+class InventoryRequestSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source='product', write_only=True
+    )
+    branch = BranchSerializer(read_only=True)
+    branch_id = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(), source='branch', write_only=True
+    )
+
+    class Meta:
+        model = InventoryRequest
+        fields = [
+            'id',
+            'product',
+            'product_id',
+            'quantity',
+            'unit_type',
+            'status',
+            'created_at',
+            'branch',
+            'branch_id',
         ]

@@ -10,7 +10,7 @@ import StaffListPage from '../pages/Staff/StaffListPage';
 import AddStaffForm from '../pages/Staff/AddStaffForm';
 import ProductListPage from '../pages/Products/ProductListPage';
 import AddProductsItem from '../pages/Products/AddProductsForm';
-import RequestsPage from '../pages/Requests/RequestsPage';
+import RequestsPage from '../pages/Requests/InventoryRequests';
 import InventoryListPage from '../pages/Inventory/ProductListPage';
 import ProductForm from '../pages/Inventory/ProductForm';
 import SalesForm from '../pages/Inventory/SalesForm';

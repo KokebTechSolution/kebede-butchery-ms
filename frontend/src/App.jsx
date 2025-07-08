@@ -1,26 +1,23 @@
 // src/App.jsx
-import React, { Children } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
-import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
-import Login from './pages/Auth/Login';
+// Public Pages
+import LoginPage from './pages/Auth/Login';
+
 import Logout from './pages/Auth/Logout';
-import OwnerDashboard from './pages/Owner/OwnerDashboard';
-import BranchManagerDashboard from './pages/BranchManager/BranchManagerDashboard';
-import WaiterDashboard from './pages/waiter/WaiterDashboard';
-import CashierDashboard from './pages/Cashier/CashierDashboard';
-import BartenderDashboard from './pages/Bartender/BartenderDashboard';
-import MeatDashboard from './pages/Meat/MeatDashboard';
-import NotFound from './pages/Error/NotFound';
 import Unauthorized from './pages/Error/Unauthorized';
+import NotFound from './pages/Error/NotFound';
+
+// Role-based Dashboards
 import RoleBasedDashboard from './pages/RoleBasedDashboard';
+import WaiterDashboard from './pages/waiter/WaiterDashboard';
 
 // Role-specific route groups
 import BranchManagerRoutes from './routes/BranchManagerRoutes';
-import AppRoutes from './routes/AppRoutes';
 // You can create: StaffRoutes, WaiterRoutes, etc. later
 
 // Common Components
@@ -44,35 +41,68 @@ const Layout = ({ children }) => {
   );
 };
 
-const App = () => {
+function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <NotificationProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/logout" element={<Logout />} />
-            
-            <Route path="/dashboard" element={<ProtectedRoute><RoleBasedDashboard /></ProtectedRoute>} />
-            
-            {/* Role-specific routes */}
-            <Route path="/owner-dashboard" element={<ProtectedRoute requiredRole="owner"><OwnerDashboard /></ProtectedRoute>} />
-            <Route path="/waiter-dashboard" element={<ProtectedRoute requiredRole="waiter"><WaiterDashboard /></ProtectedRoute>} />
-            <Route path="/cashier-dashboard" element={<ProtectedRoute requiredRole="cashier"><CashierDashboard /></ProtectedRoute>} />
-            <Route path="/bartender-dashboard" element={<ProtectedRoute requiredRole="bartender"><BartenderDashboard /></ProtectedRoute>} />
-            <Route path="/meat-dashboard" element={<ProtectedRoute requiredRole="meat_area"><MeatDashboard /></ProtectedRoute>} />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/logout" element={<Logout />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* Main App Routes for all other paths */}
-            <Route path="/*" element={<AppRoutes />} />
+        {/* Role-Based Dashboard on root path */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute allowedRoles={['manager', 'staff', 'waiter', 'owner', 'cashier', 'bartender', 'meat']}>
+              <Layout>
+                <RoleBasedDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
 
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </NotificationProvider>
-      </CartProvider>
+        {/* Branch Manager Routes */}
+        <Route
+          path="/branch-manager/*"
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <BranchManagerRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Waiter Dashboard Route */}
+        <Route
+          path="/waiter/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['waiter']}>
+              <Layout>
+                <WaiterDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* TODO: Add routes for other roles like staff, waiter, etc.
+        <Route
+          path="/staff/*"
+          element={
+            <ProtectedRoute allowedRoles={['staff']}>
+              <Layout>
+                <StaffRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        /> */}
+
+        {/* Catch-all 404 Route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </AuthProvider>
   );
-};
+}
 
 export default App;

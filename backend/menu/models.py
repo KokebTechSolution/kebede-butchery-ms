@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 
 class MenuCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -10,8 +9,8 @@ class MenuCategory(models.Model):
 class Menu(models.Model):
     name = models.CharField(max_length=100)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # set once on create
+    updated_at = models.DateTimeField(auto_now=True)      # updated on every save
     items = models.ManyToManyField('MenuItem', related_name='menus', blank=True)
 
     def __str__(self):
@@ -27,14 +26,22 @@ class MenuSection(models.Model):
         return f"{self.name} - {self.menu.name}"
 
 class MenuItem(models.Model):
+    FOOD = 'food'
+    DRINK = 'drink'
+
+    ITEM_TYPE_CHOICES = [
+        (FOOD, 'Food'),
+        (DRINK, 'Drink'),
+    ]
+
     name = models.CharField(max_length=100, null=True, blank=True)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
-    item_type = models.CharField(max_length=50, choices=[('food', 'Food'), ('drink', 'Drink')])
+    item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return self.name or "Unnamed Item"

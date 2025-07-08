@@ -1,16 +1,17 @@
+# inventory/urls.py
 from rest_framework.routers import DefaultRouter
 from inventory.views import ItemTypeViewSet, CategoryViewSet, ProductViewSet, InventoryTransactionViewSet
+from inventory.views import InventoryRequestViewSet
+from inventory.views import StockViewSet
+from inventory.views import BranchViewSet
+
 
 router = DefaultRouter()
-
-# Product inventory management
 router.register(r'inventory', ProductViewSet)
-
-# Item types and categories
 router.register(r'itemtypes', ItemTypeViewSet)
 router.register(r'categories', CategoryViewSet)
-
-# Unified inventory transactions (restock, sale, wastage)
 router.register(r'transactions', InventoryTransactionViewSet)
-
+router.register(r'requests', InventoryRequestViewSet)
+router.register(r'stocks', StockViewSet)
+router.register(r'branches', BranchViewSet, basename='branch')
 urlpatterns = router.urls
