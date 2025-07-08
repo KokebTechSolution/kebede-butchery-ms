@@ -6,14 +6,14 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MenuItem
-        fields = ['id', 'name', 'description', 'price', 'item_type', 'category', 'category_name', 'is_available']
+        fields = ['id', 'name', 'description', 'price', 'item_type', 'category', 'category_name', 'is_available', 'created_at', 'updated_at']
 
 class MenuSectionSerializer(serializers.ModelSerializer):
     items = MenuItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = MenuSection
-        fields = ['id', 'name', 'items']
+        fields = ['id', 'name', 'items', 'created_at', 'updated_at']
 
 class MenuSerializer(serializers.ModelSerializer):
     items = MenuItemSerializer(many=True, read_only=True)
