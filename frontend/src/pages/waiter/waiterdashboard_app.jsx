@@ -30,13 +30,7 @@ const MainAppLogic = ({ currentPage, setCurrentPage, selectedTable, setSelectedT
   }, []);
 
   const handleNavigate = (page) => {
-    if (page === 'orderDetails') {
-      if (!activeTableId && !selectedOrderId) {
-        setMessage('Please select a table or an existing order to view order details.');
-        setCurrentPage('tables');
-        return;
-      }
-    } else if (page === 'tables' || page === 'menu') {
+    if (page === 'tables' || page === 'menu') {
       setSelectedOrderId(null); // Clear selected order when navigating away from order details
       setEditingOrderId(null); // Clear editing order when navigating away from menu/order details
     }

@@ -3,6 +3,9 @@ from django.http import JsonResponse
 from rest_framework import viewsets, permissions
 from .models import Payment, Income
 from .serializers import PaymentSerializer, IncomeSerializer
+from rest_framework import viewsets, permissions
+from .models import Payment, Income
+from .serializers import PaymentSerializer, IncomeSerializer
 
 def transaction_list_view(request):
     return JsonResponse({"message": "Payments endpoint ready."})
@@ -14,6 +17,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         payment = serializer.save(processed_by=self.request.user, is_completed=True)
+        # Always use the latest order total
+        payment.amount = payment.order.total_money
+        payment.save()
         from .models import Income
         Income.objects.create(
             amount=payment.amount,

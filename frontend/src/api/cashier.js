@@ -35,9 +35,13 @@ export const getOrderById = async (orderId) => {
     }
 };
 
-export const getMyOrders = async () => {
+export const getMyOrders = async (date) => {
+    let url = '/orders/order-list/';
+    if (date) {
+        url += `?date=${date}`;
+    }
     try {
-        const response = await axiosInstance.get('/orders/order-list/');
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
         console.error('Failed to fetch orders:', error);
