@@ -8,7 +8,7 @@ User = get_user_model()
 class UserLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'branch']
+        fields = ['id', 'username', 'first_name', 'last_name', 'phone_number', 'role', 'branch']
 
 
 # ✅ JWT Serializer (inject user info into token)
@@ -24,7 +24,7 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'email',
+            'id', 'username', 'first_name', 'last_name', 'phone_number',
             'role', 'branch_id', 'is_active', 'date_joined', 'updated_at',
             'is_staff', 'is_superuser'
         ]
@@ -40,7 +40,7 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'email',
+            'id', 'username', 'first_name', 'last_name', 'phone_number',
             'role', 'branch', 'is_active', 'password', 'is_staff', 'is_superuser'
         ]
         read_only_fields = ['id', 'is_staff', 'is_superuser']

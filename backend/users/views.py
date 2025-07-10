@@ -42,6 +42,9 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+
+
 # ✅ Full CRUD with Password Reset
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
