@@ -22,7 +22,7 @@ const TableCard = ({ table, onClick }) => (
   >
     <div className="table-card-title">
       <MdTableRestaurant size={28} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-      <span>Table {table.id}</span>
+      <span>Table {table.number}</span>
     </div>
     <div className="table-card-status">{getStatusLabel(table.status)}</div>
   </div>

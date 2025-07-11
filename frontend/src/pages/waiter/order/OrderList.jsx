@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getMyOrders } from '../../../api/cashier'; // adjust path as needed
+import NotificationPopup from '../../../components/NotificationPopup.jsx';
 import './OrderList.css';
 
 const getTodayDateString = () => {
@@ -29,21 +30,48 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [filterDate, setFilterDate] = useState(getTodayDateString());
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'printed'
   const [manualRefreshKey, setManualRefreshKey] = useState(0); // for manual refresh
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationOrder, setNotificationOrder] = useState(null);
+  const prevOrderIdsRef = useRef([]);
+  const pollingRef = useRef(null);
 
   const fetchOrders = async (date) => {
     try {
-      // If getMyOrders can accept a date, pass it; otherwise, filter client-side
       const data = await getMyOrders(date);
       setOrders(data);
+      return data;
     } catch (error) {
       setOrders([]);
+      return [];
     }
   };
 
+  // Initial fetch and on filter change
   useEffect(() => {
-    fetchOrders(filterDate);
+    fetchOrders(filterDate).then((data) => {
+      prevOrderIdsRef.current = data.map(order => order.id);
+    });
     // eslint-disable-next-line
   }, [filterDate, refreshKey, manualRefreshKey]);
+
+  // Polling for new orders
+  useEffect(() => {
+    pollingRef.current = setInterval(async () => {
+      const data = await fetchOrders(filterDate);
+      const currentIds = data.map(order => order.id);
+      const prevIds = prevOrderIdsRef.current;
+      // Find new order IDs
+      const newOrderIds = currentIds.filter(id => !prevIds.includes(id));
+      if (newOrderIds.length > 0) {
+        // Find the newest order (assuming first in sorted list)
+        const newOrder = data.find(order => order.id === newOrderIds[0]);
+        setNotificationOrder(newOrder);
+        setShowNotification(true);
+      }
+      prevOrderIdsRef.current = currentIds;
+    }, 5000); // 5 seconds
+    return () => clearInterval(pollingRef.current);
+  }, [filterDate]);
 
   // Sort orders descending by order_number (or created_at if available)
   const sortedOrders = [...orders].sort((a, b) => {
@@ -67,6 +95,15 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
 
   return (
     <div className="order-list-container">
+      {showNotification && notificationOrder && (
+        <NotificationPopup
+          message="New order received!"
+          orderNumber={notificationOrder.order_number}
+          tableName={notificationOrder.table_name || notificationOrder.table || 'N/A'}
+          soundSrc="/notification.mp3"
+          onClose={() => setShowNotification(false)}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <label htmlFor="order-date-filter" style={{ marginRight: 8 }}>Filter by Date:</label>

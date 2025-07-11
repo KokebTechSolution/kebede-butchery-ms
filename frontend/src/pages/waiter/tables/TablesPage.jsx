@@ -55,7 +55,6 @@ const TablesPage = ({ onSelectTable }) => {
       await axiosInstance.post('/branches/tables/', {
         number: tableNumber,
         seats: seats,
-        branch: 1, // TODO: set correct branch id for the waiter
         status: 'available',
       });
       setShowModal(false);

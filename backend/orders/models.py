@@ -16,7 +16,7 @@ class Order(models.Model):
     ]
 
     order_number = models.CharField(max_length=255, unique=True)
-    table_number = models.IntegerField(null=True, blank=True)
+    table = models.ForeignKey('branches.Table', on_delete=models.CASCADE, null=True, blank=True, related_name='orders')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_orders')
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_orders')
     

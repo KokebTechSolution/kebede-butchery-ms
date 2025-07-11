@@ -66,6 +66,12 @@ const WaiterDashboard = () => {
   };
 
   const handleOrder = async () => {
+    // Only require table selection for new orders, not for editing
+    if (!editingOrderId && (!selectedTable || !selectedTable.id)) {
+      setMessage('You must select a table before placing an order.');
+      setCurrentPage('tables');
+      return;
+    }
     if (!activeTableId) {
       setMessage('Please select a table first.');
       return;
@@ -118,14 +124,15 @@ const WaiterDashboard = () => {
     } else {
       // Logic for CREATING a new order
       const newOrderData = {
-        branch: 1, 
-        table_number: activeTableId,
+        table: selectedTable.id, // Always use the selected table's ID
         items: cartItems.map(item => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
           item_type: item.item_type || 'food'
-        }))
+        })),
+        waiter_username: user?.username,
+        waiter_table_number: selectedTable?.number
       };
 
       try {

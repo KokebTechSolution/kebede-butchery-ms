@@ -57,11 +57,13 @@ class OrderListView(generics.ListCreateAPIView):
         has_drinks = any(item.get('item_type') == 'drink' for item in items_data)
         food_status = 'pending' if has_food else 'not_applicable'
         drink_status = 'pending' if has_drinks else 'not_applicable'
+        branch = user.branch  # Set branch from user
         serializer.save(
             created_by=user, 
             order_number=new_order_number,
             food_status=food_status,
-            drink_status=drink_status
+            drink_status=drink_status,
+            branch=branch
         )
 
 

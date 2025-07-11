@@ -99,14 +99,6 @@ export const ReportSection = () => {
     }
   };
 
-  const waiterTotals = [
-    { id: "W001", name: "John Smith", cash: 250.5, online: 150.0 },
-    { id: "W002", name: "Sarah Johnson", cash: 180.75, online: 210.25 },
-    { id: "W003", name: "Mike Davis", cash: 320.4, online: 95.6 },
-    { id: "W004", name: "Emma Wilson", cash: 140.0, online: 185.0 },
-    { id: "W005", name: "Alex Brown", cash: 200.0, online: 160.5 },
-  ];
-
   return (
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
       <div className="flex flex-col items-start pt-5 pb-3 px-4 w-full">
@@ -248,61 +240,6 @@ export const ReportSection = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Waiter Totals (optional, comment out if not available) */}
-          {/*
-          <Card className="border border-solid border-[#e2dddd] rounded-xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-[#161111] [font-family:'Work_Sans',Helvetica]">
-                Waiter Totals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-white">
-                    <TableHead className="w-[180px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
-                      Waiter
-                    </TableHead>
-                    <TableHead className="w-[100px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
-                      ID
-                    </TableHead>
-                    <TableHead className="w-[160px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
-                      Cash
-                    </TableHead>
-                    <TableHead className="w-[160px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
-                      Online
-                    </TableHead>
-                    <TableHead className="w-[160px] px-4 py-3 [font-family:'Work_Sans',Helvetica] font-medium text-[#161111] text-sm">
-                      Total
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(report.waiter_totals ?? []).map((w) => (
-                    <TableRow key={w.id} className="border-t border-[#e5e8ea]">
-                      <TableCell className="px-4 py-2 [font-family:'Work_Sans',Helvetica] text-sm text-[#161111]">
-                        {w.name}
-                      </TableCell>
-                      <TableCell className="px-4 py-2 [font-family:'Work_Sans',Helvetica] text-sm text-[#82686b]">
-                        {w.id}
-                      </TableCell>
-                      <TableCell className="px-4 py-2 [font-family:'Work_Sans',Helvetica] text-sm text-[#82686b]">
-                        ${""}{w.cash.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="px-4 py-2 [font-family:'Work_Sans',Helvetica] text-sm text-[#82686b]">
-                        ${""}{w.online.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="px-4 py-2 [font-family:'Work_Sans',Helvetica] text-sm font-medium text-[#161111]">
-                        ${""}{(w.cash + w.online).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-          */}
 
           {/* Export Options */}
           <Card className="border border-solid border-[#e2dddd] rounded-xl">
