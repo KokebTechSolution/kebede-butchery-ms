@@ -64,7 +64,7 @@ class OrderItem(models.Model):
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
     ]
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=8, decimal_places=2)

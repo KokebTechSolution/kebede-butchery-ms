@@ -1,111 +1,135 @@
 // api/stafflist.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/users/users/';
+const API_BASE_URL = 'http://localhost:8000/api/users/users/';
 
+/**
+ * Get the JWT token from localStorage
+ * @returns {string|null}
+ */
 const getToken = () => localStorage.getItem('access');
 
-// ✅ Axios instance for cleaner code
-const axiosInstance = () => {
+/**
+ * Create an axios instance with Authorization header
+ * @returns {import('axios').AxiosInstance}
+ */
+const createAxiosInstance = () => {
   const token = getToken();
   return axios.create({
-    baseURL: API_URL,
-    headers: { Authorization: `Bearer ${token}` },
+    baseURL: API_BASE_URL,
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    },
   });
 };
 
-// ✅ Fetch Staff List
+/**
+ * Handle error response and return a user-friendly error message
+ * @param {any} error
+ * @returns {string}
+ */
+const getFriendlyErrorMessage = (error) => {
+  if (error.response?.data) {
+    const data = error.response.data;
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      // Collect messages from error fields
+      return Object.entries(data)
+        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(' ') : messages}`)
+        .join(' | ');
+    }
+    if (typeof data === 'string') {
+      return data;
+    }
+  }
+  return 'An unexpected error occurred. Please try again.';
+};
+
+/**
+ * Fetch the list of staff users
+ * @returns {Promise<any[]>}
+ */
 export const fetchStaffList = async () => {
   try {
-    const response = await axiosInstance().get('/');
-    console.log('[API] Staff list response:', response.data);
+    const response = await createAxiosInstance().get('/');
     return response.data;
   } catch (error) {
-    console.error('[API] Error fetching staff list:', error);
-    throw error;
+    console.warn('Failed to fetch staff list:', error);
+    throw new Error('Unable to load staff list. Please refresh or try again later.');
   }
 };
 
-// ✅ Add User
+/**
+ * Add a new user
+ * @param {object} formData
+ * @returns {Promise<object>}
+ */
 export const addUser = async (formData) => {
-  console.log('[API] Adding new user with data:', formData);
-
   try {
-    const response = await axiosInstance().post('/', formData);
-    console.log('[API] Add user response:', response.data);
+    const response = await createAxiosInstance().post('/', formData);
     return response.data;
   } catch (error) {
-    console.error('[API] Error adding user:', error.response?.data || error);
-
-    let friendlyMessage = 'An error occurred while adding the user.';
-
-    if (error.response && error.response.data) {
-      const errors = error.response.data;
-
-      if (typeof errors === 'object') {
-        // Collect detailed messages from each field
-        const messages = Object.entries(errors).map(
-          ([field, messages]) => `${field}: ${messages.join(' ')}`
-        );
-        friendlyMessage = messages.join(' | ');
-      } else if (typeof errors === 'string') {
-        friendlyMessage = errors;
-      }
-    }
-
-    // Throw a user-friendly error message
-    throw new Error(friendlyMessage);
+    const message = getFriendlyErrorMessage(error);
+    throw new Error(message);
   }
 };
 
-// ✅ Update User
+/**
+ * Update existing user data
+ * @param {string|number} id
+ * @param {object} formData
+ * @returns {Promise<object>}
+ */
 export const updateUser = async (id, formData) => {
-  console.log(`[API] Updating user ${id} with data:`, formData);
-
   try {
-    const response = await axiosInstance().put(`${id}/`, formData);
-    console.log(`[API] Update response for user ${id}:`, response.data);
+    const response = await createAxiosInstance().put(`${id}/`, formData);
     return response.data;
   } catch (error) {
-    console.error(`[API] Error updating user ${id}:`, error.response?.data || error);
-    throw error;
+    const message = getFriendlyErrorMessage(error);
+    throw new Error(message);
   }
 };
 
-// ✅ Delete User
+/**
+ * Delete a user by ID
+ * @param {string|number} id
+ * @returns {Promise<void>}
+ */
 export const deleteUser = async (id) => {
-  console.log(`[API] Deleting user ${id}`);
-
   try {
-    const response = await axiosInstance().delete(`${id}/`);
-    console.log(`[API] Delete successful for user ${id}`, response.status);
+    await createAxiosInstance().delete(`${id}/`);
   } catch (error) {
-    console.error(`[API] Error deleting user ${id}:`, error.response?.data || error);
-    throw error;
+    const message = getFriendlyErrorMessage(error);
+    throw new Error(message);
   }
 };
 
-// ✅ Reset User Password (Secure and Separate)
+/**
+ * Reset password for a user
+ * @param {string|number} id
+ * @param {string} newPassword
+ * @returns {Promise<object>}
+ */
 export const resetUserPassword = async (id, newPassword) => {
-  console.log(`[API] Resetting password for user ${id}`);
-
   try {
-    const response = await axiosInstance().post(`${id}/reset-password/`, { password: newPassword });
-    console.log(`[API] Password reset response for user ${id}:`, response.data);
+    const response = await createAxiosInstance().post(`${id}/reset-password/`, { password: newPassword });
     return response.data;
   } catch (error) {
-    console.error(`[API] Error resetting password for user ${id}:`, error.response?.data || error);
-    throw error;
+    const message = getFriendlyErrorMessage(error);
+    throw new Error(message);
   }
 };
-// ✅ Fetch Branches (if needed)
-export const fetchBranches = async () => { 
+
+/**
+ * Fetch branch list if needed
+ * @returns {Promise<any[]>}
+ */
+export const fetchBranches = async () => {
   try {
-    const response = await axiosInstance().get('branches/');
-    console.log('[API] Branches response:', response.data);
+    const response = await createAxiosInstance().get('branches/');
     return response.data;
   } catch (error) {
-    console.error('[API] Error fetching branches:', error);
-    throw error;
+    console.warn('Failed to fetch branches:', error);
+    throw new Error('Unable to load branches. Please try again later.');
   }
-}
+};

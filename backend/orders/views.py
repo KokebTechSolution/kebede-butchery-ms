@@ -38,8 +38,6 @@ class OrderListView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
         # Only allow users in the 'waiter' group to create orders
-        if not user or not user.groups.filter(name='waiter').exists():
-            raise Exception('Only waiters can create orders.')
         today = timezone.now().date()
         today_str = today.strftime('%Y%m%d')
         last_order_today = Order.objects.filter(created_at__date=today).order_by('created_at').last()

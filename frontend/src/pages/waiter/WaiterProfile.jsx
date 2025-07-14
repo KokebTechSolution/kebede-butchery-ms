@@ -30,7 +30,7 @@ const WaiterProfile = ({ onBack }) => {
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    email: user?.email || '',
+    phone_number: user?.phone_number || '',
     phone: user?.phone || ''
   });
 
@@ -85,7 +85,7 @@ const WaiterProfile = ({ onBack }) => {
     setFormData({
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
-      email: user?.email || '',
+      phone_number: user?.phone_number || '',
       phone: user?.phone || ''
     });
     setMessage('');
@@ -239,13 +239,13 @@ const WaiterProfile = ({ onBack }) => {
                 </div>
 
                 <div className="info-group">
-                  <label>Email</label>
+                  <label>phone_number</label>
                   <div className="input-with-icon">
                     <FaEnvelope className="input-icon" />
                     <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
+                      type="phone_number"
+                      name="phone_number"
+                      value={formData.phone_number}
                       onChange={handleInputChange}
                       disabled={!isEditing}
                       className={isEditing ? 'editable-input' : 'disabled-input'}

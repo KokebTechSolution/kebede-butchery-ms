@@ -1,8 +1,7 @@
 # menu/models.py
 
 from django.db import models
-from inventory.models import Product, Stock  # assuming Stock model is here
-
+from inventory.models import Product, Stock  
 
 class MenuCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -47,7 +46,8 @@ class MenuItem(models.Model):
     item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
     is_available = models.BooleanField(default=True)
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='menu_items')
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE, null=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

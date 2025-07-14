@@ -1,0 +1,4 @@
+ id | password | last_login | is_superuser | username | first_name | last_name | email | is_staff | is_active | date_joined | phone_number | role | updated_at | branch_id 
+----+----------+------------+--------------+----------+------------+-----------+-------+----------+-----------+-------------+--------------+------+------------+-----------
+(0 rows)
+

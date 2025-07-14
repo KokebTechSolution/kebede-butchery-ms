@@ -1,20 +1,20 @@
+# menu/serializers.py
+
 from rest_framework import serializers
 from .models import Menu, MenuSection, MenuItem, MenuCategory
-
+from inventory.models import Product
 
 class MenuItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     stock_info = serializers.SerializerMethodField()
     is_running_out = serializers.SerializerMethodField()
+    
+    # Explicit foreign key field for product
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
 
     class Meta:
         model = MenuItem
-        fields = [
-            'id', 'name', 'description', 'price', 'item_type',
-            'category', 'category_name', 'is_available',
-            'created_at', 'updated_at',
-            'stock_info', 'is_running_out'
-        ]
+        fields = '__all__'
 
     def get_stock_info(self, obj):
         """
@@ -40,6 +40,8 @@ class MenuItemSerializer(serializers.ModelSerializer):
         if not branch_id:
             return None
         return obj.is_running_out(branch_id)
+
+
 class MenuSectionSerializer(serializers.ModelSerializer):
     items = MenuItemSerializer(many=True, read_only=True)
 

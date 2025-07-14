@@ -12,12 +12,12 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   const roleRedirectMap = {
-    manager: '/dashboard',
-    waiter: '/dashboard',
-    cashier: '/dashboard',
-    bartender: '/dashboard',
-    meat: '/dashboard',
-    owner: '/dashboard',
+    manager: '/branch-manager',
+    waiter: '/',
+    cashier: '/',
+    bartender: '/',
+    meat: '/',
+    owner: '/',
     admin: '/admin-dashboard',
     staff: '/staff-dashboard',
   };

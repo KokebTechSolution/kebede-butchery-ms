@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'inventory',
     "django_extensions",
     'payments',
+    # 'orders.apps.OrdersConfig',
     'activity',
     'menu',
     'reports',

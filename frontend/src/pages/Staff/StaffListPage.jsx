@@ -15,7 +15,7 @@ function StaffListPage() {
 
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
+    phone_number: '',
     role: '',
     first_name: '',
     last_name: '',
@@ -41,7 +41,7 @@ function StaffListPage() {
     setEditUser(user);
     setFormData({
       username: user.username,
-      email: user.email,
+      phone_number: user.phone_number,
       role: user.role,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -117,7 +117,7 @@ function StaffListPage() {
                   <th className="px-6 py-3 text-left">Username</th>
                   <th className="px-6 py-3 text-left">First Name</th>
                   <th className="px-6 py-3 text-left">Last Name</th>
-                  <th className="px-6 py-3 text-left">Email</th>
+                  <th className="px-6 py-3 text-left">phone_number</th>
                   <th className="px-6 py-3 text-left">Role</th>
                   <th className="px-6 py-3 text-left">Branch</th>
                   <th className="px-6 py-3 text-left">Date Joined</th>
@@ -132,7 +132,7 @@ function StaffListPage() {
                     <td className="px-6 py-4">{user.username}</td>
                     <td className="px-6 py-4">{user.first_name}</td>
                     <td className="px-6 py-4">{user.last_name}</td>
-                    <td className="px-6 py-4">{user.email}</td>
+                    <td className="px-6 py-4">{user.phone_number}</td>
                     <td className="px-6 py-4 capitalize">{user.role}</td>
                     <td className="px-6 py-4">{user.branch_id}</td>
                     <td className="px-6 py-4">{new Date(user.date_joined).toLocaleDateString()}</td>
@@ -167,7 +167,7 @@ function StaffListPage() {
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">Edit Staff</h2>
-              {['username', 'first_name', 'last_name', 'email', 'role', 'branch_id'].map(field => (
+              {['username', 'first_name', 'last_name', 'phone_number', 'role', 'branch_id'].map(field => (
                 <input
                   key={field}
                   type={field === 'branch_id' ? 'number' : 'text'}

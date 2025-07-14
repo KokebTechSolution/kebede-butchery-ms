@@ -11,7 +11,7 @@ import Reports from "./screens/Reports";
 
 export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
-  const userName = "Bartender"; // Replace with dynamic user name from auth
+  const userName = "Bartender"; 
   const { lastMessage } = useNotifications();
   const { orders } = useDrinks();
 
