@@ -9,6 +9,7 @@ const axiosInstance = axios.create({
 
 // Automatically attach access token
 axiosInstance.interceptors.request.use(
+
   (config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
@@ -16,7 +17,9 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+
+    (error) => Promise.reject(error)
+
 );
 
 // Auto-refresh token on 401 errors

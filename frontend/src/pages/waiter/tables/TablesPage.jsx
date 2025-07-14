@@ -52,15 +52,15 @@ const TablesPage = ({ onSelectTable }) => {
     setLoading(true);
     setError('');
     try {
+      // Find the highest table number
+      const maxNumber = tables.length > 0 ? Math.max(...tables.map(t => t.number)) : 0;
+      const nextNumber = maxNumber + 1;
       await axiosInstance.post('/branches/tables/', {
-        number: tableNumber,
-        seats: seats,
+        number: nextNumber,
+        seats: 4, // default
         branch: 1, // TODO: set correct branch id for the waiter
         status: 'available',
       });
-      setShowModal(false);
-      setTableNumber('');
-      setSeats(4);
       fetchTables();
     } catch (err) {
       setError('Failed to add table.');
@@ -75,7 +75,7 @@ const TablesPage = ({ onSelectTable }) => {
         <h1>Tables</h1>
       </div>
       <div className="table-section">
-        <h2 className="table-area">Dining Area</h2>
+        {/* <h2 className="table-area">Dining Area</h2> */}
         <div className="table-grid modern">
           {tables
             .slice()
@@ -101,34 +101,12 @@ const TablesPage = ({ onSelectTable }) => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           zIndex: 1000,
         }}
-        onClick={() => setShowModal(true)}
+        onClick={handleAddTable}
         aria-label="Add Table"
+        disabled={loading}
       >
         +
       </button>
-      {/* Modal */}
-      {showModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.3)', zIndex: 2000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div className="modal" style={{ background:'white', padding:32, borderRadius:12, minWidth:320 }}>
-            <h2>Add Table</h2>
-            <label>
-              Table Number:
-              <input value={tableNumber} onChange={e => setTableNumber(e.target.value)} type="number" min={1} />
-            </label>
-            <br />
-            <label>
-              Seats:
-              <input value={seats} onChange={e => setSeats(e.target.value)} type="number" min={1} />
-            </label>
-            <br />
-            {error && <div style={{ color: 'red', margin: '8px 0' }}>{error}</div>}
-            <button onClick={handleAddTable} disabled={loading} style={{ marginRight: 8 }}>
-              {loading ? 'Adding...' : 'Add'}
-            </button>
-            <button onClick={() => setShowModal(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
