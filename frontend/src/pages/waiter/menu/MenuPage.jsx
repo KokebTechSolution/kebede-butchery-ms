@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MdArrowBack } from 'react-icons/md';
+import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
 import { fetchMenuItems } from '../../../api/menu'; // Updated import
 import './MenuPage.css';
 
-const MenuPage = ({ table, onBack, editingOrderId }) => {
+const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [activeTab, setActiveTab] = useState('food');
-    const { setActiveTable, cartItems, orders } = useCart();
+    const { setActiveTable, cartItems, orders, clearCart } = useCart();
 
     useEffect(() => {
         if (table && table.id) {
@@ -56,10 +56,10 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
         <div className="menu-container" style={{ display: 'flex', gap: '2rem' }}>
             <div style={{ flex: 2, filter: isReadyToPay ? 'blur(2px)' : 'none', pointerEvents: isReadyToPay ? 'none' : 'auto', opacity: isReadyToPay ? 0.6 : 1 }}>
                 <div className="menu-header">
-                    <h1>Menu {table ? `for Table ${table.id}` : ''}</h1>
-                    {onBack && <MdArrowBack size={36} onClick={onBack} className="back-button" />}
+                    <h2>{table ? ` Table ${table.id}` : ''}</h2>
+                    {onBack && <MdArrowBack size={36} onClick={onBack} style={{ cursor: 'pointer' }} />}
                 </div>
-                <div className="menu-tabs">
+                <div style={{ fontSize: '28px', fontWeight: 700 }} className="menu-tabs">
                     <button
                         className={`menu-tab ${activeTab === 'food' ? 'active' : ''}`}
                         onClick={() => setActiveTab('food')}
@@ -77,7 +77,6 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                 </div>
                 {activeTab === 'food' && (
                     <div className="menu-section">
-                        <h2>Food</h2>
                         {Object.keys(foodByCategory).map(category => (
                             <div key={category} className="menu-category-section">
                                 <h3>{category}</h3>
@@ -92,7 +91,6 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                 )}
                 {activeTab === 'drink' && (
                     <div className="menu-section">
-                        <h2>Drinks</h2>
                         {Object.keys(drinkByCategory).map(category => (
                             <div key={category} className="menu-category-section">
                                 <h3>{category}</h3>
@@ -120,8 +118,50 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                             ))}
                         </ul>
                     )}
-                    <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>
                         Running Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
+                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          style={{
+                            background: '#4ade80',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: 4,
+                            padding: '8px 20px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'background 0.2s, color 0.2s',
+                          }}
+                          disabled={cartItems.length === 0}
+                          onClick={onOrder}
+                          onMouseOver={e => e.currentTarget.style.background = '#22c55e'}
+                          onMouseOut={e => e.currentTarget.style.background = '#4ade80'}
+                          onMouseDown={e => e.currentTarget.style.background = '#16a34a'}
+                          onMouseUp={e => e.currentTarget.style.background = '#22c55e'}
+                        >
+                          Order
+                        </button>
+                        {cartItems.length > 0 && (
+                          <button
+                            style={{
+                              background: '#ff4444',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 4,
+                              padding: '8px 20px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              marginLeft: 8,
+                              transition: 'background 0.2s, color 0.2s',
+                            }}
+                            onClick={clearCart}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                     </div>
                 </div>
                 <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001' }}>
@@ -135,8 +175,17 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                                     Order #{order.order_number} <span style={{ float: 'right' }}>${order.total_money}</span>
                                     {editingOrderId === order.id && <span style={{ color: '#007bff', marginLeft: 8 }}>(Editing)</span>}
                                 </div>
-                                <div style={{ fontSize: 13, color: '#666' }}>
-                                    {order.items.length} item{order.items.length > 1 ? 's' : ''} • {order.status || order.drink_status || order.food_status}
+                                <div style={{ fontSize: 13, color: '#656565' }}>
+                                    {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                                    {(() => {
+                                      if (order.food_status && order.food_status !== 'not_applicable') {
+                                        return ` • ${order.food_status}`;
+                                      } else if (order.drink_status && order.drink_status !== 'not_applicable') {
+                                        return ` • ${order.drink_status}`;
+                                      } else {
+                                        return '';
+                                      }
+                                    })()}
                                 </div>
                             </div>
                         ))
