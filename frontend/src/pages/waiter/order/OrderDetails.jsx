@@ -143,22 +143,6 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
             </div>
           )}
         </div>
-        <div className="order-info">
-          <div className="order-from">
-            <h3>From</h3>
-            <p>Mickey leland Street</p>
-            <p></p>
-            <p>Mickey leland Street</p>
-            <p></p>
-          </div>
-          <div className="order-to">
-            <h3>Order Info</h3>
-            <p>Table: {currentOrder.table_number || currentOrder.tableId || 'N/A'}</p>
-            <p>Branch: {currentOrder.branch || 'N/A'}</p>
-            <p>Created By: {currentOrder.created_by || currentOrder.waiterName || 'N/A'}</p>
-            <p>Location: Mickey Lelan Street</p>
-          </div>
-        </div>
 
         <div className="order-items-table">
           <table>
@@ -185,18 +169,28 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           </table>
         </div>
 
-        <p className="order-note">All prices are in ETB (Ethiopian Birr).</p>
-
-        <div className="order-total">
-          <div className="subtotal">
-            <span>Subtotal</span>
-            <span>ETB {getTotalPrice(currentOrder.items).toFixed(2)}</span>
-          </div>
-          <div className="total">
-            <span>Total</span>
-            <span>ETB {getTotalPrice(currentOrder.items).toFixed(2)}</span>
-          </div>
-        </div>
+        {/* VAT Calculation */}
+        {(() => {
+          const total = getTotalPrice(currentOrder.items);
+          const vat = total * 0.15;
+          const subtotal = total - vat;
+          return (
+            <div className="order-total" style={{ textAlign: 'left', color: '#333', fontWeight: 'normal', padding: '16px 0 0 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontWeight: 600 }}>
+                <span>Subtotal&nbsp;&nbsp;-</span>
+                <span>&nbsp;&nbsp;{subtotal.toFixed(2)} ETB</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span>VAT (15%)&nbsp;&nbsp;-</span>
+                <span>&nbsp;&nbsp;{vat.toFixed(2)} ETB</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700, fontSize: '1.5em' }}>
+                <span>Total&nbsp;&nbsp;-</span>
+                <span>&nbsp;&nbsp;{total.toFixed(2)} ETB</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -67,9 +67,8 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
 
   return (
     <div className="order-list-container">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <label htmlFor="order-date-filter" style={{ marginRight: 8 }}>Filter by Date:</label>
+      <div className="order-filter-row">
+        <div className="order-filter-date">
           <input
             id="order-date-filter"
             type="date"
@@ -77,8 +76,8 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
             onChange={e => setFilterDate(e.target.value)}
           />
         </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <label htmlFor="order-status-filter" style={{ marginRight: 8 }}>Status:</label>
+        <div className="order-filter-status">
+          <label htmlFor="order-status-filter">Status:</label>
           <select
             id="order-status-filter"
             value={statusFilter}
