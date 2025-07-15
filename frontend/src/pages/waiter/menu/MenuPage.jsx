@@ -41,7 +41,7 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
     };
 
     const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-    const drinkItems = menuItems.filter(item => item.item_type === 'drink' && item.is_available);
+    const drinkItems = menuItems.filter(item => item.item_type === 'bevarage' && item.is_available);
     const foodByCategory = groupByCategory(foodItems);
     const drinkByCategory = groupByCategory(drinkItems);
 
@@ -68,8 +68,8 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                         Food
                     </button>
                     <button
-                        className={`menu-tab ${activeTab === 'drink' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('drink')}
+                        className={`menu-tab ${activeTab === 'beverage' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('beverage')}
                         disabled={isReadyToPay}
                     >
                         Drinks
@@ -90,7 +90,7 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
                         ))}
                     </div>
                 )}
-                {activeTab === 'drink' && (
+                {activeTab === 'beverage' && (
                     <div className="menu-section">
                         <h2>Drinks</h2>
                         {Object.keys(drinkByCategory).map(category => (
