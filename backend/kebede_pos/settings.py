@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'branches',
     'rest_framework.authtoken',
     'rest_framework',
+
     'channels',
     'users',
     'products',
@@ -123,7 +124,6 @@ DATABASES = {
         'NAME': 'kebede_pos_db',
         'USER': 'postgres',
         'PASSWORD': 'kokeb',
-
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
