@@ -52,7 +52,7 @@ class OrderListView(generics.ListCreateAPIView):
             new_order_number = f"{today_str}-{new_seq:02d}"
         items_data = self.request.data.get('items', [])
         has_food = any(item.get('item_type') == 'food' for item in items_data)
-        has_drinks = any(item.get('item_type') == 'drink' for item in items_data)
+        has_drinks = any(item.get('item_type') == 'beverage' for item in items_data)
         food_status = 'pending' if has_food else 'not_applicable'
         drink_status = 'pending' if has_drinks else 'not_applicable'
         serializer.save(

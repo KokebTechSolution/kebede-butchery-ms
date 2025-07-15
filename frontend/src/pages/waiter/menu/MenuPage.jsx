@@ -41,7 +41,7 @@ const MenuPage = ({ table, onBack, editingOrderId }) => {
     };
 
     const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-    const drinkItems = menuItems.filter(item => item.item_type === 'bevarage' && item.is_available);
+    const drinkItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
     const foodByCategory = groupByCategory(foodItems);
     const drinkByCategory = groupByCategory(drinkItems);
 

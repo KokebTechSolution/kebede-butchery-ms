@@ -17,7 +17,7 @@ const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal, force
     price: '',
     is_available: true,
     category: '',
-    item_type: 'food',
+    item_type: 'beverage',
   });
 
   const [categories, setCategories] = useState([]);
@@ -28,21 +28,27 @@ const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal, force
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef();
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [catData, prodData] = await Promise.all([
-          fetchMenuCategories(),
-          fetchAvailableProducts(),
-        ]);
-        setCategories(catData);
-        setAvailableProducts(prodData);
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      }
-    };
-    loadData();
-  }, []);
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const catData = await fetchMenuCategories();
+      setCategories(catData);
+    } catch (error) {
+      console.error('❌ Error fetching menu categories:', error);
+      setCategories([]); // fallback to empty
+    }
+
+    try {
+      const prodData = await fetchAvailableProducts();
+      console.log('✅ Fetched products:', prodData);
+      setAvailableProducts(prodData);
+    } catch (error) {
+      console.error('❌ Error fetching available products:', error);
+      setAvailableProducts([]); // fallback to empty
+    }
+  };
+  loadData();
+}, []);
 
   useEffect(() => {
     if (selectedItem) {
