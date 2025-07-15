@@ -86,9 +86,9 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
   return (
     <div className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
-      <div className="order-details-header">
+      <div className="order-details-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <div className="icon-buttons">
-          {/* Icons for edit, print, share, delete */}
+          {/* Icons for edit, print, delete */}
           <span
             className="icon"
             onClick={!isPrinted ? () => onEditOrder(currentOrder) : undefined}
@@ -124,13 +124,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           >
             🖨️
           </span>
-          <span className="icon">↪️</span>
           <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
-        </div>
-        <div className="action-buttons">
-          <button className="button-details">Details</button>
-          <button className="button-new-order">New Order</button>
-          <button className="button-billing">Billing</button>
         </div>
       </div>
 
