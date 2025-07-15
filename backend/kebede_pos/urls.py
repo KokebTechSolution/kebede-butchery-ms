@@ -27,4 +27,7 @@ urlpatterns = [
 
     # Branches and tables
     path('api/branches/', include('branches.urls')),
+
+    # Owner-specific endpoints
+    path('api/owner/', include('owner.urls')),
 ]

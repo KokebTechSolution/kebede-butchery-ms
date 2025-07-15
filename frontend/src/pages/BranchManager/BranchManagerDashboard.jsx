@@ -1,12 +1,14 @@
 // src/pages/BranchManager/BranchManagerDashboard.jsx
-import React from "react";
+import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
 import SidebarNav from "../../components/ManagmentComponents/SidebarNav";
+import StaffListPage from '../Staff/StaffListPage';
 
 export default function BranchManagerDashboard() {
   const { user } = useAuth();
   const firstName = user?.first_name || "Guest";
+  const [tab, setTab] = useState('dashboard');
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100">
@@ -23,12 +25,23 @@ export default function BranchManagerDashboard() {
               Manage your branch with insights, actions, and real-time updates.
             </p>
           </div>
-          {/* Future: Profile, quick actions, or breadcrumbs can go here */}
         </header>
-
-        {/* Dynamic Content via Routes */}
+        <div className="flex gap-4 mb-6">
+          <button
+            className={`px-4 py-2 rounded ${tab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            onClick={() => setTab('dashboard')}
+          >
+            Dashboard
+          </button>
+          <button
+            className={`px-4 py-2 rounded ${tab === 'staff' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            onClick={() => setTab('staff')}
+          >
+            Staff Management
+          </button>
+        </div>
         <section className="space-y-6">
-          <Outlet />
+          {tab === 'dashboard' ? <Outlet /> : <StaffListPage />}
         </section>
       </main>
     </div>

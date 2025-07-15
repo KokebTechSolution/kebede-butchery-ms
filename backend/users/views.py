@@ -59,8 +59,8 @@ class UserViewSet(ModelViewSet):
         return User.objects.none()
 
     def perform_create(self, serializer):
-        if self.request.user.role != 'manager':
-            raise PermissionDenied("Only managers can create users.")
+        if self.request.user.role not in ['manager', 'owner']:
+            raise PermissionDenied("Only managers and owners can create users.")
         serializer.save()
 
     def perform_update(self, serializer):

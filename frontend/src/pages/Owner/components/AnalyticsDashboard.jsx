@@ -1,34 +1,78 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calculator, Target } from 'lucide-react';
 import KpiCard from './KpiCard';
 import AnalyticsFilters from './AnalyticsFilters';
 import ProfitLossChart from './ProfitLossChart';
 import TopItemsChart from './TopItemsChart';
+import axiosInstance from '../../../api/axiosInstance';
+
+// Helper to get start/end dates for a given range
+function getDateRange(range) {
+  const today = new Date();
+  let start, end;
+  end = new Date(today);
+  switch (range) {
+    case 'Today':
+      start = new Date(today);
+      break;
+    case 'This Week': {
+      const day = today.getDay();
+      start = new Date(today);
+      start.setDate(today.getDate() - day);
+      break;
+    }
+    case 'This Month':
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+    case 'This Year':
+      start = new Date(today.getFullYear(), 0, 1);
+      break;
+    case 'Last Month': {
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      start = lastMonth;
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+      break;
+    }
+    case 'Last Quarter': {
+      const currentQuarter = Math.floor(today.getMonth() / 3) + 1;
+      const lastQuarter = currentQuarter - 1 || 4;
+      const year = lastQuarter === 4 ? today.getFullYear() - 1 : today.getFullYear();
+      start = new Date(year, (lastQuarter - 1) * 3, 1);
+      end = new Date(year, lastQuarter * 3, 0);
+      break;
+    }
+    default:
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+  }
+  // Format as YYYY-MM-DD
+  const fmt = d => d.toISOString().slice(0, 10);
+  return { start: fmt(start), end: fmt(end) };
+}
 
 const AnalyticsDashboard = () => {
-  const [analyticsData] = useState({
-    kpi: {
-      totalRevenue: 150000.00,
-      costOfGoods: 45000.00,
-      grossProfit: 105000.00,
-      operatingExpenses: 35000.00,
-      netProfit: 70000.00,
-      avgOrderValue: 850.50
-    },
-    profitTrend: [
-      { name: 'Week 1', revenue: 35000, costs: 20000, netProfit: 15000 },
-      { name: 'Week 2', revenue: 42000, costs: 22000, netProfit: 20000 },
-      { name: 'Week 3', revenue: 38000, costs: 21000, netProfit: 17000 },
-      { name: 'Week 4', revenue: 35000, costs: 17000, netProfit: 18000 }
-    ],
-    topSellingItems: [
-      { name: 'Special Kitfo', revenue: 25000 },
-      { name: 'Doro Wot', revenue: 18000 },
-      { name: 'Tibs Firfir', revenue: 15500 },
-      { name: 'St. George Beer', revenue: 12000 },
-      { name: 'Shiro', revenue: 9500 }
-    ]
-  });
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('This Month');
+
+  useEffect(() => {
+    const { start, end } = getDateRange(dateRange);
+    setLoading(true);
+    axiosInstance.get(`/owner/dashboard/?start=${start}&end=${end}`)
+      .then(response => {
+        setAnalyticsData(response.data);
+        setLoading(false);
+      })
+      .catch(error => {
+        setError('Failed to fetch analytics data');
+        setLoading(false);
+      });
+  }, [dateRange]);
+
+  if (loading) return <div>Loading analytics...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (!analyticsData) return <div>No analytics data available.</div>;
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
@@ -43,7 +87,7 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Filters */}
-        <AnalyticsFilters />
+        <AnalyticsFilters dateRange={dateRange} setDateRange={setDateRange} />
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
