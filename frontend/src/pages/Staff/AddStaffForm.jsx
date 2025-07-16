@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { addUser } from '../../api/stafflist';
 
+<<<<<<< HEAD
 const ROLE_OPTIONS = [
   { label: 'Waiter', value: 'waiter' },
   { label: 'Manager', value: 'manager' },
@@ -9,6 +10,29 @@ const ROLE_OPTIONS = [
   { label: 'Cashier', value: 'cashier' },
   { label: 'Owner', value: 'owner' },
 ];
+=======
+const ROLES = [
+  { value: '', label: 'Select Role' },
+  { value: 'waiter', label: 'Waiter' },
+  { value: 'bartender', label: 'Bartender' },
+  { value: 'meat', label: 'Meat Counter' },
+  { value: 'cashier', label: 'Cashier' },
+  { value: 'manager', label: 'Branch Manager' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'staff', label: 'Staff' },
+];
+
+function AddStaffForm({ onSuccess, onCancel }) {
+const [formData, setFormData] = useState({
+  username: '',
+  first_name: '',
+  last_name: '',
+  email: '',
+  role: '',
+  branch: '',  
+  password: '',
+  is_active: true,
+>>>>>>> origin/tbales
 
 function AddStaffForm({ onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -88,6 +112,7 @@ finally {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+<<<<<<< HEAD
         <input
           type="text"
           name="username"
@@ -163,6 +188,19 @@ finally {
           onChange={handleChange}
           className="w-full border px-4 py-2 rounded"
         />
+=======
+        <input type="text" name="username" placeholder="Username" required value={formData.username} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <input type="text" name="first_name" placeholder="First Name" required value={formData.first_name} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <input type="text" name="last_name" placeholder="Last Name" required value={formData.last_name} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <select name="role" required value={formData.role} onChange={handleChange} className="w-full border px-4 py-2 rounded">
+          {ROLES.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+        <input type="number" name="branch" placeholder="Branch ID" required value={formData.branch} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+        <input type="password" name="password" placeholder="Password" required value={formData.password} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
+>>>>>>> origin/tbales
 
         <div className="flex items-center">
           <input

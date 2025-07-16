@@ -56,9 +56,8 @@ const TablesPage = ({ onSelectTable }) => {
       const maxNumber = tables.length > 0 ? Math.max(...tables.map(t => t.number)) : 0;
       const nextNumber = maxNumber + 1;
       await axiosInstance.post('/branches/tables/', {
-        number: nextNumber,
-        seats: 4, // default
-        branch: 1, // TODO: set correct branch id for the waiter
+        number: tableNumber,
+        seats: seats,
         status: 'available',
       });
       fetchTables();

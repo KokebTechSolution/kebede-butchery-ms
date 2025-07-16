@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from .models import Table
 from .serializers import TableSerializer
+from rest_framework.exceptions import PermissionDenied
 
 from rest_framework import viewsets
 from .models import Branch
@@ -16,6 +17,23 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TableListCreateView(generics.ListCreateAPIView):
-    queryset = Table.objects.all()
     serializer_class = TableSerializer
 
+<<<<<<< HEAD
+=======
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'waiter':
+            return Table.objects.filter(created_by=user)
+        return Table.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_authenticated and hasattr(user, 'role') and user.role == 'waiter':
+            branch = getattr(user, 'branch', None)
+            if not branch:
+                raise PermissionDenied('Waiter does not have a branch assigned.')
+            serializer.save(created_by=user, branch=branch)
+        else:
+            raise PermissionDenied('Only waiters can create tables.')
+>>>>>>> origin/tbales

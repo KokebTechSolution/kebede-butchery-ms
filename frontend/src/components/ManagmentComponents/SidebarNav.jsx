@@ -14,7 +14,6 @@ import {
 const navItems = [
   { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
   { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
-  /*{ label: "Product", icon: <FaBoxOpen />, path: "/branch-manager/products" },*/,
   { label: "Inventory", icon: <FaClipboardList />, path: "/branch-manager/inventory" },
   { label: "Request", icon: <FaClipboardList />, path: "/branch-manager/request" },
   { label: "Menu Management", icon: <FaUtensils />, path: "/branch-manager/menu" },

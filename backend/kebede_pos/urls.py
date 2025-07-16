@@ -28,6 +28,10 @@ urlpatterns = [
 
     # React frontend catch-all route
    #re_path(r'^(?:.*)/?$', index, name='index'),
+
+    # Owner-specific endpoints
+    path('api/owner/', include('owner.urls')),
+
 ]
 
 """if settings.DEBUG:

@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
+=======
+import React, { useEffect, useState } from 'react';
+>>>>>>> origin/tbales
 import { BarChart3, TrendingUp, DollarSign, Package, Calculator, Target } from 'lucide-react';
 import KpiCard from './KpiCard';
 import AnalyticsFilters from './AnalyticsFilters';
 import ProfitLossChart from './ProfitLossChart';
 import TopItemsChart from './TopItemsChart';
+<<<<<<< HEAD
 
 const AnalyticsDashboard = () => {
   const [analyticsData] = useState({
@@ -29,6 +34,77 @@ const AnalyticsDashboard = () => {
       { name: 'Shiro', revenue: 9500 }
     ]
   });
+=======
+import axiosInstance from '../../../api/axiosInstance';
+
+// Helper to get start/end dates for a given range
+function getDateRange(range) {
+  const today = new Date();
+  let start, end;
+  end = new Date(today);
+  switch (range) {
+    case 'Today':
+      start = new Date(today);
+      break;
+    case 'This Week': {
+      const day = today.getDay();
+      start = new Date(today);
+      start.setDate(today.getDate() - day);
+      break;
+    }
+    case 'This Month':
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+    case 'This Year':
+      start = new Date(today.getFullYear(), 0, 1);
+      break;
+    case 'Last Month': {
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      start = lastMonth;
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+      break;
+    }
+    case 'Last Quarter': {
+      const currentQuarter = Math.floor(today.getMonth() / 3) + 1;
+      const lastQuarter = currentQuarter - 1 || 4;
+      const year = lastQuarter === 4 ? today.getFullYear() - 1 : today.getFullYear();
+      start = new Date(year, (lastQuarter - 1) * 3, 1);
+      end = new Date(year, lastQuarter * 3, 0);
+      break;
+    }
+    default:
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+  }
+  // Format as YYYY-MM-DD
+  const fmt = d => d.toISOString().slice(0, 10);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+const AnalyticsDashboard = () => {
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('This Month');
+
+  useEffect(() => {
+    const { start, end } = getDateRange(dateRange);
+    setLoading(true);
+    axiosInstance.get(`/owner/dashboard/?start=${start}&end=${end}`)
+      .then(response => {
+        setAnalyticsData(response.data);
+        setLoading(false);
+      })
+      .catch(error => {
+        setError('Failed to fetch analytics data');
+        setLoading(false);
+      });
+  }, [dateRange]);
+
+  if (loading) return <div>Loading analytics...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+  if (!analyticsData) return <div>No analytics data available.</div>;
+>>>>>>> origin/tbales
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
@@ -43,7 +119,11 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Filters */}
+<<<<<<< HEAD
         <AnalyticsFilters />
+=======
+        <AnalyticsFilters dateRange={dateRange} setDateRange={setDateRange} />
+>>>>>>> origin/tbales
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">

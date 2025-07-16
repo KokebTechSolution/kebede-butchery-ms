@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Order, OrderItem
 from django.db import transaction
+from branches.models import Table
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,12 +14,17 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     waiterName = serializers.CharField(source='created_by.username', read_only=True)
     has_payment = serializers.SerializerMethodField()
-    has_payment = serializers.SerializerMethodField()
+    table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
+    table_number = serializers.IntegerField(source='table.number', read_only=True)
+    branch = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Order
+
         fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
-        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
+        fields = ['id', 'order_number','table', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
+
+
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
@@ -29,10 +35,7 @@ class OrderSerializer(serializers.ModelSerializer):
             item = OrderItem.objects.create(order=order, **item_data)
             if item.status == 'accepted':
                 total += item.price * item.quantity
-            if item.status == 'accepted':
-                total += item.price * item.quantity
         order.total_money = total
-        # Set status to completed only if all items are accepted
         if order.all_items_completed():
             order.food_status = 'completed'
             order.beverage_status = 'completed'
@@ -122,10 +125,15 @@ class FoodOrderItemSerializer(serializers.ModelSerializer):
 class FoodOrderSerializer(OrderSerializer):
     items = FoodOrderItemSerializer(many=True, source='food_items')
     status = serializers.CharField(source='food_status')
+    table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
+    table_number = serializers.IntegerField(source='table.number', read_only=True)
+    waiterName = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta(OrderSerializer.Meta):
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
+        fields = [
+            'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
+            'status', 'items', 'created_at', 'has_payment'
+        ]
 
 
 class BeverageOrderItemSerializer(serializers.ModelSerializer):
@@ -134,10 +142,17 @@ class BeverageOrderItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'quantity', 'price', 'status']
         fields = ['id', 'name', 'quantity', 'price', 'status']
 
+
 class BeverageOrderSerializer(OrderSerializer):
     items = BeverageOrderItemSerializer(many=True, source='beverage_items')
     status = serializers.CharField(source='beverage_status')
+    table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
+    table_number = serializers.IntegerField(source='table.number', read_only=True)
+    waiterName = serializers.CharField(source='created_by.username', read_only=True)
+
 
     class Meta(OrderSerializer.Meta):
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
-        fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
+        fields = [
+            'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
+            'status', 'items', 'created_at', 'has_payment'
+        ]

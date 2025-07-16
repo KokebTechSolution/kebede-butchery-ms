@@ -1,8 +1,45 @@
+<<<<<<< HEAD
 import React from 'react';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 
 function OwnerDashboard() {
   return <AnalyticsDashboard />;
+=======
+import React, { useState } from 'react';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import StaffPerformance from './StaffPerformance';
+import StaffListPage from '../Staff/StaffListPage';
+
+function OwnerDashboard() {
+  const [screen, setScreen] = useState('analytics');
+  return (
+    <div>
+      <div className="flex gap-4 mb-6">
+        <button
+          className={`px-4 py-2 rounded ${screen === 'analytics' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setScreen('analytics')}
+        >
+          Analytics
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${screen === 'staff' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setScreen('staff')}
+        >
+          Staff Performance
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${screen === 'staffmgmt' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setScreen('staffmgmt')}
+        >
+          Staff Management
+        </button>
+      </div>
+      {screen === 'analytics' && <AnalyticsDashboard />}
+      {screen === 'staff' && <StaffPerformance />}
+      {screen === 'staffmgmt' && <StaffListPage />}
+    </div>
+  );
+>>>>>>> origin/tbales
 }
 
 export default OwnerDashboard;

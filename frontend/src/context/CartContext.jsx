@@ -158,8 +158,16 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const placeOrder = async (orderData) => {
     try {
-      // Send POST request to backend to create a new order
-      const response = await axiosInstance.post('/orders/order-list/', orderData);
+      // Ensure orderData uses 'table' (table ID) instead of 'table_number' or 'branch'
+      const payload = {
+        ...orderData,
+        table: activeTableId,
+        waiter_username: user?.username,
+        // waiter_table_number removed because 'tables' is not defined here
+      };
+      delete payload.table_number;
+      delete payload.branch;
+      const response = await axiosInstance.post('/orders/order-list/', payload);
       const newOrder = response.data;
 
       // Update local state with the new order
