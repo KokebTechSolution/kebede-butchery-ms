@@ -1,38 +1,37 @@
 from django.contrib import admin
-from django.urls import path, include
-from rest_framework.authtoken.views import obtain_auth_token
+from django.urls import path, include, re_path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from core.views import index
+from django.conf import settings
+from django.conf.urls.static import static
+from pathlib import Path
+import os
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
 
-    # User authentication and management
+    # APIs
     path('api/users/', include('users.urls')),
-
-    # Order management
     path('api/orders/', include('orders.urls')),
-
-    # Inventory (this is your current working module)
     path('api/inventory/', include('inventory.urls')),
-
-    # Payments
     path('api/payments/', include('payments.urls')),
-
-    # Products (separated from inventory)
     path('api/products/', include('products.urls')),
-
-    # Activity logs
     path('api/activity/', include('activity.urls')),
-    # Menu management
     path('api/menu/', include('menu.urls')),
-
-    # Branches and tables
     path('api/branches/', include('branches.urls')),
+
+    # JWT Auth
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # React frontend catch-all route
+   #re_path(r'^(?:.*)/?$', index, name='index'),
 ]
+
+"""if settings.DEBUG:
+    urlpatterns += static(
+        settings.STATIC_URL,
+        document_root=os.path.join(BASE_DIR.parent, 'frontend', 'build', 'static'),
+    )"""

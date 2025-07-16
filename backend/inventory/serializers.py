@@ -3,7 +3,29 @@ from .models import ItemType, Category, Product, Stock, InventoryTransaction, In
 from branches.models import Branch
 from decimal import Decimal
 from django.db import transaction as db_transaction
+from .models import BarmanStock, Stock
 
+
+class BarmanStockSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='stock.product.name', read_only=True)
+    branch_name = serializers.CharField(source='stock.branch.name', read_only=True)
+    stock_id = serializers.IntegerField(source='stock.id', read_only=True)
+
+    class Meta:
+        model = BarmanStock
+        fields = [
+            'id',
+            'stock_id',         # helpful for debugging or tracking
+            'product_name',
+            'branch_name',
+            'bartender',
+            'carton_quantity',
+            'bottle_quantity',
+            'unit_quantity',
+            'minimum_threshold',
+            'running_out',
+        ]
+        read_only_fields = ['running_out']
 # Branch
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
@@ -175,4 +197,5 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
             'created_at',
             'branch',
             'branch_id',
+            'reached_status',
         ]

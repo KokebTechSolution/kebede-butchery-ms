@@ -42,6 +42,18 @@ const LoginPage = () => {
         body: JSON.stringify(formData),
       });
 
+      /*
+              const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
+        const response = await fetch(`${API_BASE_URL}/api/users/login/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+
+      */
+
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Login failed:', errorData);

@@ -17,8 +17,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
-        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'drink_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
+        fields = ['id', 'order_number', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
@@ -35,7 +35,7 @@ class OrderSerializer(serializers.ModelSerializer):
         # Set status to completed only if all items are accepted
         if order.all_items_completed():
             order.food_status = 'completed'
-            order.drink_status = 'completed'
+            order.beverage_status = 'completed'
         order.save()
         return order
 
@@ -43,10 +43,10 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Update order instance fields
         instance.food_status = validated_data.get('food_status', instance.food_status)
-        # Only update drink_status if not already 'preparing'
-        new_drink_status = validated_data.get('drink_status', instance.drink_status)
-        if instance.drink_status != 'preparing':
-            instance.drink_status = new_drink_status
+        # Only update beverage_status if not already 'preparing'
+        new_beverage_status = validated_data.get('beverage_status', instance.beverage_status)
+        if instance.beverage_status != 'preparing':
+            instance.beverage_status = new_beverage_status
         instance.assigned_to = validated_data.get('assigned_to', instance.assigned_to)
         instance.save()
 
@@ -55,11 +55,11 @@ class OrderSerializer(serializers.ModelSerializer):
         if items_data is not None:
             existing_items = {item.id: item for item in instance.items.all()}
             new_total = 0
-            new_drink_item_added = False
+            new_beverage_item_added = False
             new_food_item_added = False
             existing_items = {item.id: item for item in instance.items.all()}
             new_total = 0
-            new_drink_item_added = False
+            new_beverage_item_added = False
             new_food_item_added = False
             for item_data in items_data:
                 item_id = item_data.get('id')
@@ -83,17 +83,17 @@ class OrderSerializer(serializers.ModelSerializer):
                     item = OrderItem.objects.create(order=instance, **item_data)
                     if item.status == 'accepted':
                         new_total += item.price * item.quantity
-                    if item.item_type == 'drink':
-                        new_drink_item_added = True
+                    if item.item_type == 'beverage':
+                        new_beverage_item_added = True
                     if item.item_type == 'food':
                         new_food_item_added = True
             # Optionally, delete items not in the update (if you want to support removal)
             # for item in existing_items.values():
             #     item.delete()
             instance.total_money = new_total
-            # If a new drink item was added and drink_status is not 'preparing', set to 'pending'
-            if new_drink_item_added and instance.drink_status != 'preparing':
-                instance.drink_status = 'pending'
+            # If a new beverage item was added and beverage_status is not 'preparing', set to 'pending'
+            if new_beverage_item_added and instance.beverage_status != 'preparing':
+                instance.beverage_status = 'pending'
             # If a new food item was added and food_status is not 'preparing', set to 'pending'
             if new_food_item_added and instance.food_status != 'preparing':
                 instance.food_status = 'pending'
@@ -101,7 +101,7 @@ class OrderSerializer(serializers.ModelSerializer):
             # After updating items, check if all items are completed
             if instance.all_items_completed():
                 instance.food_status = 'completed'
-                instance.drink_status = 'completed'
+                instance.beverage_status = 'completed'
             instance.save()
         return instance
 
@@ -128,15 +128,15 @@ class FoodOrderSerializer(OrderSerializer):
         fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']
 
 
-class DrinkOrderItemSerializer(serializers.ModelSerializer):
+class BeverageOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['id', 'name', 'quantity', 'price', 'status']
         fields = ['id', 'name', 'quantity', 'price', 'status']
 
-class DrinkOrderSerializer(OrderSerializer):
-    items = DrinkOrderItemSerializer(many=True, source='drink_items')
-    status = serializers.CharField(source='drink_status')
+class BeverageOrderSerializer(OrderSerializer):
+    items = BeverageOrderItemSerializer(many=True, source='beverage_items')
+    status = serializers.CharField(source='beverage_status')
 
     class Meta(OrderSerializer.Meta):
         fields = ['id', 'order_number', 'table_number', 'created_by', 'status', 'items', 'created_at', 'has_payment']

@@ -16,7 +16,6 @@ from .serializers import (
     InventoryTransactionSerializer, InventoryRequestSerializer,
     StockSerializer, BranchSerializer
 )
-
 # Branch
 class BranchViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Branch.objects.all()
@@ -37,8 +36,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
 
-
-# Inventory Request
 class InventoryRequestViewSet(viewsets.ModelViewSet):
     queryset = InventoryRequest.objects.all()
     serializer_class = InventoryRequestSerializer
@@ -68,6 +65,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             }
         )
 
+        # Deduct stock based on unit type
         if product.uses_carton:
             if unit == 'carton':
                 if stock.carton_quantity < qty:
@@ -79,20 +77,21 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
                     return Response({'error': 'Not enough bottle stock.'}, status=400)
                 stock.bottle_quantity -= qty
             else:
-                return Response({'error': 'Invalid unit for carton-based product.'}, status=400)
+                return Response({'error': 'Invalid unit.'}, status=400)
         else:
-            if unit != 'unit':
-                return Response({'error': 'Invalid unit for unit-based product.'}, status=400)
-            if stock.unit_quantity < qty:
-                return Response({'error': 'Not enough unit stock.'}, status=400)
+            if unit != 'unit' or stock.unit_quantity < qty:
+                return Response({'error': 'Invalid or insufficient unit stock.'}, status=400)
             stock.unit_quantity -= qty
 
         stock.save()
         stock.check_running_out()
 
+        # Update InventoryRequest status
         req.status = 'accepted'
+        req.reached_status = False
         req.save()
 
+        # Create InventoryTransaction record for sale
         InventoryTransaction.objects.create(
             product=product,
             transaction_type='sale',
@@ -101,10 +100,93 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             branch=branch
         )
 
-        return Response({'message': 'Request accepted and stock updated successfully.'})
+        return Response({'message': 'Request accepted successfully. Awaiting delivery confirmation.'})
 
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def reach(self, request, pk=None):
+        req = self.get_object()
 
-# Product
+        if req.status != 'accepted':
+            return Response({'error': 'Request must be accepted before marking as reached.'}, status=400)
+
+        if req.reached_status:
+            return Response({'error': 'Request already marked as reached.'}, status=400)
+
+        product = req.product
+        qty = Decimal(req.quantity)
+        unit = req.unit_type
+        branch = req.branch
+        bottles_per_carton = product.bottles_per_carton or 0
+
+        try:
+            stock = Stock.objects.select_for_update().get(product=product, branch=branch)
+        except Stock.DoesNotExist:
+            return Response({'error': 'Stock not found for the given product and branch.'}, status=400)
+
+        bartender = request.user
+        if not bartender.is_authenticated:
+            return Response({'error': 'Authentication required.'}, status=403)
+
+        # ✅ Auto-create BarmanStock if not exists
+        barman_stock, _ = BarmanStock.objects.select_for_update().get_or_create(
+            stock=stock,
+            bartender=bartender,
+            defaults={
+                'carton_quantity': 0,
+                'bottle_quantity': 0,
+                'unit_quantity': 0,
+                'minimum_threshold': stock.minimum_threshold,
+                'running_out': False,
+            }
+        )
+
+        # ✅ Update stock
+        if product.uses_carton:
+            if unit == 'carton':
+                barman_stock.carton_quantity += qty
+                barman_stock.bottle_quantity += qty * bottles_per_carton
+            elif unit == 'bottle':
+                barman_stock.bottle_quantity += qty
+            else:
+                return Response({'error': 'Invalid unit type for carton-based product.'}, status=400)
+        else:
+            if unit != 'unit':
+                return Response({'error': 'Invalid unit type for unit-based product.'}, status=400)
+            barman_stock.unit_quantity += qty
+
+        barman_stock.save()
+
+        req.reached_status = True
+        req.save()
+
+        return Response({'detail': 'Request marked as reached and bartender stock updated.'}, status=status.HTTP_200_OK)
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def reject(self, request, pk=None):
+        req = self.get_object()
+        if req.status != 'pending':
+            return Response({'error': 'Request already processed.'}, status=400)
+
+        req.status = 'rejected'
+        req.save()
+        return Response({'message': 'Request rejected successfully.'}, status=200)
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def not_reach(self, request, pk=None):
+        req = self.get_object()
+
+        if req.status != 'accepted':
+            return Response({'error': 'Request must be accepted before marking as not reached.'}, status=400)
+
+        if not req.reached_status:
+            return Response({'error': 'Request already marked as not reached.'}, status=400)
+
+        req.reached_status = False
+        req.save()
+
+        return Response({'detail': 'Request marked as not reached.'}, status=status.HTTP_200_OK)
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -283,5 +365,25 @@ class StockViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(stock)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+from rest_framework import viewsets, permissions
+from .models import BarmanStock
+from .serializers import BarmanStockSerializer
+
+class BarmanStockViewSet(viewsets.ModelViewSet):
+    queryset = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
+    serializer_class = BarmanStockSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return self.queryset
+        return self.queryset.filter(bartender=user)
+
+
+    def perform_create(self, serializer):
+        # Automatically set bartender to current user
+        serializer.save(bartender=self.request.user)
 
 

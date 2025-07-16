@@ -2,32 +2,32 @@ import React from 'react';
 import { MdWineBar, MdCoffee } from 'react-icons/md';
 import MenuItem from '../../../../../components/MenuItem/MenuItem';
 
-export const coldDrinkItems = [
-  { name: 'Iced Tea', desc: 'Refreshing iced tea', price: 45, icon: <MdWineBar size={28} />, item_type: 'drink' },
-  { name: 'Lemonade', desc: 'Classic lemonade', price: 50, icon: <MdWineBar size={28} />, item_type: 'drink' },
-  { name: 'Soda', desc: 'Variety of sodas', price: 40, icon: <MdWineBar size={28} />, item_type: 'drink' },
-  { name: 'Fruit Punch', desc: 'Sweet fruit punch', price: 55, icon: <MdWineBar size={28} />, item_type: 'drink' },
+export const coldbeverageItems = [
+  { name: 'Iced Tea', desc: 'Refreshing iced tea', price: 45, icon: <MdWineBar size={28} />, item_type: 'beverage' },
+  { name: 'Lemonade', desc: 'Classic lemonade', price: 50, icon: <MdWineBar size={28} />, item_type: 'beverage' },
+  { name: 'Soda', desc: 'Variety of sodas', price: 40, icon: <MdWineBar size={28} />, item_type: 'beverage' },
+  { name: 'Fruit Punch', desc: 'Sweet fruit punch', price: 55, icon: <MdWineBar size={28} />, item_type: 'beverage' },
 ];
 
-export const hotDrinkItems = [
-  { name: 'Coffee', desc: 'Freshly brewed coffee', price: 35, icon: <MdCoffee size={28} />, item_type: 'drink' },
-  { name: 'Tea', desc: 'Selection of teas', price: 30, icon: <MdCoffee size={28} />, item_type: 'drink' },
-  { name: 'Hot Chocolate', desc: 'Rich hot chocolate', price: 45, icon: <MdWineBar size={28} />, item_type: 'drink' },
+export const hotbeverageItems = [
+  { name: 'Coffee', desc: 'Freshly brewed coffee', price: 35, icon: <MdCoffee size={28} />, item_type: 'beverage' },
+  { name: 'Tea', desc: 'Selection of teas', price: 30, icon: <MdCoffee size={28} />, item_type: 'beverage' },
+  { name: 'Hot Chocolate', desc: 'Rich hot chocolate', price: 45, icon: <MdWineBar size={28} />, item_type: 'beverage' },
 ];
 
-export const DrinkItems = () => {
+export const beverageItems = () => {
   return (
-    <div className="drink-items">
-      <h2>Cold Drinks</h2>
-      <div className="drink-items-grid">
-        {coldDrinkItems.map((item) => (
+    <div className="beverage-items">
+      <h2>Cold beverages</h2>
+      <div className="beverage-items-grid">
+        {coldbeverageItems.map((item) => (
           <MenuItem key={item.name} item={item} />
         ))}
       </div>
       
-      <h2>Hot Drinks</h2>
-      <div className="drink-items-grid">
-        {hotDrinkItems.map((item) => (
+      <h2>Hot beverages</h2>
+      <div className="beverage-items-grid">
+        {hotbeverageItems.map((item) => (
           <MenuItem key={item.name} item={item} />
         ))}
       </div>
@@ -35,4 +35,4 @@ export const DrinkItems = () => {
   );
 };
 
-export default DrinkItems; 
+export default beverageItems; 

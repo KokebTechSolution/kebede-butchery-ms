@@ -1,5 +1,3 @@
-// src/pages/MenuManagement/MenuForm.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   createMenuItem,
@@ -7,12 +5,18 @@ import {
   fetchMenuCategories,
   createMenuCategory,
 } from '../../api/menu';
-import { fetchAvailableProducts } from '../../api/stock'; // ✅ Fetch from inventory
+import { fetchAvailableProducts } from '../../api/stock';
 import { FaTrash, FaChevronDown } from 'react-icons/fa';
 
-const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal, forceDrinkOnly }) => {
+const MenuForm = ({
+  refreshMenu,
+  selectedItem,
+  clearSelection,
+  closeModal,
+  forcebeverageOnly,
+}) => {
   const [formData, setFormData] = useState({
-    product: '',
+    product: '',        // can be product ID or free text product name
     description: '',
     price: '',
     is_available: true,
@@ -28,37 +32,38 @@ const MenuForm = ({ refreshMenu, selectedItem, clearSelection, closeModal, force
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef();
 
-useEffect(() => {
-  const loadData = async () => {
-    try {
-      const catData = await fetchMenuCategories();
-      setCategories(catData);
-    } catch (error) {
-      console.error('❌ Error fetching menu categories:', error);
-      setCategories([]); // fallback to empty
-    }
+  // Load categories and products on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const catData = await fetchMenuCategories();
+        setCategories(catData);
+      } catch (error) {
+        console.error('❌ Error fetching menu categories:', error);
+        setCategories([]);
+      }
 
-    try {
-      const prodData = await fetchAvailableProducts();
-      console.log('✅ Fetched products:', prodData);
-      setAvailableProducts(prodData);
-    } catch (error) {
-      console.error('❌ Error fetching available products:', error);
-      setAvailableProducts([]); // fallback to empty
-    }
-  };
-  loadData();
-}, []);
+      try {
+        const prodData = await fetchAvailableProducts();
+        setAvailableProducts(prodData);
+      } catch (error) {
+        console.error('❌ Error fetching available products:', error);
+        setAvailableProducts([]);
+      }
+    };
+    loadData();
+  }, []);
 
+  // Initialize form when selectedItem or forcebeverageOnly changes
   useEffect(() => {
     if (selectedItem) {
       setFormData({
-        product: selectedItem.product_id,
-        description: selectedItem.description,
-        price: selectedItem.price,
-        is_available: selectedItem.is_available,
-        category: selectedItem.category_id,
-        item_type: forceDrinkOnly ? 'beverage' : selectedItem.item_type,
+        product: selectedItem.product_id || '',
+        description: selectedItem.description || '',
+        price: selectedItem.price || '',
+        is_available: selectedItem.is_available !== undefined ? selectedItem.is_available : true,
+        category: selectedItem.category_id || '',
+        item_type: forcebeverageOnly ? 'beverage' : selectedItem.item_type || 'food',
       });
     } else {
       setFormData({
@@ -67,11 +72,12 @@ useEffect(() => {
         price: '',
         is_available: true,
         category: '',
-        item_type: forceDrinkOnly ? 'beverage' : 'food',
+        item_type: forcebeverageOnly ? 'beverage' : 'food',
       });
     }
-  }, [selectedItem, forceDrinkOnly]);
+  }, [selectedItem, forcebeverageOnly]);
 
+  // Close category dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -82,14 +88,31 @@ useEffect(() => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Find selected category object
+  const selectedCategory = categories.find((c) => c.id === formData.category);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const selectedProduct = availableProducts.find((p) => p.id == formData.product);
+      // Prepare payload
+      const isBeverage =
+        (selectedCategory?.name || '').toLowerCase() === 'beverage' ||
+        formData.item_type === 'beverage';
+
+      // Find product name if product is selected from dropdown
+      let productName = '';
+      if (isBeverage) {
+        const selectedProduct = availableProducts.find((p) => p.id == formData.product);
+        productName = selectedProduct ? selectedProduct.name : '';
+      } else {
+        productName = formData.product; // free text product name
+      }
+
       const payload = {
         ...formData,
-        name: selectedProduct?.name || '',
+        name: productName,
+        product: isBeverage ? formData.product : null, // product id or null if free text
       };
 
       if (selectedItem) {
@@ -117,31 +140,45 @@ useEffect(() => {
       style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
     >
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
+        {/* Product Name / Dropdown */}
         <div>
-          <label className="block mb-2 font-semibold">Select Product</label>
-          <select
-            value={formData.product}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const selectedProduct = availableProducts.find((p) => p.id == selectedId);
-              setFormData({
-                ...formData,
-                product: selectedId,
-                price: selectedProduct?.price_per_unit || '',
-              });
-            }}
-            className="border p-2 w-full rounded"
-            required
-          >
-            <option value="">-- Select a product --</option>
-            {availableProducts.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
+          <label className="block mb-2 font-semibold">Product Name</label>
+
+          {(selectedCategory?.name.toLowerCase() === 'beverage' || formData.item_type === 'beverage') ? (
+            <select
+              value={formData.product}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const selectedProduct = availableProducts.find((p) => p.id == selectedId);
+                setFormData({
+                  ...formData,
+                  product: selectedId,
+                  price: selectedProduct?.price_per_unit || '',
+                });
+              }}
+              className="border p-2 w-full rounded"
+              required
+            >
+              <option value="">-- Select a product --</option>
+              {availableProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={formData.product}
+              onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+              className="border p-2 w-full rounded"
+              placeholder="Enter product name"
+              required
+            />
+          )}
         </div>
 
+        {/* Description */}
         <div>
           <label className="block mb-2 font-semibold">Description</label>
           <textarea
@@ -152,6 +189,7 @@ useEffect(() => {
           />
         </div>
 
+        {/* Price */}
         <div>
           <label className="block mb-2 font-semibold">Price</label>
           <input
@@ -163,7 +201,8 @@ useEffect(() => {
           />
         </div>
 
-        {!forceDrinkOnly && (
+        {/* Item Type (only show if not forced to beverage) */}
+        {!forcebeverageOnly && (
           <div>
             <label className="block mb-2 font-semibold">Item Type</label>
             <select
@@ -178,6 +217,7 @@ useEffect(() => {
           </div>
         )}
 
+        {/* Category with dropdown and delete */}
         <div>
           <label className="block mb-2 font-semibold">Category</label>
           <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -284,6 +324,7 @@ useEffect(() => {
           )}
         </div>
 
+        {/* Availability Checkbox */}
         <div className="flex items-center space-x-2">
           <input
             type="checkbox"
@@ -294,6 +335,7 @@ useEffect(() => {
         </div>
       </div>
 
+      {/* Buttons */}
       <div
         className="flex justify-end space-x-2"
         style={{
@@ -304,18 +346,10 @@ useEffect(() => {
           zIndex: 2,
         }}
       >
-        <button
-          type="button"
-          className="bg-gray-400 text-white px-4 py-2 rounded"
-          onClick={closeModal}
-        >
+        <button type="button" className="bg-gray-400 text-white px-4 py-2 rounded" onClick={closeModal}>
           Cancel
         </button>
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          disabled={loading}
-        >
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded" disabled={loading}>
           {loading ? 'Saving...' : 'Save Item'}
         </button>
       </div>

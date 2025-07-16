@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import axiosInstance from '../../../api/axiosInstance';
 
-export const useDrinks = () => {
+export const useBeverages = () => {
+
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/orders/drinks/');
+      const response = await axios.get('http://localhost:8000/api/orders/beverages/');
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -23,7 +24,7 @@ export const useDrinks = () => {
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
-      const payload = { drink_status: status };
+      const payload = { beverage_status: status };
       if (reason) {
         // This part would need backend support for rejection reasons
       }

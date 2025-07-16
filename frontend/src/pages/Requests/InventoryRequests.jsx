@@ -161,15 +161,15 @@ const InventoryRequestList = () => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Inventory Requests</h1>
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            onClick={() => {
-              setFormMessage('');
-              setShowModal(true); // ✅ show modal
-            }}
-          >
-            + New Request
-          </button>
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          onClick={() => {
+            setFormMessage('');
+            setShowModal(true);
+          }}
+        >
+          + New Request
+        </button>
       </div>
 
       <NewRequest
@@ -244,6 +244,10 @@ const InventoryRequestList = () => {
                           Reject
                         </button>
                       </>
+                    ) : req.status === 'accepted' ? (
+                      <span className={`font-semibold ${req.reached_status ? 'text-green-600' : 'text-red-600'}`}>
+                        {req.reached_status ? 'Reached' : 'Not Reached'}
+                      </span>
                     ) : (
                       <span className="text-gray-500 italic">No actions</span>
                     )}

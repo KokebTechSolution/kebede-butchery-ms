@@ -4,35 +4,35 @@ import { fetchMenuItems, deleteMenuItem } from '../../../api/menu';
 
 const Inventory = () => {
   const [showForm, setShowForm] = useState(false);
-  const [drinks, setDrinks] = useState([]);
+  const [beverages, setbeverages] = useState([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
-  const [selectedDrink, setSelectedDrink] = useState(null);
+  const [selectedbeverage, setSelectedbeverage] = useState(null);
   const [showDeleteId, setShowDeleteId] = useState(null);
 
   useEffect(() => {
-    const loadDrinks = async () => {
+    const loadbeverages = async () => {
       const items = await fetchMenuItems();
-      setDrinks(items.filter(item => item.item_type === 'drink'));
+      setbeverages(items.filter(item => item.item_type === 'beverage'));
     };
-    loadDrinks();
+    loadbeverages();
   }, [refreshFlag]);
 
-  const handleEdit = (drink) => {
-    setSelectedDrink(drink);
+  const handleEdit = (beverage) => {
+    setSelectedbeverage(beverage);
     setShowForm(true);
   };
 
-  const handleDelete = async (drink) => {
-    if (!window.confirm(`Are you sure you want to delete "${drink.name}"?`)) return;
-    await deleteMenuItem(drink.id);
+  const handleDelete = async (beverage) => {
+    if (!window.confirm(`Are you sure you want to delete "${beverage.name}"?`)) return;
+    await deleteMenuItem(beverage.id);
     setRefreshFlag(f => f + 1);
   };
 
   return (
     <div style={{ maxWidth: 600, margin: '32px auto', padding: 24, background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2>Drink Inventory</h2>
-        <button onClick={() => { setShowForm(true); setSelectedDrink(null); }} className="bg-blue-500 text-white px-4 py-2 rounded">Add Drink</button>
+        <h2>beverage Inventory</h2>
+        <button onClick={() => { setShowForm(true); setSelectedbeverage(null); }} className="bg-blue-500 text-white px-4 py-2 rounded">Add beverage</button>
       </div>
       {showForm && (
         <div style={{
@@ -51,22 +51,22 @@ const Inventory = () => {
             <MenuForm
               refreshMenu={() => setRefreshFlag(f => f + 1)}
               closeModal={() => setShowForm(false)}
-              clearSelection={() => setSelectedDrink(null)}
-              selectedItem={selectedDrink}
-              forceDrinkOnly={true}
+              clearSelection={() => setSelectedbeverage(null)}
+              selectedItem={selectedbeverage}
+              forcebeverageOnly={true}
             />
           </div>
         </div>
       )}
       <div style={{ marginTop: 24 }}>
-        <h3 className="font-semibold mb-2">Drinks in Menu</h3>
+        <h3 className="font-semibold mb-2">beverages in Menu</h3>
         <ul>
-          {drinks.map(drink => (
-            <li key={drink.id} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="font-medium">{drink.name}</span> - ETB {drink.price}
+          {beverages.map(beverage => (
+            <li key={beverage.id} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="font-medium">{beverage.name}</span> - ETB {beverage.price}
               <span>
-                <button onClick={() => handleEdit(drink)} className="bg-yellow-500 text-white px-2 py-1 rounded mr-2">Edit</button>
-                <button onClick={() => handleDelete(drink)} className="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+                <button onClick={() => handleEdit(beverage)} className="bg-yellow-500 text-white px-2 py-1 rounded mr-2">Edit</button>
+                <button onClick={() => handleDelete(beverage)} className="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
               </span>
             </li>
           ))}

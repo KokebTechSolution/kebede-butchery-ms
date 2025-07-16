@@ -3,7 +3,7 @@ from django.utils import timezone
 from branches.models import Branch  # Adjust import path as needed
 from django.contrib.auth import get_user_model
 User = get_user_model()
-
+from django.core.exceptions import ValidationError
 
 from django.db import models
 from django.db.models import Sum, F
@@ -171,6 +171,7 @@ class InventoryRequest(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reached_status = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
 
@@ -202,3 +203,64 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.action_type} - {self.product.name} by {self.action_by}"
+
+
+class BarmanStock(models.Model):
+    stock = models.ForeignKey('Stock', on_delete=models.CASCADE, related_name='barman_stocks')
+    bartender = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    carton_quantity = models.PositiveIntegerField(default=0)
+    bottle_quantity = models.PositiveIntegerField(default=0)
+    unit_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    minimum_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    running_out = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('stock', 'bartender')
+        verbose_name = "Barman Stock"
+        verbose_name_plural = "Barman Stocks"
+
+    def __str__(self):
+        return f"{self.bartender.username} — {self.stock.branch.name} — {self.stock.product.name}"
+
+    def clean(self):
+        errors = {}
+        if self.carton_quantity < 0:
+            errors['carton_quantity'] = 'Carton quantity cannot be negative.'
+        if self.bottle_quantity < 0:
+            errors['bottle_quantity'] = 'Bottle quantity cannot be negative.'
+        if self.unit_quantity < 0:
+            errors['unit_quantity'] = 'Unit quantity cannot be negative.'
+        if self.minimum_threshold < 0:
+            errors['minimum_threshold'] = 'Minimum threshold cannot be negative.'
+        if errors:
+            raise ValidationError(errors)
+
+    def get_total_stock(self):
+        product = self.stock.product
+        if product.uses_carton:
+            bottles_from_cartons = self.carton_quantity * product.bottles_per_carton
+            return bottles_from_cartons + self.bottle_quantity
+        return float(self.unit_quantity)
+
+    def check_running_out(self):
+        total = self.get_total_stock()
+        threshold = float(self.minimum_threshold)
+
+        new_status = threshold > 0 and total <= (threshold / 4)
+        if self.running_out != new_status:
+            self.running_out = new_status
+            super().save(update_fields=['running_out'])
+
+        return self.running_out
+
+    def should_alert(self):
+        return self.running_out
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+        if not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', []):
+            self.check_running_out()

@@ -12,7 +12,10 @@ const axiosConfig = () => ({
     'Content-Type': 'application/json',
   },
 });
-
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('access');
+  return { Authorization: `Bearer ${token}` };
+};
 // Fetch all inventory items
 export const fetchInventory = async () => {
   const response = await axios.get(INVENTORY_URL, axiosConfig());
@@ -85,4 +88,21 @@ export const rejectRequest = async (requestId) => {
 export const fetchStocks = async () => {
   const response = await axios.get(`${BASE_URL}stocks/`, axiosConfig());
   return response.data;
+};
+
+export const ReachRequest = (id) => {
+  return axios.post(
+    `http://localhost:8000/api/inventory/requests/${id}/reach/`,
+    null,
+    { headers: getAuthHeaders() }
+  );
+};
+
+// Mark a request as not reached (reached_status = false)
+export const NotReachRequest = (id) => {
+  return axios.post(
+    `http://localhost:8000/api/inventory/requests/${id}/not_reach/`,
+    null,
+    { headers: getAuthHeaders() }
+  );
 };

@@ -41,9 +41,9 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     };
 
     const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-    const drinkItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
+    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
     const foodByCategory = groupByCategory(foodItems);
-    const drinkByCategory = groupByCategory(drinkItems);
+    const beverageByCategory = groupByCategory(beverageItems);
 
     // Filter previous orders for this table
     const previousOrders = orders.filter(order => order.table_number === table?.id);
@@ -72,7 +72,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                         onClick={() => setActiveTab('beverage')}
                         disabled={isReadyToPay}
                     >
-                        Drinks
+                        beverages
                     </button>
                 </div>
                 {activeTab === 'food' && (
@@ -91,11 +91,11 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                 )}
                 {activeTab === 'beverage' && (
                     <div className="menu-section">
-                        {Object.keys(drinkByCategory).map(category => (
+                        {Object.keys(beverageByCategory).map(category => (
                             <div key={category} className="menu-category-section">
                                 <h3>{category}</h3>
                                 <div className="menu-items-grid">
-                                    {drinkByCategory[category].map(item => (
+                                    {beverageByCategory[category].map(item => (
                                         <MenuItem key={item.id} item={item} disabled={isReadyToPay} />
                                     ))}
                                 </div>
@@ -180,8 +180,8 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                                     {(() => {
                                       if (order.food_status && order.food_status !== 'not_applicable') {
                                         return ` • ${order.food_status}`;
-                                      } else if (order.drink_status && order.drink_status !== 'not_applicable') {
-                                        return ` • ${order.drink_status}`;
+                                      } else if (order.beverage_status && order.beverage_status !== 'not_applicable') {
+                                        return ` • ${order.beverage_status}`;
                                       } else {
                                         return '';
                                       }

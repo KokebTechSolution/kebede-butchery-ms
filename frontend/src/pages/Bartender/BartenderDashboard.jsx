@@ -3,17 +3,18 @@ import React, { useState, useEffect } from "react";
 import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell, FaLock } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
-import { useDrinks } from "./hooks/useDrinks";
+ import { useBeverages } from  "./hooks/useBeverages";
+
 
 import Pending from "./screens/Pending/Pending";
-import Inventory from "./screens/Inventory";
+import Inventory from "./Inventory/InventoryRequests";
 import Reports from "./screens/Reports";
 
 export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
   const userName = "Bartender"; 
   const { lastMessage } = useNotifications();
-  const { orders } = useDrinks();
+  const { orders } = useBeverages();
 
   useEffect(() => {
     if (lastMessage) {
@@ -58,7 +59,7 @@ export default function BartenderDashboard() {
         <div className="bg-blue-100 text-blue-800 p-4 md:p-6 rounded shadow-sm">
           <h1 className="text-3xl font-bold">Welcome, {userName} 🍻</h1>
           <p className="text-md mt-1">
-            Manage drink orders, bar inventory, and sales reports efficiently.
+            Manage beverage orders, bar inventory, and sales reports efficiently.
           </p>
         </div>
 
@@ -106,7 +107,7 @@ export default function BartenderDashboard() {
               <h3 className="text-lg font-semibold text-gray-700">Inventory Items</h3>
             </div>
             <p className="text-3xl font-bold text-green-600">62</p>
-            <p className="text-sm text-gray-500">Available drinks</p>
+            <p className="text-sm text-gray-500">Available beverages</p>
           </div>
 
           {/* Low Stock Alerts */}
@@ -137,7 +138,7 @@ export default function BartenderDashboard() {
 
         {/* Tip Banner */}
         <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg text-blue-700 text-sm">
-          💡 <strong>Tip:</strong> Prepare drinks in the order they were received. Keep your bar station clean and organized.
+          💡 <strong>Tip:</strong> Prepare beverages in the order they were received. Keep your bar station clean and organized.
         </div>
       </main>
     </div>

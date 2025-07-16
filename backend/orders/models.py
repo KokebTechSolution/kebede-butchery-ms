@@ -21,13 +21,12 @@ class Order(models.Model):
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_orders')
     
     food_status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
-    drink_status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
-    
+    beverage_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     branch = models.ForeignKey('branches.Branch', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     total_money = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    waiter_notified_drink = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', null=True, blank=True)
+    waiter_notified_beverage = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', null=True, blank=True)
     cashier_status = models.CharField(
         max_length=20,
         choices=[('pending', 'Pending'), ('printed', 'Printed')],
@@ -47,8 +46,8 @@ class Order(models.Model):
         return self.items.filter(item_type='food')
 
     @property
-    def drink_items(self):
-        return self.items.filter(item_type='drink')
+    def beverage_items(self):
+        return self.items.filter(item_type='beverage')
 
     def all_items_completed(self):
         return all(item.status == 'accepted' for item in self.items.all())
@@ -56,7 +55,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     ORDER_ITEM_TYPE = [
         ('food', 'Food'),
-        ('drink', 'Drink'),
+        ('beverage', 'beverage'),
         ('meat', 'Meat'),
     ]
     ITEM_STATUS = [

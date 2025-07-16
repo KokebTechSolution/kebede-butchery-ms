@@ -63,9 +63,9 @@
 │   └── waiter
 │       ├── menu
 │       │   ├── items
-│       │   │   ├── drink
-│       │   │   │   ├── drinkItems.css
-│       │   │   │   └── drinkItems.jsx
+│       │   │   ├── beverage
+│       │   │   │   ├── beverageItems.css
+│       │   │   │   └── beverageItems.jsx
 │       │   │   └── food
 │       │   │       └── foodItems.jsx
 │       │   ├── MenuPage.css

@@ -61,7 +61,7 @@ const AddProductForm = () => {
   useEffect(() => {
     const selectedItem = itemTypes.find((i) => i.id.toString() === selectedItemType);
     setAllowedToAdd(
-      selectedItem && ['beverage', 'drink'].includes(selectedItem.type_name.toLowerCase())
+      selectedItem && ['beverage', 'beverage'].includes(selectedItem.type_name.toLowerCase())
     );
     // Reset category when item type changes
     setFormData((prev) => ({ ...prev, category: '' }));
@@ -465,7 +465,7 @@ const AddProductForm = () => {
           </button>
         </div>
       ) : (
-        <div className="text-red-600">Only beverages or drinks allowed.</div>
+        <div className="text-red-600">Only beverages or beverages allowed.</div>
       )}
 
       {products.length > 0 && (

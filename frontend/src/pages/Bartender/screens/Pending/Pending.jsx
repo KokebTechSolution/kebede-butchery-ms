@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { FaLock, FaEdit } from 'react-icons/fa';
-import { useDrinks } from '../../hooks/useDrinks';
+import { useBeverages  } from '../../hooks/useBeverages';
 
 export const Pending = () => {
-  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useDrinks();
+  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useBeverages ();
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
 

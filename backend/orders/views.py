@@ -1,10 +1,10 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Order, OrderItem
-from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer, OrderItemSerializer
+from .serializers import OrderSerializer, FoodOrderSerializer, BeverageOrderSerializer, OrderItemSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Order, OrderItem
-from .serializers import OrderSerializer, FoodOrderSerializer, DrinkOrderSerializer, OrderItemSerializer
+from .serializers import OrderSerializer, FoodOrderSerializer, BeverageOrderSerializer, OrderItemSerializer
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework import status
@@ -52,14 +52,14 @@ class OrderListView(generics.ListCreateAPIView):
             new_order_number = f"{today_str}-{new_seq:02d}"
         items_data = self.request.data.get('items', [])
         has_food = any(item.get('item_type') == 'food' for item in items_data)
-        has_drinks = any(item.get('item_type') == 'beverage' for item in items_data)
+        has_beverages = any(item.get('item_type') == 'beverage' for item in items_data)
         food_status = 'pending' if has_food else 'not_applicable'
-        drink_status = 'pending' if has_drinks else 'not_applicable'
+        beverage_status = 'pending' if has_beverages else 'not_applicable'
         serializer.save(
             created_by=user, 
             order_number=new_order_number,
             food_status=food_status,
-            drink_status=drink_status
+            beverage_status=beverage_status
         )
 
 
@@ -80,12 +80,12 @@ class FoodOrderListView(generics.ListAPIView):
             queryset = queryset.filter(created_at__date=date)
         return queryset
 
-class DrinkOrderListView(generics.ListAPIView):
-    serializer_class = DrinkOrderSerializer
+class BeverageOrderListView(generics.ListAPIView):
+    serializer_class = BeverageOrderSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Order.objects.filter(drink_status__in=['pending', 'preparing']).distinct()
+        return Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
 
 
 class UpdateCashierStatusView(generics.UpdateAPIView):
@@ -147,7 +147,7 @@ class UpdatePaymentOptionView(generics.UpdateAPIView):
             return Response(serializer.data)
         return Response({'error': 'Invalid payment option'}, status=400)
 
-class AcceptDrinkOrderView(APIView):
+class AcceptbeverageOrderView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, pk):
@@ -155,10 +155,10 @@ class AcceptDrinkOrderView(APIView):
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
             return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
-        if order.drink_status == 'pending':
-            order.drink_status = 'preparing'
+        if order.beverage_status == 'pending':
+            order.beverage_status = 'preparing'
             order.save()
-            return Response({'message': 'Drink order accepted and set to preparing.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'beverage order accepted and set to preparing.'}, status=status.HTTP_200_OK)
         return Response({'error': 'Order is not in pending state.'}, status=status.HTTP_400_BAD_REQUEST)
 
 class DailySalesSummaryView(APIView):

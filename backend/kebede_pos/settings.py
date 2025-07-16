@@ -62,6 +62,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -88,8 +89,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+   'corsheaders.middleware.CorsMiddleware' 
 ]
-
 ROOT_URLCONF = 'kebede_pos.urls'
 
 TEMPLATES = [
@@ -178,5 +179,53 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
 }
 
+CORS_ALLOW_CREDENTIALS = True
+"""
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168.1.8', '*']
 
+"""
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React frontend
+]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",  # Important!
+]
+"""
+from pathlib import Path
+import os
+
+# BASE_DIR points to backend folder, e.g. D:/Kokeb/kebede-butchery-ms/backend
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# React build folder is frontend/build relative to project root
+REACT_BUILD_DIR = BASE_DIR.parent / "frontend" / "build"
+
+# Templates config to load React's index.html
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [os.fspath(REACT_BUILD_DIR)],  # <-- React build folder with index.html
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",    # needed for admin etc
+                "django.contrib.auth.context_processors.auth",  # needed for admin etc
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+# URL prefix for static files
+STATIC_URL = '/static/'
+
+# Tell Django where to find React build static assets for development serving
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR.parent, 'frontend', 'build', 'static'),  # React static files location
+]
+
+# Optionally, if you want to collect static files for production:
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+"""
