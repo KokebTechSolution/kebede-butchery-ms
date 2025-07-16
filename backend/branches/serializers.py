@@ -29,9 +29,6 @@ class TableSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Table
-<<<<<<< HEAD
-        fields = '__all__' 
-=======
         fields = ['id', 'branch', 'number', 'seats', 'status', 'created_by', 'created_by_username']
 
     def validate(self, data):
@@ -40,4 +37,3 @@ class TableSerializer(serializers.ModelSerializer):
         if Table.objects.filter(number=number, created_by=user).exists():
             raise serializers.ValidationError("A table with this number already exists for this waiter.")
         return data 
->>>>>>> origin/tbales

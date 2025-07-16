@@ -19,8 +19,7 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 class TableListCreateView(generics.ListCreateAPIView):
     serializer_class = TableSerializer
 
-<<<<<<< HEAD
-=======
+
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated and hasattr(user, 'role') and user.role == 'waiter':
@@ -36,4 +35,4 @@ class TableListCreateView(generics.ListCreateAPIView):
             serializer.save(created_by=user, branch=branch)
         else:
             raise PermissionDenied('Only waiters can create tables.')
->>>>>>> origin/tbales
+

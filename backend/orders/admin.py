@@ -5,24 +5,48 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 1
 
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-
-    list_display = ['order_number', 'table_number', 'food_status', 'beverage_status', 'created_by', 'branch', 'created_at', 'total_money']
+    list_display = [
+        'order_number',
+        'get_table_number',
+        'food_status',
+        'beverage_status',
+        'created_by',
+        'branch',
+        'created_at',
+        'total_money'
+    ]
     list_filter = ['food_status', 'beverage_status', 'branch', 'created_at']
-
     search_fields = ['order_number']
     inlines = [OrderItemInline]
 
+    def get_table_number(self, obj):
+        return obj.table.table_number if obj.table else '-'
+    get_table_number.short_description = 'Table Number'
+    get_table_number.admin_order_field = 'table__table_number'
+
+
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'quantity', 'price', 'item_type', 'order', 'status', 'order__table', 'order__created_by')
+    list_display = (
+        'name',
+        'quantity',
+        'price',
+        'item_type',
+        'order',
+        'status',
+        'get_table_number',
+        'get_waiter_name'
+    )
     list_filter = ('item_type', 'status')
     search_fields = ['name']
 
+    def get_table_number(self, obj):
+        return obj.order.table.table_number if obj.order and obj.order.table else '-'
+    get_table_number.short_description = 'Table Number'
+
     def get_waiter_name(self, obj):
-        if obj.order and obj.order.created_by:
-            return obj.order.created_by.username
-        return 'N/A'
+        return obj.order.created_by.username if obj.order and obj.order.created_by else 'N/A'
     get_waiter_name.short_description = 'Waiter'
-    get_waiter_name.admin_order_field = 'order__created_by'
