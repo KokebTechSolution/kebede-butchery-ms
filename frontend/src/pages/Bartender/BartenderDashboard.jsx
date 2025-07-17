@@ -4,7 +4,7 @@ import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell, FaLock }
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
  import { useBeverages } from  "./hooks/useBeverages";
-import { useDashboardStats } from "./hooks/useDashboardStats";
+// import { useDashboardStats } from "./hooks/useDashboardStats";
 
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./Inventory/InventoryRequests";
@@ -15,7 +15,7 @@ export default function BartenderDashboard() {
   const userName = "Bartender"; 
   const { lastMessage } = useNotifications();
   const { orders } = useBeverages();
-  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
+//  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
   useEffect(() => {
     if (lastMessage) {
       alert(lastMessage.message);
@@ -88,48 +88,6 @@ export default function BartenderDashboard() {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          {/* Pending Orders */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaClipboardList className="text-2xl text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Pending Orders</h3>
-            </div>
-            <p className="text-3xl font-bold text-blue-600">{pendingOrders}</p>
-            <p className="text-sm text-gray-500">Awaiting preparation</p>
-          </div>
-
-          {/* Inventory Items */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBoxes className="text-2xl text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Inventory Items</h3>
-            </div>
-            <p className="text-3xl font-bold text-green-600">{inventoryItems}</p>
-            <p className="text-sm text-gray-500">Available beverages</p>
-          </div>
-
-          {/* Low Stock Alerts */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBell className="text-2xl text-red-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Low Stock</h3>
-            </div>
-            <p className="text-3xl font-bold text-red-600">{lowStock}</p>
-            <p className="text-sm text-gray-500">Items need restocking</p>
-          </div>
-
-          {/* Staff Available */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaUsers className="text-2xl text-purple-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Staff Available</h3>
-            </div>
-            <p className="text-3xl font-bold text-purple-600">{staffCount}</p>
-            <p className="text-sm text-gray-500">Bartending staff</p>
-          </div>
-        </div>
 
         {/* Main Content Area */}
         <div className="bg-white rounded-lg shadow">
