@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   createMenuItem,
   updateMenuItem,
@@ -6,7 +6,6 @@ import {
   createMenuCategory,
 } from '../../api/menu';
 import { fetchAvailableProducts } from '../../api/stock';
-import { FaTrash, FaChevronDown } from 'react-icons/fa';
 
 const MenuForm = ({
   refreshMenu,
@@ -16,7 +15,7 @@ const MenuForm = ({
   forcebeverageOnly,
 }) => {
   const [formData, setFormData] = useState({
-    product: '',        // can be product ID or free text product name
+    product: '', // product ID or free text product name
     description: '',
     price: '',
     is_available: true,
@@ -29,17 +28,15 @@ const MenuForm = ({
   const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef();
 
   // Load categories and products on mount
   useEffect(() => {
-    const loadData = async () => {
+    async function loadData() {
       try {
         const catData = await fetchMenuCategories();
         setCategories(catData);
       } catch (error) {
-        console.error('❌ Error fetching menu categories:', error);
+        console.error('Error fetching menu categories:', error);
         setCategories([]);
       }
 
@@ -47,10 +44,10 @@ const MenuForm = ({
         const prodData = await fetchAvailableProducts();
         setAvailableProducts(prodData);
       } catch (error) {
-        console.error('❌ Error fetching available products:', error);
+        console.error('Error fetching available products:', error);
         setAvailableProducts([]);
       }
-    };
+    }
     loadData();
   }, []);
 
@@ -77,30 +74,16 @@ const MenuForm = ({
     }
   }, [selectedItem, forcebeverageOnly]);
 
-  // Close category dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Find selected category object
   const selectedCategory = categories.find((c) => c.id === formData.category);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Prepare payload
       const isBeverage =
         (selectedCategory?.name || '').toLowerCase() === 'beverage' ||
         formData.item_type === 'beverage';
 
-      // Find product name if product is selected from dropdown
       let productName = '';
       if (isBeverage) {
         const selectedProduct = availableProducts.find((p) => p.id == formData.product);
@@ -112,7 +95,7 @@ const MenuForm = ({
       const payload = {
         ...formData,
         name: productName,
-        product: isBeverage ? formData.product : null, // product id or null if free text
+        product: isBeverage ? formData.product : null,
       };
 
       if (selectedItem) {
@@ -122,6 +105,7 @@ const MenuForm = ({
         await createMenuItem(payload);
         alert('Menu item created successfully!');
       }
+
       refreshMenu();
       closeModal();
       clearSelection();
@@ -201,7 +185,7 @@ const MenuForm = ({
           />
         </div>
 
-        {/* Item Type (only show if not forced to beverage) */}
+        {/* Item Type */}
         {!forcebeverageOnly && (
           <div>
             <label className="block mb-2 font-semibold">Item Type</label>
@@ -217,73 +201,24 @@ const MenuForm = ({
           </div>
         )}
 
-        {/* Category with dropdown and delete */}
+        {/* Category dropdown */}
         <div>
           <label className="block mb-2 font-semibold">Category</label>
-          <div style={{ position: 'relative' }} ref={dropdownRef}>
-            <div
-              className="border p-2 w-full rounded flex justify-between items-center cursor-pointer"
-              onClick={() => setDropdownOpen((open) => !open)}
-            >
-              {categories.find((c) => c.id === formData.category)?.name || 'Select Category'}
-              <FaChevronDown />
-            </div>
-            {dropdownOpen && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  width: '100%',
-                  background: 'white',
-                  border: '1px solid #ccc',
-                  borderRadius: 4,
-                  zIndex: 100,
-                  maxHeight: 200,
-                  overflowY: 'auto',
-                }}
-              >
-                {categories.map((category) => (
-                  <div
-                    key={category.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '8px 12px',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => {
-                      setFormData({ ...formData, category: category.id });
-                      setDropdownOpen(false);
-                    }}
-                  >
-                    <span>{category.name}</span>
-                    <button
-                      type="button"
-                      style={{ background: 'none', border: 'none', color: 'red', marginLeft: 8 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCategories(categories.filter((c) => c.id !== category.id));
-                      }}
-                      title={`Delete ${category.name}`}
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setAddingCategory(true)}
-              className="bg-blue-500 text-white px-2 rounded ml-2"
-            >
-              +
-            </button>
-          </div>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: parseInt(e.target.value) })}
+            className="border p-2 w-full rounded"
+            required
+          >
+            <option value="">-- Select Category --</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
 
-          {addingCategory && (
+          {addingCategory ? (
             <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
               <input
                 type="text"
@@ -321,11 +256,19 @@ const MenuForm = ({
                 Cancel
               </button>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingCategory(true)}
+              className="bg-blue-500 text-white px-2 rounded mt-2"
+            >
+              + Add New Category
+            </button>
           )}
         </div>
 
         {/* Availability Checkbox */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 mt-4">
           <input
             type="checkbox"
             checked={formData.is_available}

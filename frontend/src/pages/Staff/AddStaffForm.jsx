@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { addUser } from '../../api/stafflist';
 
-<<<<<<< HEAD
-const ROLE_OPTIONS = [
-  { label: 'Waiter', value: 'waiter' },
-  { label: 'Manager', value: 'manager' },
-  { label: 'Bartender', value: 'bartender' },
-  { label: 'Meat Counter', value: 'meat' },
-  { label: 'Cashier', value: 'cashier' },
-  { label: 'Owner', value: 'owner' },
-];
-=======
 const ROLES = [
   { value: '', label: 'Select Role' },
   { value: 'waiter', label: 'Waiter' },
@@ -21,18 +11,6 @@ const ROLES = [
   { value: 'owner', label: 'Owner' },
   { value: 'staff', label: 'Staff' },
 ];
-
-function AddStaffForm({ onSuccess, onCancel }) {
-const [formData, setFormData] = useState({
-  username: '',
-  first_name: '',
-  last_name: '',
-  email: '',
-  role: '',
-  branch: '',  
-  password: '',
-  is_active: true,
->>>>>>> origin/tbales
 
 function AddStaffForm({ onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -73,32 +51,19 @@ function AddStaffForm({ onSuccess, onCancel }) {
       const newUser = await addUser(sanitizedData);
       onSuccess(newUser);
     } catch (err) {
-  console.error('Add user error:', err);
-
-  if (err.response && err.response.data) {
-    console.log('Error response data:', err.response.data); // 👈 ADD THIS
-
-    const data = err.response.data;
-    if (typeof data === 'object' && data !== null) {
-      const messages = Object.entries(data)
-        .map(([field, msgs]) => {
-          if (Array.isArray(msgs)) return `${field}: ${msgs.join(', ')}`;
-          if (typeof msgs === 'string') return `${field}: ${msgs}`;
-          return '';
-        })
-        .filter(Boolean)
-        .join('\n');
-      setError(messages || 'Failed to add user. Please check your input.');
-    } else if (typeof data === 'string') {
-      setError(data);
-    } else {
-      setError('Failed to add user. Please try again.');
-    }
-  } else {
-    setError(`Failed to add user. ${err.message || ''}`);
-  }
-}
-finally {
+      console.error('Add user error:', err);
+      if (err.response && err.response.data) {
+        const data = err.response.data;
+        const messages = Object.entries(data)
+          .map(([field, msgs]) =>
+            Array.isArray(msgs) ? `${field}: ${msgs.join(', ')}` : `${field}: ${msgs}`
+          )
+          .join('\n');
+        setError(messages || 'Failed to add user. Please check your input.');
+      } else {
+        setError(`Failed to add user. ${err.message || ''}`);
+      }
+    } finally {
       setSubmitting(false);
     }
   };
@@ -112,7 +77,6 @@ finally {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-<<<<<<< HEAD
         <input
           type="text"
           name="username"
@@ -147,13 +111,11 @@ finally {
           type="tel"
           name="phone_number"
           placeholder="Phone Number"
-          required
           value={formData.phone_number}
           onChange={handleChange}
           className="w-full border px-4 py-2 rounded"
         />
 
-        {/* 🔽 Dropdown for Role */}
         <select
           name="role"
           value={formData.role}
@@ -161,8 +123,7 @@ finally {
           required
           className="w-full border px-4 py-2 rounded"
         >
-          <option value="">Select Role</option>
-          {ROLE_OPTIONS.map(role => (
+          {ROLES.map(role => (
             <option key={role.value} value={role.value}>
               {role.label}
             </option>
@@ -188,19 +149,6 @@ finally {
           onChange={handleChange}
           className="w-full border px-4 py-2 rounded"
         />
-=======
-        <input type="text" name="username" placeholder="Username" required value={formData.username} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <input type="text" name="first_name" placeholder="First Name" required value={formData.first_name} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <input type="text" name="last_name" placeholder="Last Name" required value={formData.last_name} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <input type="email" name="email" placeholder="Email" required value={formData.email} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <select name="role" required value={formData.role} onChange={handleChange} className="w-full border px-4 py-2 rounded">
-          {ROLES.map(r => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
-        <input type="number" name="branch" placeholder="Branch ID" required value={formData.branch} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
-        <input type="password" name="password" placeholder="Password" required value={formData.password} onChange={handleChange} className="w-full border px-4 py-2 rounded" />
->>>>>>> origin/tbales
 
         <div className="flex items-center">
           <input

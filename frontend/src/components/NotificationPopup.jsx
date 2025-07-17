@@ -4,10 +4,17 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
   const audioRef = useRef(null);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play();
-    }
+    const playSound = async () => {
+      if (audioRef.current) {
+        try {
+          audioRef.current.currentTime = 0;
+          await audioRef.current.play();
+        } catch (error) {
+          console.warn('Autoplay blocked by browser:', error);
+        }
+      }
+    };
+    playSound();
   }, []);
 
   return (
@@ -46,9 +53,18 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
       >
         Close
       </button>
-      {soundSrc && <audio ref={audioRef} src={soundSrc} />}
+      {soundSrc && (
+        <audio
+          ref={audioRef}
+          src={soundSrc}
+          muted // optional: prevent autoplay issues
+          onCanPlay={() => {
+            audioRef.current.muted = false; // unmute after load if needed
+          }}
+        />
+      )}
     </div>
   );
 };
 
-export default NotificationPopup; 
+export default NotificationPopup;

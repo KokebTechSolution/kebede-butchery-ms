@@ -4,7 +4,7 @@ import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell, FaLock }
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
  import { useBeverages } from  "./hooks/useBeverages";
-
+import { useDashboardStats } from "./hooks/useDashboardStats";
 
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./Inventory/InventoryRequests";
@@ -15,7 +15,7 @@ export default function BartenderDashboard() {
   const userName = "Bartender"; 
   const { lastMessage } = useNotifications();
   const { orders } = useBeverages();
-
+  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
   useEffect(() => {
     if (lastMessage) {
       alert(lastMessage.message);
@@ -96,7 +96,7 @@ export default function BartenderDashboard() {
               <FaClipboardList className="text-2xl text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-700">Pending Orders</h3>
             </div>
-            <p className="text-3xl font-bold text-blue-600">8</p>
+            <p className="text-3xl font-bold text-blue-600">{pendingOrders}</p>
             <p className="text-sm text-gray-500">Awaiting preparation</p>
           </div>
 
@@ -106,7 +106,7 @@ export default function BartenderDashboard() {
               <FaBoxes className="text-2xl text-green-600" />
               <h3 className="text-lg font-semibold text-gray-700">Inventory Items</h3>
             </div>
-            <p className="text-3xl font-bold text-green-600">62</p>
+            <p className="text-3xl font-bold text-green-600">{inventoryItems}</p>
             <p className="text-sm text-gray-500">Available beverages</p>
           </div>
 
@@ -116,7 +116,7 @@ export default function BartenderDashboard() {
               <FaBell className="text-2xl text-red-600" />
               <h3 className="text-lg font-semibold text-gray-700">Low Stock</h3>
             </div>
-            <p className="text-3xl font-bold text-red-600">5</p>
+            <p className="text-3xl font-bold text-red-600">{lowStock}</p>
             <p className="text-sm text-gray-500">Items need restocking</p>
           </div>
 
@@ -126,7 +126,7 @@ export default function BartenderDashboard() {
               <FaUsers className="text-2xl text-purple-600" />
               <h3 className="text-lg font-semibold text-gray-700">Staff Available</h3>
             </div>
-            <p className="text-3xl font-bold text-purple-600">2</p>
+            <p className="text-3xl font-bold text-purple-600">{staffCount}</p>
             <p className="text-sm text-gray-500">Bartending staff</p>
           </div>
         </div>

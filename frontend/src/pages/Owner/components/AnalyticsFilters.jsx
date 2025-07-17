@@ -1,20 +1,13 @@
-<<<<<<< HEAD
 import React, { useState } from 'react';
 import { Calendar, MapPin } from 'lucide-react';
 
-const AnalyticsFilters = () => {
-  const [dateRange, setDateRange] = useState('This Month');
-  const [branch, setBranch] = useState('All Branches');
-=======
-import React from 'react';
-import { Calendar, MapPin } from 'lucide-react';
-
 const AnalyticsFilters = ({ dateRange, setDateRange }) => {
-  const [branch, setBranch] = React.useState('All Branches');
->>>>>>> origin/tbales
+  const [branch, setBranch] = useState('All Branches');
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+      
+      {/* Date Range Selector */}
       <div className="flex items-center space-x-2">
         <Calendar className="w-4 h-4 text-gray-500" />
         <label htmlFor="dateRange" className="text-sm font-medium text-gray-700 whitespace-nowrap">
@@ -35,6 +28,7 @@ const AnalyticsFilters = ({ dateRange, setDateRange }) => {
         </select>
       </div>
 
+      {/* Branch Selector */}
       <div className="flex items-center space-x-2">
         <MapPin className="w-4 h-4 text-gray-500" />
         <label htmlFor="branch" className="text-sm font-medium text-gray-700 whitespace-nowrap">

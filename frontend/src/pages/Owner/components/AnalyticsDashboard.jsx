@@ -1,69 +1,35 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-=======
-import React, { useEffect, useState } from 'react';
->>>>>>> origin/tbales
+import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calculator, Target } from 'lucide-react';
+import axiosInstance from '../../../api/axiosInstance';
 import KpiCard from './KpiCard';
 import AnalyticsFilters from './AnalyticsFilters';
 import ProfitLossChart from './ProfitLossChart';
 import TopItemsChart from './TopItemsChart';
-<<<<<<< HEAD
-
-const AnalyticsDashboard = () => {
-  const [analyticsData] = useState({
-    kpi: {
-      totalRevenue: 150000.00,
-      costOfGoods: 45000.00,
-      grossProfit: 105000.00,
-      operatingExpenses: 35000.00,
-      netProfit: 70000.00,
-      avgOrderValue: 850.50
-    },
-    profitTrend: [
-      { name: 'Week 1', revenue: 35000, costs: 20000, netProfit: 15000 },
-      { name: 'Week 2', revenue: 42000, costs: 22000, netProfit: 20000 },
-      { name: 'Week 3', revenue: 38000, costs: 21000, netProfit: 17000 },
-      { name: 'Week 4', revenue: 35000, costs: 17000, netProfit: 18000 }
-    ],
-    topSellingItems: [
-      { name: 'Special Kitfo', revenue: 25000 },
-      { name: 'Doro Wot', revenue: 18000 },
-      { name: 'Tibs Firfir', revenue: 15500 },
-      { name: 'St. George Beer', revenue: 12000 },
-      { name: 'Shiro', revenue: 9500 }
-    ]
-  });
-=======
-import axiosInstance from '../../../api/axiosInstance';
 
 // Helper to get start/end dates for a given range
 function getDateRange(range) {
   const today = new Date();
   let start, end;
   end = new Date(today);
+
   switch (range) {
     case 'Today':
       start = new Date(today);
       break;
-    case 'This Week': {
-      const day = today.getDay();
+    case 'This Week':
       start = new Date(today);
-      start.setDate(today.getDate() - day);
+      start.setDate(today.getDate() - today.getDay());
       break;
-    }
     case 'This Month':
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       break;
     case 'This Year':
       start = new Date(today.getFullYear(), 0, 1);
       break;
-    case 'Last Month': {
-      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      start = lastMonth;
+    case 'Last Month':
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       end = new Date(today.getFullYear(), today.getMonth(), 0);
       break;
-    }
     case 'Last Quarter': {
       const currentQuarter = Math.floor(today.getMonth() / 3) + 1;
       const lastQuarter = currentQuarter - 1 || 4;
@@ -76,7 +42,7 @@ function getDateRange(range) {
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       break;
   }
-  // Format as YYYY-MM-DD
+
   const fmt = d => d.toISOString().slice(0, 10);
   return { start: fmt(start), end: fmt(end) };
 }
@@ -95,7 +61,7 @@ const AnalyticsDashboard = () => {
         setAnalyticsData(response.data);
         setLoading(false);
       })
-      .catch(error => {
+      .catch(() => {
         setError('Failed to fetch analytics data');
         setLoading(false);
       });
@@ -104,7 +70,6 @@ const AnalyticsDashboard = () => {
   if (loading) return <div>Loading analytics...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
   if (!analyticsData) return <div>No analytics data available.</div>;
->>>>>>> origin/tbales
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
@@ -119,46 +84,16 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Filters */}
-<<<<<<< HEAD
-        <AnalyticsFilters />
-=======
         <AnalyticsFilters dateRange={dateRange} setDateRange={setDateRange} />
->>>>>>> origin/tbales
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <KpiCard
-            title="Total Revenue"
-            value={analyticsData.kpi.totalRevenue}
-            isCurrency={true}
-          />
-          <KpiCard
-            title="Cost of Goods"
-            value={analyticsData.kpi.costOfGoods}
-            isCurrency={true}
-          />
-          <KpiCard
-            title="Gross Profit"
-            value={analyticsData.kpi.grossProfit}
-            isCurrency={true}
-            isProfitLoss={true}
-          />
-          <KpiCard
-            title="Operating Expenses"
-            value={analyticsData.kpi.operatingExpenses}
-            isCurrency={true}
-          />
-          <KpiCard
-            title="Net Profit"
-            value={analyticsData.kpi.netProfit}
-            isCurrency={true}
-            isProfitLoss={true}
-          />
-          <KpiCard
-            title="Avg Order Value"
-            value={analyticsData.kpi.avgOrderValue}
-            isCurrency={true}
-          />
+          <KpiCard title="Total Revenue" value={analyticsData.kpi.totalRevenue} isCurrency />
+          <KpiCard title="Cost of Goods" value={analyticsData.kpi.costOfGoods} isCurrency />
+          <KpiCard title="Gross Profit" value={analyticsData.kpi.grossProfit} isCurrency isProfitLoss />
+          <KpiCard title="Operating Expenses" value={analyticsData.kpi.operatingExpenses} isCurrency />
+          <KpiCard title="Net Profit" value={analyticsData.kpi.netProfit} isCurrency isProfitLoss />
+          <KpiCard title="Avg Order Value" value={analyticsData.kpi.avgOrderValue} isCurrency />
         </div>
 
         {/* Charts Grid */}
@@ -184,6 +119,7 @@ const AnalyticsDashboard = () => {
 
         {/* Additional Insights */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Profit Margin */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <Calculator className="w-5 h-5 text-green-600" />
@@ -197,6 +133,7 @@ const AnalyticsDashboard = () => {
             </p>
           </div>
 
+          {/* Revenue Growth */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <Target className="w-5 h-5 text-blue-600" />
@@ -208,6 +145,7 @@ const AnalyticsDashboard = () => {
             </p>
           </div>
 
+          {/* Cost Efficiency */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div className="flex items-center space-x-2 mb-4">
               <DollarSign className="w-5 h-5 text-purple-600" />
