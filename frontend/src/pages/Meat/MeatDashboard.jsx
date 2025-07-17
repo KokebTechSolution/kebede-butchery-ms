@@ -100,58 +100,6 @@ export default function MeatDashboard() {
 
         {/* Quick Stats (moved below main content) */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          {/* Pending Orders */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaClipboardList className="text-2xl text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Pending Orders
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-blue-600">12</p>
-            <p className="text-sm text-gray-500">Awaiting processing</p>
-          </div>
-
-          {/* Inventory Items */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBoxes className="text-2xl text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Inventory Items
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-green-600">45</p>
-            <p className="text-sm text-gray-500">Available items</p>
-          </div>
-
-          {/* Low Stock Alerts */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaBell className="text-2xl text-red-600" />
-              <h3 className="text-lg font-semibold text-gray-700">Low Stock</h3>
-            </div>
-            <p className="text-3xl font-bold text-red-600">3</p>
-            <p className="text-sm text-gray-500">Items need restocking</p>
-          </div>
-
-          {/* Staff Available */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <FaUsers className="text-2xl text-purple-600" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Staff Available
-              </h3>
-            </div>
-            <p className="text-3xl font-bold text-purple-600">8</p>
-            <p className="text-sm text-gray-500">Processing staff</p>
-          </div>
-        </div>
-
-        {/* Tip Banner */}
-        <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg text-orange-700 text-sm">
-          💡 <strong>Tip:</strong> Process orders in priority sequence. Check
-          inventory levels before starting new orders. Update order status
-          promptly to keep the system current.
         </div>
       </main>
     </div>

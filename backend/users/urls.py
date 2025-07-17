@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import CustomTokenObtainPairView, UserViewSet, LoginView
+from .views import WaiterUnsettledTablesView
 
 # DRF router for CRUD operations
 router = DefaultRouter()
@@ -20,4 +21,5 @@ urlpatterns = [
 
     # Include the CRUD user routes
     path('', include(router.urls)),
+    path('waiters/unsettled-tables/', WaiterUnsettledTablesView.as_view(), name='waiter-unsettled-tables'),
 ]
