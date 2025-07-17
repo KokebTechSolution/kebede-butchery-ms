@@ -6,8 +6,7 @@ from branches.models import Table
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
-        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status', 'product']
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -144,7 +143,7 @@ class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['id', 'name', 'quantity', 'price', 'status']
-        fields = ['id', 'name', 'quantity', 'price', 'status']
+        
 
 class FoodOrderSerializer(OrderSerializer):
     items = FoodOrderItemSerializer(many=True, source='food_items')
@@ -163,8 +162,7 @@ class FoodOrderSerializer(OrderSerializer):
 class BeverageOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'status']
-        fields = ['id', 'name', 'quantity', 'price', 'status']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status', 'product']
 
 
 class BeverageOrderSerializer(OrderSerializer):
@@ -178,5 +176,5 @@ class BeverageOrderSerializer(OrderSerializer):
     class Meta(OrderSerializer.Meta):
         fields = [
             'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
-            'status', 'items', 'created_at', 'has_payment'
+            'status', 'items', 'created_at', 'has_payment','branch_id'
         ]

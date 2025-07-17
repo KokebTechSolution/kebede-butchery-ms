@@ -1,25 +1,24 @@
-// src/pages/Auth/Login.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/pages/LoginPage.jsx
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
-
   const [formData, setFormData] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const roleRedirectMap = {
-    manager: '/branch-manager',
-    waiter: '/',
-    cashier: '/',
-    bartender: '/',
-    meat: '/',
-    owner: '/',
-    admin: '/admin-dashboard',
-    staff: '/staff-dashboard',
+  useEffect(() => {
+    // Fetch CSRF cookie
+    fetch('http://localhost:8000/api/users/csrf/', {
+      credentials: 'include',
+    });
+  }, []);
+
+  const getCSRFToken = () => {
+    const match = document.cookie.match(/csrftoken=([\w-]+)/);
+    return match ? match[1] : null;
   };
 
   const handleChange = (e) => {
@@ -31,117 +30,73 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    console.log('Submitting login with:', formData);
+    const csrfToken = getCSRFToken();
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/login/', {
+      const res = await fetch('http://localhost:8000/api/users/login/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
 
-      /*
-              const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-
-        const response = await fetch(`${API_BASE_URL}/api/users/login/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-
-      */
-
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Login failed:', errorData);
-        throw new Error(errorData.detail || 'Invalid credentials');
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Login failed');
       }
 
-      const data = await response.json();
-      console.log('Login successful, received data:', data);
-
-      // Add isAuthenticated flag here to help ProtectedRoute
-      const userWithAuth = { ...data.user, isAuthenticated: true };
-
-      // Update context and localStorage
-      login({ access: data.access, refresh: data.refresh, user: userWithAuth });
-
-      // Determine redirect path based on role
-      const redirectTo = roleRedirectMap[userWithAuth.role];
-      if (redirectTo) {
-        console.log(`Redirecting user with role "${userWithAuth.role}" to "${redirectTo}"`);
-        navigate(redirectTo);
-      } else {
-        console.warn(`User role "${userWithAuth.role}" not recognized, redirecting to /unauthorized`);
-        navigate('/unauthorized');
-      }
+      const userData = await res.json();
+      login(userData); // Call AuthContext login
+      navigate('/');
     } catch (err) {
-      console.error('Login error caught:', err);
-      setError(err.message || 'Invalid username or password');
-    } finally {
-      setLoading(false);
+      setError(err.message || 'Something went wrong');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-50 px-4">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center text-gray-700 mb-6">
-          Login to Your Account
-        </h2>
-        {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-600">
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              required
-              value={formData.username}
-              onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-              placeholder="Enter your username"
-              disabled={loading}
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-600">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-              placeholder="Enter your password"
-              disabled={loading}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-all font-semibold disabled:opacity-50"
-          >
-            {loading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded shadow-md w-96 space-y-4"
+      >
+        <h2 className="text-2xl font-semibold mb-4 text-center">Login</h2>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          Forgot password?{' '}
-          <a href="#" className="text-blue-600 hover:underline">
-            Reset here
-          </a>
-        </p>
-      </div>
+        {error && <div className="text-red-500 text-sm">{error}</div>}
+
+        <div>
+          <label className="block mb-1">Username</label>
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1">Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </form>
     </div>
   );
 };

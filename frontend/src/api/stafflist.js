@@ -1,39 +1,29 @@
-// api/stafflist.js
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000/api/users/users/';
 
-/**
- * Get the JWT token from localStorage
- * @returns {string|null}
- */
-const getToken = () => localStorage.getItem('access');
+// Helper to get CSRF token from cookie
+function getCSRFToken() {
+  const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
+  return match ? match[2] : null;
+}
 
-/**
- * Create an axios instance with Authorization header
- * @returns {import('axios').AxiosInstance}
- */
+// Create axios instance with session auth support
 const createAxiosInstance = () => {
-  const token = getToken();
   return axios.create({
     baseURL: API_BASE_URL,
     headers: {
-      Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),
     },
+    withCredentials: true,  // Important for sending cookies
   });
 };
 
-/**
- * Handle error response and return a user-friendly error message
- * @param {any} error
- * @returns {string}
- */
 const getFriendlyErrorMessage = (error) => {
   if (error.response?.data) {
     const data = error.response.data;
     if (typeof data === 'object' && !Array.isArray(data)) {
-      // Collect messages from error fields
       return Object.entries(data)
         .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(' ') : messages}`)
         .join(' | ');
@@ -45,10 +35,6 @@ const getFriendlyErrorMessage = (error) => {
   return 'An unexpected error occurred. Please try again.';
 };
 
-/**
- * Fetch the list of staff users
- * @returns {Promise<any[]>}
- */
 export const fetchStaffList = async () => {
   try {
     const response = await createAxiosInstance().get('/');
@@ -59,11 +45,6 @@ export const fetchStaffList = async () => {
   }
 };
 
-/**
- * Add a new user
- * @param {object} formData
- * @returns {Promise<object>}
- */
 export const addUser = async (formData) => {
   try {
     const response = await createAxiosInstance().post('/', formData);
@@ -74,12 +55,6 @@ export const addUser = async (formData) => {
   }
 };
 
-/**
- * Update existing user data
- * @param {string|number} id
- * @param {object} formData
- * @returns {Promise<object>}
- */
 export const updateUser = async (id, formData) => {
   try {
     const response = await createAxiosInstance().put(`${id}/`, formData);
@@ -90,11 +65,6 @@ export const updateUser = async (id, formData) => {
   }
 };
 
-/**
- * Delete a user by ID
- * @param {string|number} id
- * @returns {Promise<void>}
- */
 export const deleteUser = async (id) => {
   try {
     await createAxiosInstance().delete(`${id}/`);
@@ -104,12 +74,6 @@ export const deleteUser = async (id) => {
   }
 };
 
-/**
- * Reset password for a user
- * @param {string|number} id
- * @param {string} newPassword
- * @returns {Promise<object>}
- */
 export const resetUserPassword = async (id, newPassword) => {
   try {
     const response = await createAxiosInstance().post(`${id}/reset-password/`, { password: newPassword });
@@ -120,10 +84,6 @@ export const resetUserPassword = async (id, newPassword) => {
   }
 };
 
-/**
- * Fetch branch list if needed
- * @returns {Promise<any[]>}
- */
 export const fetchBranches = async () => {
   try {
     const response = await createAxiosInstance().get('branches/');

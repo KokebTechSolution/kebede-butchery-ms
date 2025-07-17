@@ -1,42 +1,46 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import axiosInstance from '../../../api/axiosInstance';
+import axiosInstance from '../../../api/axiosInstance'; // assumes this has withCredentials set
+import { useAuth } from '../../../context/AuthContext';
 
 export const useBeverages = () => {
-
   const [orders, setOrders] = useState([]);
+  const { user } = useAuth();
+  const branchId = user?.branch;
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/orders/beverages/');
+      const response = await axiosInstance.get(`/api/orders/beverages/?branch_id=${branchId}`, {
+        withCredentials: true, // ensure cookies sent
+      });
       setOrders(response.data);
+      console.log('Fetched from backend:', response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      setOrders([]);
     }
   };
 
   useEffect(() => {
-    fetchOrders();
-    const intervalId = setInterval(fetchOrders, 10000); 
-
-    return () => clearInterval(intervalId);
-  }, []);
+    if (branchId) {
+      fetchOrders();
+      const intervalId = setInterval(fetchOrders, 10000);
+      return () => clearInterval(intervalId);
+    }
+  }, [branchId]);
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
       const payload = { beverage_status: status };
-      if (reason) {
-        // This part would need backend support for rejection reasons
-      }
-
-      await axios.patch(`http://localhost:8000/api/orders/${orderId}/`, payload);
-      
+      // You may want to send reason here if backend supports it
+      const response = await axiosInstance.patch(`/api/orders/${orderId}/`, payload, {
+        withCredentials: true,
+      });
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order.id === orderId ? { ...order, status: status } : order
+          order.id === orderId ? { ...order, beverage_status: status } : order
         )
       );
-
+      console.log('Order update response:', response.data);
     } catch (error) {
       console.error(error);
     }
@@ -50,9 +54,9 @@ export const useBeverages = () => {
     updateOrderStatus(orderId, 'rejected', reason);
   };
 
-  const getPendingOrders = () => orders.filter(order => order.status === 'pending');
-  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
-  const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
+  const getPendingOrders = () => orders.filter(order => order.beverage_status === 'pending');
+  const getPreparingOrders = () => orders.filter(order => order.beverage_status === 'preparing');
+  const getRejectedOrders = () => orders.filter(order => order.beverage_status === 'rejected');
 
   const getClosedOrders = () =>
     orders.filter(order =>
@@ -66,11 +70,12 @@ export const useBeverages = () => {
       !getClosedOrders().some(closed => closed.id === order.id)
     );
 
-  // Add item-level status update
+  // Item-level status update
   const updateOrderItemStatus = async (itemId, status) => {
     try {
-      const response = await axiosInstance.patch(`orders/order-item/${itemId}/update-status/`, { status });
-      // Update the item status in the local state
+      const response = await axiosInstance.patch(`/api/orders/order-item/${itemId}/update-status/`, { status }, {
+        withCredentials: true,
+      });
       setOrders(prevOrders =>
         prevOrders.map(order => ({
           ...order,
@@ -89,15 +94,15 @@ export const useBeverages = () => {
 
   return {
     orders,
+    fetchOrders,
     acceptOrder,
     rejectOrder,
+    rejectOrderItem,
+    acceptOrderItem,
     getPendingOrders,
     getPreparingOrders,
     getRejectedOrders,
     getClosedOrders,
     getActiveOrders,
-    acceptOrderItem,
-    rejectOrderItem,
-    refetch: fetchOrders,
   };
-}; 
+};

@@ -2,6 +2,22 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 
+// Helper to get CSRF token from cookie
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let c of cookies) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess }) => {
   const { user } = useAuth();
   const branchId = user?.branch || null;
@@ -23,14 +39,11 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   const [stockId, setStockId] = useState(null);
   const [errors, setErrors] = useState({});
 
-  // Load stock info for this product and branch
   useEffect(() => {
     const fetchStock = async () => {
       try {
         const res = await axios.get('http://localhost:8000/api/inventory/stocks/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access')}`,
-          },
+          withCredentials: true,
         });
         const branchStock = res.data.find(
           (stock) => stock.product.id === product.id && stock.branch.id === branchId
@@ -53,7 +66,6 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     fetchStock();
   }, [product.id, branchId]);
 
-  // Auto-calculate bottle quantity
   useEffect(() => {
     if (formData.quantityType === 'carton') {
       const bottles =
@@ -119,33 +131,53 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       product_id: product.id,
     };
 
+    const csrfToken = getCookie('csrftoken');
+
     try {
       // Update product
-      await axios.put(`http://localhost:8000/api/inventory/inventory/${product.id}/`, updatedProduct, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access')}` },
-      });
+      await axios.put(
+        `http://localhost:8000/api/inventory/inventory/${product.id}/`,
+        updatedProduct,
+        {
+          withCredentials: true,
+          headers: {
+            'X-CSRFToken': csrfToken,
+          },
+        }
+      );
 
       // Update or create stock
       if (stockId) {
-        await axios.put(`http://localhost:8000/api/inventory/stocks/${stockId}/`, updatedStock, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access')}` },
-        });
+        await axios.put(
+          `http://localhost:8000/api/inventory/stocks/${stockId}/`,
+          updatedStock,
+          {
+            withCredentials: true,
+            headers: {
+              'X-CSRFToken': csrfToken,
+            },
+          }
+        );
       } else {
-        await axios.post('http://localhost:8000/api/inventory/stocks/', updatedStock, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access')}` },
-        });
+        await axios.post(
+          'http://localhost:8000/api/inventory/stocks/',
+          updatedStock,
+          {
+            withCredentials: true,
+            headers: {
+              'X-CSRFToken': csrfToken,
+            },
+          }
+        );
       }
 
       alert('Inventory updated!');
       onSuccess();
       onClose();
-    } 
-
-    catch (err) {
-  console.error('Update failed:', err.response?.data || err.message);
-  alert(`Error updating inventory: ${err.response?.data?.detail || err.message}`);
-}
-
+    } catch (err) {
+      console.error('Update failed:', err.response?.data || err.message);
+      alert(`Error updating inventory: ${err.response?.data?.detail || err.message}`);
+    }
   };
 
   return (
@@ -185,7 +217,6 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       />
       {errors.price_per_unit && <p className="text-red-500 text-sm">{errors.price_per_unit}</p>}
 
-      {/* Quantity Type Selector */}
       <div>
         <label className="block font-semibold">Quantity Type</label>
         {['carton', 'bottle', 'unit'].map((type) => (

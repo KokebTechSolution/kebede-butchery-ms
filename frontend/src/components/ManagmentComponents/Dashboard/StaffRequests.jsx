@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { FaUserTie, FaBoxes } from "react-icons/fa";
 import { MdOutlineCheckCircle, MdOutlineCancel } from "react-icons/md";
-import axios from "axios";
+import axiosInstance from "../../../api/axiosInstance"; // adjust import path accordingly
 
 export default function StaffRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = "http://localhost:8000/api/requests/"; // ✅ Adjust to your real API endpoint
+  const API_URL = "requests/"; // relative path for axiosInstance baseURL
 
   useEffect(() => {
     fetchRequests();
@@ -15,9 +15,7 @@ export default function StaffRequests() {
 
   const fetchRequests = async () => {
     try {
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-      });
+      const response = await axiosInstance.get(API_URL);
       setRequests(response.data);
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -28,10 +26,8 @@ export default function StaffRequests() {
 
   const handleApprove = async (id) => {
     try {
-      await axios.post(`${API_URL}${id}/approve/`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-      });
-      setRequests(requests.filter(req => req.id !== id));
+      await axiosInstance.post(`${API_URL}${id}/approve/`);
+      setRequests((prev) => prev.filter((req) => req.id !== id));
     } catch (error) {
       console.error("Error approving request:", error);
     }
@@ -39,10 +35,8 @@ export default function StaffRequests() {
 
   const handleReject = async (id) => {
     try {
-      await axios.post(`${API_URL}${id}/reject/`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access')}` }
-      });
-      setRequests(requests.filter(req => req.id !== id));
+      await axiosInstance.post(`${API_URL}${id}/reject/`);
+      setRequests((prev) => prev.filter((req) => req.id !== id));
     } catch (error) {
       console.error("Error rejecting request:", error);
     }

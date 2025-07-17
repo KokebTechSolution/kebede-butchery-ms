@@ -8,6 +8,7 @@ import api from '../../../api/axiosInstance';
 import axios from 'axios';
 import NewRequest from './NewRequest';
 import BarmanStockStatus from './BarmanStockStatus';
+import { useAuth } from '../../../context/AuthContext';
 
 const InventoryRequestList = () => {
   const [requests, setRequests] = useState([]);
@@ -16,7 +17,7 @@ const InventoryRequestList = () => {
   const [stocks, setStocks] = useState([]);
   const [tab, setTab] = useState('available');
   const [showModal, setShowModal] = useState(false);
-
+  
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [formData, setFormData] = useState({
@@ -30,6 +31,11 @@ const InventoryRequestList = () => {
 
   // This trigger forces stock refetch and re-render when incremented
   const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
+
+  // Get branchId from user context
+  const { user } = useAuth();
+  const branchId = user?.branch;
+  const bartenderId = user?.id; 
 
   useEffect(() => {
     loadRequests();
@@ -52,7 +58,6 @@ const InventoryRequestList = () => {
       console.error('Error fetching barman stocks:', err);
     }
   };
-
 
   const loadRequests = async () => {
     setLoading(true);
@@ -119,12 +124,19 @@ const InventoryRequestList = () => {
     }
   };
 
+  // Filter requests by branchId (works for both branch_id and branch.id)
+  const filteredRequests = requests.filter(
+    req =>
+      String(req.branch_id || (req.branch && req.branch.id)) === String(branchId)
+  );
+
   return (
     <div className="p-4">
       <BarmanStockStatus
         stocks={stocks}
         tab={tab}
         setTab={setTab}
+        bartenderId={bartenderId}
       />
 
       <div className="flex items-center justify-between mb-4">
@@ -204,8 +216,8 @@ const InventoryRequestList = () => {
 
       {loading ? (
         <p>Loading requests...</p>
-      ) : requests.length === 0 ? (
-        <p className="text-gray-600 italic">No requests found.</p>
+      ) : filteredRequests.length === 0 ? (
+        <p className="text-gray-600 italic">No requests found for your branch.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border text-sm">
@@ -223,7 +235,7 @@ const InventoryRequestList = () => {
               </tr>
             </thead>
             <tbody>
-              {requests.map((req) => {
+              {filteredRequests.map((req) => {
                 const reached = Boolean(req.reached_status);
                 return (
                   <tr key={`${req.id}-${reached ? 'r' : 'nr'}`} className="text-center hover:bg-gray-50 transition">

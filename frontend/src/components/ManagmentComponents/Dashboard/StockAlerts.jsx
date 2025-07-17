@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { RefreshCw } from "lucide-react";
+import axiosInstance from "../../../api/axiosInstance"; // adjust import path accordingly
 
 function StockAlerts() {
   const [stockItems, setStockItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_URL = "http://localhost:8000/api/products/low-stock/"; // ✅ Full stock list endpoint
-  const STOCK_THRESHOLD = 10; // ✅ Set threshold in frontend
+  const API_URL = "products/low-stock/"; // relative path for axiosInstance
+
+  const STOCK_THRESHOLD = 10; // frontend threshold
 
   useEffect(() => {
     fetchStockItems();
@@ -18,9 +19,7 @@ function StockAlerts() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-      });
+      const response = await axiosInstance.get(API_URL);
       setStockItems(response.data);
     } catch (err) {
       console.error("Error fetching stock items:", err);
@@ -30,7 +29,6 @@ function StockAlerts() {
     }
   };
 
-  // ✅ Filter low stock items based on threshold
   const lowStockItems = stockItems.filter((item) => item.stock_qty <= STOCK_THRESHOLD);
 
   return (

@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-
+from inventory.models import Product  
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -14,7 +14,6 @@ class Order(models.Model):
         ('rejected', 'Rejected'),
         ('not_applicable', 'Not Applicable'),
     ]
-
     order_number = models.CharField(max_length=255, unique=True)
     table = models.ForeignKey('branches.Table', on_delete=models.CASCADE, null=True, blank=True, related_name='orders')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_orders')
@@ -69,7 +68,7 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     item_type = models.CharField(max_length=20, choices=ORDER_ITEM_TYPE)
     status = models.CharField(max_length=20, choices=ITEM_STATUS, default='pending')
-
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     def __str__(self):
         return f"{self.name} x {self.quantity}"
 

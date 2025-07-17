@@ -19,6 +19,7 @@ class BarmanStockSerializer(serializers.ModelSerializer):
             'product_name',
             'branch_name',
             'bartender',
+            'bartender_id',
             'carton_quantity',
             'bottle_quantity',
             'unit_quantity',
@@ -26,6 +27,10 @@ class BarmanStockSerializer(serializers.ModelSerializer):
             'running_out',
         ]
         read_only_fields = ['running_out']
+    def save(self, *args, **kwargs):
+
+        self.running_out = self.bottle_quantity < self.minimum_threshold
+        super().save(*args, **kwargs)
 # Branch
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,3 +1,4 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,65 +8,84 @@ const AuthContext = createContext();
 // Hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
 
-// Provider
+// Provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    // Try to load user from localStorage on init (optional)
     const storedUser = localStorage.getItem('user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
   const navigate = useNavigate();
 
-  const [tokens, setTokens] = useState(null);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const access = localStorage.getItem('access') || localStorage.getItem('access_token');
-    const refresh = localStorage.getItem('refresh') || localStorage.getItem('refresh_token');
-
-    if (storedUser && access && refresh) {
-      setUser({ ...JSON.parse(storedUser), isAuthenticated: true });
-      setTokens({ access, refresh });
+  // Fetch the current logged-in user from the backend session
+  const fetchSessionUser = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/users/me/', {
+        credentials: 'include', // important to send cookies
+      });
+      if (!res.ok) throw new Error('Not authenticated');
+      const data = await res.json();
+      setUser({ ...data, isAuthenticated: true });
+      localStorage.setItem('user', JSON.stringify({ ...data, isAuthenticated: true }));
+    } catch {
+      setUser(null);
+      localStorage.removeItem('user');
     }
+  };
+
+  useEffect(() => {
+    fetchSessionUser();
   }, []);
 
-  const login = (authData) => {
-    localStorage.setItem('access_token', authData.access);
-    localStorage.setItem('refresh_token', authData.refresh);
-    localStorage.setItem('access', authData.access);
-    localStorage.setItem('refresh', authData.refresh);
-    localStorage.setItem('user', JSON.stringify(authData.user));
-    setUser(authData.user);
+  // Called after login to update user state
+  const login = async () => {
+    await fetchSessionUser();
   };
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/login', { replace: true });
+  const logout = async () => {
+    try {
+      await fetch('http://localhost:8000/api/users/logout/', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      navigate('/login', { replace: true });
+    }
   };
 
+  // Update user state partially (for profile updates, etc.)
+  const updateUser = (newUserData) => {
+    setUser((prevUser) => ({
+      ...prevUser,
+      ...newUserData,
+    }));
+    // Also update localStorage to keep it in sync
+    localStorage.setItem('user', JSON.stringify({ ...user, ...newUserData }));
+  };
+
+  // Optional: Listen to custom logout event
   useEffect(() => {
     const handleLogoutEvent = () => logout();
-    
     window.addEventListener('logout', handleLogoutEvent);
-    
-    return () => {
-      window.removeEventListener('logout', handleLogoutEvent);
-    };
+    return () => window.removeEventListener('logout', handleLogoutEvent);
   }, []);
 
-  const value = {
-    user,
-    tokens,
-    login,
-    logout,
-    isAuthenticated: !!user?.isAuthenticated,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        updateUser,
+        isAuthenticated: !!user?.isAuthenticated,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
