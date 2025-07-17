@@ -5,7 +5,6 @@ import {
   NotReachRequest,
 } from '../../../api/inventory';
 import api from '../../../api/axiosInstance';
-import axios from 'axios';
 import NewRequest from './NewRequest';
 import BarmanStockStatus from './BarmanStockStatus';
 import { useAuth } from '../../../context/AuthContext';
@@ -17,7 +16,6 @@ const InventoryRequestList = () => {
   const [stocks, setStocks] = useState([]);
   const [tab, setTab] = useState('available');
   const [showModal, setShowModal] = useState(false);
-  
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [formData, setFormData] = useState({
@@ -29,13 +27,12 @@ const InventoryRequestList = () => {
   });
   const [formMessage, setFormMessage] = useState('');
 
-  // This trigger forces stock refetch and re-render when incremented
+  // Trigger to refresh stocks
   const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
 
-  // Get branchId from user context
   const { user } = useAuth();
   const branchId = user?.branch;
-  const bartenderId = user?.id; 
+  const bartenderId = user?.id;
 
   useEffect(() => {
     loadRequests();
@@ -44,15 +41,12 @@ const InventoryRequestList = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch barman stocks whenever refreshStockTrigger changes
     fetchBarmanStocks();
   }, [refreshStockTrigger]);
 
   const fetchBarmanStocks = async () => {
     try {
-      const res = await api.get('/inventory/barman-stock/', {
-        withCredentials: true,
-      });
+      const res = await api.get('/inventory/barman-stock/');
       setStocks(res.data);
     } catch (err) {
       console.error('Error fetching barman stocks:', err);
@@ -62,7 +56,7 @@ const InventoryRequestList = () => {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const data = await fetchRequests();
+      const data = await fetchRequests(); // should internally use api with session
       setRequests(data);
     } catch (err) {
       console.error('Failed to fetch requests:', err);
@@ -74,10 +68,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const token = localStorage.getItem('access');
-      const res = await axios.get('http://localhost:8000/api/inventory/inventory/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get('/inventory/inventory/');
       setProducts(res.data);
     } catch (err) {
       console.error('Failed to fetch products:', err);
@@ -86,10 +77,7 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const token = localStorage.getItem('access');
-      const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get('/inventory/branches/');
       setBranches(res.data);
     } catch (err) {
       console.error('Failed to fetch branches:', err);
@@ -99,9 +87,9 @@ const InventoryRequestList = () => {
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      await ReachRequest(id);
+      await ReachRequest(id); // ensure ReachRequest uses api with credentials
       await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1); // Trigger barman stock refresh
+      setRefreshStockTrigger((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to mark as reached:', err.response?.data || err.message);
       alert('Failed to mark as Reached: ' + (err.response?.data?.detail || err.message));
@@ -113,9 +101,9 @@ const InventoryRequestList = () => {
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      await NotReachRequest(id);
+      await NotReachRequest(id); // ensure NotReachRequest uses api with credentials
       await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1); // Trigger barman stock refresh
+      setRefreshStockTrigger((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to mark as not reached:', err);
       alert('Failed to mark as Not Reached');
@@ -124,10 +112,10 @@ const InventoryRequestList = () => {
     }
   };
 
-  // Filter requests by branchId (works for both branch_id and branch.id)
+  // Filter by branch id (branch_id or nested branch.id)
   const filteredRequests = requests.filter(
-    req =>
-      String(req.branch_id || (req.branch && req.branch.id)) === String(branchId)
+    (req) =>
+      String(req.branch_id || req.branch?.id) === String(branchId)
   );
 
   return (
@@ -170,23 +158,13 @@ const InventoryRequestList = () => {
             return;
           }
           try {
-            const token = localStorage.getItem('access');
-            await axios.post(
-              'http://localhost:8000/api/inventory/requests/',
-              {
-                product_id: parseInt(formData.product),
-                quantity: parseFloat(formData.quantity),
-                unit_type: formData.unit_type,
-                status: 'pending',
-                branch_id: parseInt(formData.branch),
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
+            await api.post('/inventory/requests/', {
+              product_id: parseInt(formData.product),
+              quantity: parseFloat(formData.quantity),
+              unit_type: formData.unit_type,
+              status: 'pending',
+              branch_id: parseInt(formData.branch),
+            });
             setFormMessage('Request submitted successfully!');
             setFormData({
               product: '',
@@ -238,7 +216,10 @@ const InventoryRequestList = () => {
               {filteredRequests.map((req) => {
                 const reached = Boolean(req.reached_status);
                 return (
-                  <tr key={`${req.id}-${reached ? 'r' : 'nr'}`} className="text-center hover:bg-gray-50 transition">
+                  <tr
+                    key={`${req.id}-${reached ? 'r' : 'nr'}`}
+                    className="text-center hover:bg-gray-50 transition"
+                  >
                     <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>

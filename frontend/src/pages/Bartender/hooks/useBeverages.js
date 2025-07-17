@@ -9,7 +9,7 @@ export const useBeverages = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axiosInstance.get(`/api/orders/beverages/?branch_id=${branchId}`, {
+      const response = await axiosInstance.get(`/orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent
       });
       setOrders(response.data);
@@ -73,7 +73,7 @@ export const useBeverages = () => {
   // Item-level status update
   const updateOrderItemStatus = async (itemId, status) => {
     try {
-      const response = await axiosInstance.patch(`/api/orders/order-item/${itemId}/update-status/`, { status }, {
+      const response = await axiosInstance.patch(`/orders/order-item/${itemId}/update-status/`, { status }, {
         withCredentials: true,
       });
       setOrders(prevOrders =>
@@ -84,6 +84,7 @@ export const useBeverages = () => {
           )
         }))
       );
+      
     } catch (error) {
       console.error('Failed to update item status', error);
     }

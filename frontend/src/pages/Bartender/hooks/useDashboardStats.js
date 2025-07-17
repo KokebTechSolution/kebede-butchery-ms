@@ -16,7 +16,7 @@ export function useDashboardStats() {
     setError(null);
     try {
       const [ordersRes, inventoryRes, stockRes, staffRes] = await Promise.all([
-        axiosInstance.get("/api/orders/beverages/"),
+        axiosInstance.get("/orders/beverages/"),
         axiosInstance.get("/api/inventory/barman-stock/"),
         axiosInstance.get("/api/inventory/barman-stock/?running_out=true"),
         axiosInstance.get("/api/users/users"),

@@ -53,12 +53,15 @@ const BranchPerformance = () => {
   useEffect(() => {
     const { start, end } = getDateRange(dateRange);
     setLoading(true);
+    setError(null);
+
     axiosInstance.get(`/owner/branch-performance/?start=${start}&end=${end}`)
       .then(res => {
         setData(res.data.branches);
         setLoading(false);
       })
-      .catch(() => {
+      .catch(err => {
+        console.error('Failed to fetch branch performance:', err);
         setError('Failed to fetch branch performance');
         setLoading(false);
       });
@@ -76,6 +79,8 @@ const BranchPerformance = () => {
           <div>Loading...</div>
         ) : error ? (
           <div className="text-red-500">{error}</div>
+        ) : data.length === 0 ? (
+          <div className="text-center text-gray-500">No branch data available for selected date range.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg shadow-sm border border-gray-100">
@@ -88,12 +93,14 @@ const BranchPerformance = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.map((b, i) => (
-                  <tr key={i} className="border-t">
+                {data.map((b) => (
+                  <tr key={b.branch} className="border-t">
                     <td className="px-4 py-2">{b.branch}</td>
                     <td className="px-4 py-2 text-right">${b.totalRevenue.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">{b.totalOrders}</td>
-                    <td className={`px-4 py-2 text-right ${b.grossProfit < 0 ? 'text-red-600' : 'text-green-600'}`}>${b.grossProfit.toLocaleString()}</td>
+                    <td className={`px-4 py-2 text-right ${b.grossProfit < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      ${b.grossProfit.toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -105,4 +112,4 @@ const BranchPerformance = () => {
   );
 };
 
-export default BranchPerformance; 
+export default BranchPerformance;
