@@ -164,7 +164,7 @@ const ProductListPage = () => {
               <th className="border px-4 py-2">Uses Carton</th>
               <th className="border px-4 py-2">Bottles/Carton</th>
               <th className="border px-4 py-2">Carton Qty</th>
-              <th className="border px-4 py-2">Total Price</th>
+           
               <th className="border px-4 py-2">Bottle Qty</th>
               <th className="border px-4 py-2">Unit Qty</th>
               <th className="border px-4 py-2">Branch</th>
