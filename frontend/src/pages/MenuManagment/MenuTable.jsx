@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchMenuItems, updateMenuItem, deleteMenuItem, fetchMenuCategories } from '../../api/menu';
+import axiosInstance from '../../api/axiosInstance';
 import { format } from 'date-fns';
 
 const MenuTable = ({ refreshFlag }) => {
@@ -28,8 +29,8 @@ const MenuTable = ({ refreshFlag }) => {
 
     const loadCategories = async () => {
         try {
-            const data = await fetchMenuCategories();
-            setCategories(data);
+            const res = await axiosInstance.get('/inventory/categories/');
+            setCategories(res.data);
         } catch (err) {
             console.error('Error fetching categories:', err);
         }
@@ -130,7 +131,7 @@ const MenuTable = ({ refreshFlag }) => {
                 >
                     <option value="all">All Categories</option>
                     {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        <option key={cat.id} value={cat.id}>{cat.category_name}</option>
                     ))}
                 </select>
             </div>

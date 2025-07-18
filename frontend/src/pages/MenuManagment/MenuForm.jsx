@@ -6,6 +6,7 @@ import {
   createMenuCategory,
 } from '../../api/menu';
 import { fetchAvailableProducts } from '../../api/stock';
+import axiosInstance from '../../api/axiosInstance';
 
 const MenuForm = ({
   refreshMenu,
@@ -28,6 +29,8 @@ const MenuForm = ({
   const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
+  const [inventoryCategories, setInventoryCategories] = useState([]);
+  const [error, setError] = useState(null);
 
   // Load categories and products on mount
   useEffect(() => {
@@ -50,6 +53,17 @@ const MenuForm = ({
     }
     loadData();
   }, []);
+
+  // Fetch inventory categories on mount
+  useEffect(() => {
+    axiosInstance.get('/inventory/categories/')
+      .then(res => setInventoryCategories(res.data))
+      .catch(err => setError('Failed to load categories'));
+  }, []);
+
+  // Filter categories by type
+  const foodCategories = inventoryCategories.filter(cat => cat.item_type.id === 1);
+  const beverageCategories = inventoryCategories.filter(cat => cat.item_type.id === 2 || cat.item_type.id === 3);
 
   // Initialize form when selectedItem or forcebeverageOnly changes
   useEffect(() => {
@@ -83,6 +97,9 @@ const MenuForm = ({
       const isBeverage =
         (selectedCategory?.name || '').toLowerCase() === 'beverage' ||
         formData.item_type === 'beverage';
+      const isFood =
+        (selectedCategory?.name || '').toLowerCase() === 'food' ||
+        formData.item_type === 'food';
 
       let productName = '';
       if (isBeverage) {
@@ -95,7 +112,6 @@ const MenuForm = ({
       const payload = {
         ...formData,
         name: productName,
-        product: isBeverage ? formData.product : null,
       };
 
       if (selectedItem) {
@@ -201,7 +217,7 @@ const MenuForm = ({
           </div>
         )}
 
-        {/* Category dropdown */}
+        {/* Category Dropdown */}
         <div>
           <label className="block mb-2 font-semibold">Category</label>
           <select
@@ -211,60 +227,12 @@ const MenuForm = ({
             required
           >
             <option value="">-- Select Category --</option>
-            {categories.map((category) => (
+            {(formData.item_type === 'food' ? foodCategories : beverageCategories).map((category) => (
               <option key={category.id} value={category.id}>
-                {category.name}
+                {category.category_name}
               </option>
             ))}
-          </select>
-
-          {addingCategory ? (
-            <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                placeholder="New category name"
-                className="border p-2 rounded"
-              />
-              <button
-                type="button"
-                className="bg-green-500 text-white px-2 rounded"
-                onClick={async () => {
-                  if (!newCategory.trim()) return;
-                  try {
-                    const res = await createMenuCategory({ name: newCategory });
-                    setCategories([...categories, res]);
-                    setFormData({ ...formData, category: res.id });
-                    setNewCategory('');
-                    setAddingCategory(false);
-                  } catch (err) {
-                    alert('Failed to add category');
-                  }
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="bg-gray-400 text-white px-2 rounded"
-                onClick={() => {
-                  setAddingCategory(false);
-                  setNewCategory('');
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAddingCategory(true)}
-              className="bg-blue-500 text-white px-2 rounded mt-2"
-            >
-              + Add New Category
-            </button>
-          )}
+          </select> 
         </div>
 
         {/* Availability Checkbox */}
