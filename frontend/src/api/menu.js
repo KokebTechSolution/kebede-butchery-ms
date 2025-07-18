@@ -138,3 +138,22 @@ export const createMenuCategory = async (categoryData) => {
 };
 
 
+export const createItemType = async (typeName) => {
+  const response = await axiosInstance.post('/api/inventory/itemtypes/', {
+    type_name: typeName,
+  });
+  return response.data;
+};
+
+const addNewCategory = async (categoryName, itemTypeId) => {
+  try {
+    const response = await axiosInstance.post('/inventory/categories/', {
+      category_name: categoryName,
+      item_type: itemTypeId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error creating category:', error.response?.data || error.message);
+    throw error;
+  }
+};

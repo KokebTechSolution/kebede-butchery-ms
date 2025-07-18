@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import axiosInstance from './axiosInstance';
 // Base URL for inventory API
 const BASE_URL = 'http://localhost:8000/api/inventory/';
 
@@ -117,4 +117,23 @@ export const ReachRequest = async (id) => {
 export const NotReachRequest = async (id) => {
   const response = await axios.post(`${BASE_URL}requests/${id}/not_reach/`, null, modifyConfig);
   return response.data;
+};
+export const createItemType = async (typeName) => {
+  const response = await axiosInstance.post('/api/inventory/itemtypes/', {
+    type_name: typeName,
+  });
+  return response.data;
+};
+
+const addNewCategory = async (categoryName, itemTypeId) => {
+  try {
+    const response = await axiosInstance.post('/inventory/categories/', {
+      category_name: categoryName,
+      item_type: itemTypeId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error creating category:', error.response?.data || error.message);
+    throw error;
+  }
 };

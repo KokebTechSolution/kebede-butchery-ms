@@ -42,12 +42,18 @@ class ItemTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemType
         fields = ['id', 'type_name']
+        extra_kwargs = {
+            'id': {'read_only': True},
+        }
+
 
 # Category
 class CategorySerializer(serializers.ModelSerializer):
     item_type = ItemTypeSerializer(read_only=True)
     item_type_id = serializers.PrimaryKeyRelatedField(
-        queryset=ItemType.objects.all(), source='item_type', write_only=True
+        queryset=ItemType.objects.all(),
+        source='item_type',  # maps to item_type field in model
+        write_only=True
     )
 
     class Meta:

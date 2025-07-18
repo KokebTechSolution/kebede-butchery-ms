@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 import axios from 'axios';
 
-// Helper to get CSRF token from cookie
+// CSRF token helper
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -19,122 +17,193 @@ function getCookie(name) {
   return cookieValue;
 }
 
-const NewProductPage = () => {
-  const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
-    name: '',
-    category: ''
-  });
+const NewItemPage = ({ onClose }) => {
+  const csrfToken = getCookie('csrftoken');
 
   const [itemTypes, setItemTypes] = useState([]);
   const [categories, setCategories] = useState([]);
+
   const [selectedItemType, setSelectedItemType] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  const [newItemType, setNewItemType] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [formVisible, setFormVisible] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const itemTypeData = await fetchItemTypes();
-        const categoryData = await fetchCategories();
-        setItemTypes(itemTypeData);
-        setCategories(categoryData);
+        const [itemTypeRes, categoryRes] = await Promise.all([
+          axios.get('http://localhost:8000/api/inventory/itemtypes/', { withCredentials: true }),
+          axios.get('http://localhost:8000/api/inventory/categories/', { withCredentials: true }),
+        ]);
+        setItemTypes(itemTypeRes.data);
+        setCategories(categoryRes.data);
       } catch (err) {
-        console.error('Error loading form data:', err);
+        console.error('Error loading data', err);
       }
     };
-
     loadData();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const filteredCategories = categories.filter(
+    (cat) => cat.item_type?.id?.toString() === selectedItemType
+  );
 
-    if (!formData.name || !formData.category) {
-      alert('Please complete all fields.');
-      return;
-    }
-
-    const csrfToken = getCookie('csrftoken');
-
+  const handleAddItemType = async () => {
+    if (!newItemType.trim()) return alert('Please enter an item type name');
     try {
-      await axios.post(
-        'http://localhost:8000/api/inventory/inventory/',
+      const res = await axios.post(
+        'http://localhost:8000/api/inventory/itemtypes/',
+        { type_name: newItemType },
         {
-          name: formData.name,
-          category: formData.category,
-        },
-        {
+          headers: { 'X-CSRFToken': csrfToken },
           withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
         }
       );
-
-      alert('Product added successfully!');
-      navigate('/branch-manager/inventory');
+      setItemTypes([...itemTypes, res.data]);
+      setSelectedItemType(res.data.id.toString());
+      setNewItemType('');
     } catch (err) {
-      console.error('Error adding product:', err);
-      alert('Failed to add product.');
+      console.error('Add item type failed:', err.response?.data || err);
+      alert('Failed to add item type');
     }
   };
 
-  // Filter categories by selected item type
-  const filteredCategories = categories.filter(
-    (cat) => cat.item_type === parseInt(selectedItemType)
-  );
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return alert('Please enter a category name');
+    if (!selectedItemType) return alert('Select an item type first');
+    try {
+      const res = await axios.post(
+        'http://localhost:8000/api/inventory/categories/',
+        {
+          category_name: newCategory,
+          item_type_id: parseInt(selectedItemType),
+        },
+        {
+          headers: { 'X-CSRFToken': csrfToken },
+          withCredentials: true,
+        }
+      );
+      setCategories([...categories, res.data]);
+      setSelectedCategory(res.data.id.toString());
+      setNewCategory('');
+    } catch (err) {
+      console.error('Add category failed:', err.response?.data || err);
+      alert('Failed to add category');
+    }
+  };
+
+const handleSubmit = (e) => {
+  e.preventDefault();
+  if (!selectedItemType || !selectedCategory) {
+    return alert('Please select both item type and category');
+  }
+
+  alert('Submitted successfully!');
+  setFormVisible(false);  // Hide the form
+  window.location.reload(); // Refresh the page to show updates
+};
+
 
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4">Add New Product</h1>
+      <h1 className="text-xl font-bold mb-4">Select Item Type and Category</h1>
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <select
-          value={selectedItemType}
-          onChange={(e) => {
-            setSelectedItemType(e.target.value);
-            setFormData({ ...formData, category: '' });
-          }}
-          className="border p-2 w-full"
-          required
-        >
-          <option value="">Select Item Type</option>
-          {itemTypes.map((itemType) => (
-            <option key={itemType.id} value={itemType.id}>
-              {itemType.type_name}
-            </option>
-          ))}
-        </select>
+        {/* Item Type */}
+        <div>
+          <label className="block mb-1 font-semibold">Item Type</label>
+          <select
+            value={selectedItemType}
+            onChange={(e) => {
+              setSelectedItemType(e.target.value);
+              setSelectedCategory('');
+            }}
+            required
+            className="border p-2 w-full rounded"
+          >
+            <option value="">Select Item Type</option>
+            {itemTypes.map((it) => (
+              <option key={it.id} value={it.id}>
+                {it.type_name}
+              </option>
+            ))}
+          </select>
+          <div className="flex mt-2 gap-2">
+            <input
+              type="text"
+              placeholder="Add new item type"
+              value={newItemType}
+              onChange={(e) => setNewItemType(e.target.value)}
+              className="border p-2 flex-1 rounded"
+            />
+            <button
+              type="button"
+              onClick={handleAddItemType}
+              className="bg-green-600 text-white px-3 py-1 rounded"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
 
-        <select
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          className="border p-2 w-full"
-          required
-          disabled={!selectedItemType}
-        >
-          <option value="">Select Category</option>
-          {filteredCategories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.category_name}
-            </option>
-          ))}
-        </select>
+        {/* Category */}
+        <div>
+          <label className="block mb-1 font-semibold">Category</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            disabled={!selectedItemType}
+            required
+            className="border p-2 w-full rounded"
+          >
+            <option value="">Select Category</option>
+            {filteredCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.category_name}
+              </option>
+            ))}
+          </select>
+          <div className="flex mt-2 gap-2">
+            <input
+              type="text"
+              placeholder="Add new category"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              className="border p-2 flex-1 rounded"
+              disabled={!selectedItemType}
+            />
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              disabled={!selectedItemType}
+              className="bg-green-600 text-white px-3 py-1 rounded"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
 
-        <input
-          type="text"
-          placeholder="Product Name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="border p-2 w-full"
-          required
-        />
-
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-          Add Product
-        </button>
+        {/* Submit */}
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded flex-1"
+          >
+            Submit
+          </button>
+          <button
+            type="button"
+            onClick={() => onClose && onClose()}
+            className="bg-gray-300 text-black px-4 py-2 rounded flex-1"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );
 };
 
-export default NewProductPage;
+export default NewItemPage;

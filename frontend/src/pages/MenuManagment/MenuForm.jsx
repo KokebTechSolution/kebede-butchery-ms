@@ -59,7 +59,7 @@ const MenuForm = ({
   // Check beverage or food by category's item_type.type_name or formData.item_type
   const isBeverage =
     forcebeverageOnly ||
-    (selectedCategory?.item_type?.type_name?.toLowerCase() === 'drink' ||
+    (selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
      selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
      formData.item_type?.toLowerCase() === 'beverage');
 
@@ -71,7 +71,7 @@ const MenuForm = ({
   const filteredCategories = formData.item_type
     ? categories.filter(cat =>
         cat.item_type?.type_name?.toLowerCase() ===
-        (formData.item_type === 'beverage' ? 'drink' : 'food')
+        (formData.item_type === 'beverage' ? 'beverage' : 'food')
       )
     : categories;
 
