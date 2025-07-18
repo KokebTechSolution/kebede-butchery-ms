@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { CheckIcon, XIcon } from 'lucide-react';
+import { FaPrint } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { RejectOrderDialog } from './RejectOrderDialog';
 
-export const OrderCard = ({ order, onAccept, onReject, showActions = true }) => {
+export const OrderCard = ({ order, onAccept, onReject, onPrint, showActions = true }) => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   const handleAccept = () => {
@@ -58,6 +59,15 @@ export const OrderCard = ({ order, onAccept, onReject, showActions = true }) => 
                   >
                     Reject
                     <XIcon className="ml-1 h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() => onPrint(order.id)}
+                    className="h-8 rounded-2xl px-4 py-0 bg-blue-100 hover:bg-blue-200 font-['Work_Sans',Helvetica] font-medium text-sm text-blue-800 border-blue-300"
+                  >
+                    Print
+                    <FaPrint className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
               )}

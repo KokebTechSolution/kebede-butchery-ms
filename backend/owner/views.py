@@ -11,6 +11,7 @@ from django.utils import timezone
 from decimal import Decimal
 from django.utils.dateparse import parse_date
 from users.models import User
+from inventory.models import Stock
 
 class OwnerDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsOwner]
@@ -78,11 +79,36 @@ class OwnerDashboardView(APIView):
             for i in top_items
         ]
 
+        # Calculate total inventory value (cost of inventory)
+        stocks = Stock.objects.select_related('product').all()
+        total_inventory_value = 0
+        for stock in stocks:
+            product = stock.product
+            if product.uses_carton and product.bottles_per_carton and product.price_per_unit:
+                total_inventory_value += float(stock.carton_quantity * product.bottles_per_carton * product.price_per_unit)
+            elif not product.uses_carton and product.price_per_unit:
+                total_inventory_value += float(stock.bottle_quantity * product.price_per_unit)
+
+        # Calculate profit of inventory: sum of closed (paid) orders by waiters in the date range
+        waiter_ids = User.objects.filter(role='waiter').values_list('id', flat=True)
+        closed_orders = Order.objects.filter(
+            created_by_id__in=waiter_ids,
+            cashier_status='printed',
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+            payment__is_completed=True
+        ).distinct()
+        profit_of_inventory = 0
+        for order in closed_orders:
+            beverage_items = order.items.filter(item_type__in=['beverage', 'drink'], status='accepted')
+            order_total = sum(item.price * item.quantity for item in beverage_items)
+            profit_of_inventory += order_total
+
         data = {
             'kpi': {
                 'totalRevenue': float(total_sales),
-                'costOfGoods': float(cost_of_goods),
-                'grossProfit': float(gross_profit),
+                'costOfInventory': float(total_inventory_value),
+                'profitOfInventory': float(profit_of_inventory),
                 'operatingExpenses': float(operating_expenses),
                 'netProfit': float(net_profit),
                 'avgOrderValue': float(avg_order_value)

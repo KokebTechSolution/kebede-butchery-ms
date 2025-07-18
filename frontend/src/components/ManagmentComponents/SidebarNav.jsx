@@ -17,6 +17,8 @@ const navItems = [
   { label: "Inventory", icon: <FaClipboardList />, path: "/branch-manager/inventory" },
   { label: "Request", icon: <FaClipboardList />, path: "/branch-manager/request" },
   { label: "Menu Management", icon: <FaUtensils />, path: "/branch-manager/menu" },
+  // Add Closed Orders for meat dashboard
+  { label: "Closed Orders", icon: <FaClipboardList />, path: "/meat/closed-orders" },
 ];
 
 export default function SidebarNav() {

@@ -54,9 +54,9 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
 
     return (
         <div className="menu-container" style={{ display: 'flex', gap: '2rem' }}>
-            <div style={{ flex: 2, filter: isReadyToPay ? 'blur(2px)' : 'none', pointerEvents: isReadyToPay ? 'none' : 'auto', opacity: isReadyToPay ? 0.6 : 1 }}>
+            <div style={{ flex: 2 }}>
                 <div className="menu-header">
-                    <h2>{table ? ` Table ${table.id}` : ''}</h2>
+                    <h2>{table ? ` Table ${table.number}` : ''}</h2>
                     {onBack && <MdArrowBack size={36} onClick={onBack} style={{ cursor: 'pointer' }} />}
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: 700 }} className="menu-tabs">

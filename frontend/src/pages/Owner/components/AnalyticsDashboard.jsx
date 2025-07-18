@@ -89,8 +89,8 @@ const AnalyticsDashboard = () => {
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
           <KpiCard title="Total Revenue" value={analyticsData.kpi.totalRevenue} isCurrency />
-          <KpiCard title="Cost of Goods" value={analyticsData.kpi.costOfGoods} isCurrency />
-          <KpiCard title="Gross Profit" value={analyticsData.kpi.grossProfit} isCurrency isProfitLoss />
+          <KpiCard title="Cost of Inventory" value={analyticsData.kpi.costOfInventory} isCurrency />
+          <KpiCard title="Profit of Inventory" value={analyticsData.kpi.profitOfInventory} isCurrency isProfitLoss />
           <KpiCard title="Operating Expenses" value={analyticsData.kpi.operatingExpenses} isCurrency />
           <KpiCard title="Net Profit" value={analyticsData.kpi.netProfit} isCurrency isProfitLoss />
           <KpiCard title="Avg Order Value" value={analyticsData.kpi.avgOrderValue} isCurrency />
@@ -104,7 +104,10 @@ const AnalyticsDashboard = () => {
               <TrendingUp className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-semibold text-gray-900">Profit & Loss Trend</h2>
             </div>
-            <ProfitLossChart data={analyticsData.profitTrend} />
+            <ProfitLossChart data={analyticsData.profitTrend.map(pt => ({
+              ...pt,
+              costs: analyticsData.kpi.costOfInventory // or pt.costOfInventory if available per period
+            }))} />
           </div>
 
           {/* Top Selling Items Chart */}
@@ -152,10 +155,10 @@ const AnalyticsDashboard = () => {
               <h3 className="text-lg font-semibold text-gray-900">Cost Efficiency</h3>
             </div>
             <p className="text-2xl font-bold text-purple-600 mb-2">
-              {((analyticsData.kpi.costOfGoods / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
+              {((analyticsData.kpi.costOfInventory / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
             </p>
             <p className="text-sm text-gray-600">
-              Cost of goods as percentage of revenue, indicating operational efficiency.
+              Cost of inventory as percentage of revenue, indicating operational efficiency.
             </p>
           </div>
         </div>

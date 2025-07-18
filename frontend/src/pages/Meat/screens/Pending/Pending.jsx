@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaLock } from 'react-icons/fa';
 import { useOrders } from '../../hooks/useOrders';
 import NotificationPopup from '../../../../components/NotificationPopup.jsx';
+import ClosedOrders from './ClosedOrders';
 
 const getTodayDateString = () => {
   const today = new Date();
@@ -13,14 +14,16 @@ const getTodayDateString = () => {
 
 export const Pending = () => {
   const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem } = useOrders(filterDate);
+  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem } = useOrders(filterDate);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
+  const [showClosed, setShowClosed] = useState(false);
   const prevOrderIdsRef = useRef([]);
   const prevOrderItemsRef = useRef({});
 
   // Use only active orders
   const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const closedOrders = getClosedOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   // Notification logic: show popup when a new order is displayed in the UI or when a new item is added to an existing order
   useEffect(() => {
@@ -93,10 +96,22 @@ export const Pending = () => {
           className="p-2 border rounded"
         />
       </div>
-      {Object.keys(groupedByTableNumber).length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No active orders</p>
-        </div>
+      <div className="flex gap-4 mb-6">
+        <button
+          className={`px-4 py-2 rounded ${!showClosed ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setShowClosed(false)}
+        >
+          Active Orders
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${showClosed ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setShowClosed(true)}
+        >
+          Closed Orders
+        </button>
+      </div>
+      {showClosed ? (
+        <ClosedOrders orders={closedOrders} />
       ) : (
         <div className="space-y-8">
           {tableEntries.map(([tableNum, tableOrders]) => (
