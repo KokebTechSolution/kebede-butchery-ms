@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   createMenuItem,
   updateMenuItem,
@@ -15,6 +16,8 @@ const MenuForm = ({
   closeModal,
   forcebeverageOnly,
 }) => {
+  const { t } = useTranslation();
+
   const [formData, setFormData] = useState({
     product: '', // product ID or free text product name
     description: '',
@@ -58,8 +61,8 @@ const MenuForm = ({
   useEffect(() => {
     axiosInstance.get('/inventory/categories/')
       .then(res => setInventoryCategories(res.data))
-      .catch(err => setError('Failed to load categories'));
-  }, []);
+      .catch(err => setError(t('Failed to load categories')));
+  }, [t]);
 
   // Filter categories by type
   const foodCategories = inventoryCategories.filter(cat => cat.item_type.id === 1);
@@ -97,7 +100,7 @@ const MenuForm = ({
       const isBeverage =
         (selectedCategory?.name || '').toLowerCase() === 'beverage' ||
         formData.item_type === 'beverage';
-      const isFood = 
+      const isFood =
         (selectedCategory?.name || '').toLowerCase() === 'food' ||
         formData.item_type === 'food';
       let productName = '';
@@ -111,17 +114,15 @@ const MenuForm = ({
       const payload = {
         ...formData,
         name: productName,
-        product: isBeverage | isFood
+        product: isBeverage || isFood,
       };
-
-
 
       if (selectedItem) {
         await updateMenuItem(selectedItem.id, payload);
-        alert('Menu item updated successfully!');
+        alert(t('Menu item updated successfully!'));
       } else {
         await createMenuItem(payload);
-        alert('Menu item created successfully!');
+        alert(t('Menu item created successfully!'));
       }
 
       refreshMenu();
@@ -129,7 +130,7 @@ const MenuForm = ({
       clearSelection();
     } catch (error) {
       console.error('Error saving menu item:', error);
-      alert('Error saving menu item. Please try again.');
+      alert(t('Error saving menu item. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -144,7 +145,7 @@ const MenuForm = ({
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
         {/* Product Name / Dropdown */}
         <div>
-          <label className="block mb-2 font-semibold">Product Name</label>
+          <label className="block mb-2 font-semibold">{t('product_name')}</label>
 
           {(selectedCategory?.name.toLowerCase() === 'beverage' || formData.item_type === 'beverage') ? (
             <select
@@ -161,7 +162,7 @@ const MenuForm = ({
               className="border p-2 w-full rounded"
               required
             >
-              <option value="">-- Select a product --</option>
+              <option value="">{t('select_product')}</option>
               {availableProducts.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -174,7 +175,7 @@ const MenuForm = ({
               value={formData.product}
               onChange={(e) => setFormData({ ...formData, product: e.target.value })}
               className="border p-2 w-full rounded"
-              placeholder="Enter product name"
+              placeholder={t('enter_product_name')}
               required
             />
           )}
@@ -182,7 +183,7 @@ const MenuForm = ({
 
         {/* Description */}
         <div>
-          <label className="block mb-2 font-semibold">Description</label>
+          <label className="block mb-2 font-semibold">{t('description')}</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -193,7 +194,7 @@ const MenuForm = ({
 
         {/* Price */}
         <div>
-          <label className="block mb-2 font-semibold">Price</label>
+          <label className="block mb-2 font-semibold">{t('price')}</label>
           <input
             type="number"
             value={formData.price}
@@ -206,35 +207,35 @@ const MenuForm = ({
         {/* Item Type */}
         {!forcebeverageOnly && (
           <div>
-            <label className="block mb-2 font-semibold">Item Type</label>
+            <label className="block mb-2 font-semibold">{t('item_type')}</label>
             <select
               value={formData.item_type}
               onChange={(e) => setFormData({ ...formData, item_type: e.target.value })}
               className="border p-2 w-full rounded"
               required
             >
-              <option value="food">Food</option>
-              <option value="beverage">Beverage</option>
+              <option value="food">{t('food')}</option>
+              <option value="beverage">{t('beverage')}</option>
             </select>
           </div>
         )}
 
         {/* Category Dropdown */}
         <div>
-          <label className="block mb-2 font-semibold">Category</label>
+          <label className="block mb-2 font-semibold">{t('category')}</label>
           <select
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: parseInt(e.target.value) })}
             className="border p-2 w-full rounded"
             required
           >
-            <option value="">-- Select Category --</option>
+            <option value="">{t('select_category')}</option>
             {(formData.item_type === 'food' ? foodCategories : beverageCategories).map((category) => (
               <option key={category.id} value={category.id}>
                 {category.category_name}
               </option>
             ))}
-          </select> 
+          </select>
         </div>
 
         {/* Availability Checkbox */}
@@ -244,7 +245,7 @@ const MenuForm = ({
             checked={formData.is_available}
             onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
           />
-          <label>Available</label>
+          <label>{t('available')}</label>
         </div>
       </div>
 
@@ -259,11 +260,19 @@ const MenuForm = ({
           zIndex: 2,
         }}
       >
-        <button type="button" className="bg-gray-400 text-white px-4 py-2 rounded" onClick={closeModal}>
-          Cancel
+        <button
+          type="button"
+          className="bg-gray-400 text-white px-4 py-2 rounded"
+          onClick={closeModal}
+        >
+          {t('cancel')}
         </button>
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded" disabled={loading}>
-          {loading ? 'Saving...' : 'Save Item'}
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+          disabled={loading}
+        >
+          {loading ? t('saving') : t('save_item')}
         </button>
       </div>
     </form>

@@ -10,22 +10,23 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-
-const navItems = [
-  { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
-  { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
-  { label: "Inventory", icon: <FaClipboardList />, path: "/branch-manager/inventory" },
-  { label: "Request", icon: <FaClipboardList />, path: "/branch-manager/request" },
-  { label: "Menu Management", icon: <FaUtensils />, path: "/branch-manager/menu" },
-];
+import { useTranslation } from "react-i18next";
 
 export default function SidebarNav() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const toggleSidebar = () => setIsOpen(!isOpen);
 
+  const navItems = [
+    { label: t("dashboard"), icon: <FaTachometerAlt />, path: "/branch-manager" },
+    { label: t("staff_management"), icon: <FaUserFriends />, path: "/branch-manager/staff" },
+    { label: t("inventory"), icon: <FaClipboardList />, path: "/branch-manager/inventory" },
+    { label: t("request"), icon: <FaClipboardList />, path: "/branch-manager/request" },
+    { label: t("menu_management"), icon: <FaUtensils />, path: "/branch-manager/menu" },
+  ];
+
   return (
     <>
-      {/* Toggle Button - Mobile Only */}
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
@@ -34,7 +35,6 @@ export default function SidebarNav() {
         {isOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
       </button>
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-screen bg-white border-r shadow-lg w-64 p-6 flex flex-col
         transform transition-transform duration-300 ease-in-out
@@ -42,7 +42,7 @@ export default function SidebarNav() {
         ${isOpen ? "translate-x-0" : "-translate-x-full"} z-40`}
       >
         <h1 className="text-3xl font-bold text-indigo-600 mb-10 text-center select-none">
-          🏢 Branch Panel
+          🏢 {t("branch_panel")}
         </h1>
 
         <nav className="flex flex-col space-y-2 flex-grow overflow-auto">
@@ -58,7 +58,7 @@ export default function SidebarNav() {
                      : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
                  }`
               }
-              onClick={() => setIsOpen(false)} // Close on mobile
+              onClick={() => setIsOpen(false)}
             >
               <span className="text-lg">{icon}</span>
               {label}
@@ -66,17 +66,15 @@ export default function SidebarNav() {
           ))}
         </nav>
 
-        {/* Logout */}
         <button
           onClick={() => alert("Logging out...")}
           className="mt-8 flex items-center gap-3 px-4 py-3 text-red-600 font-semibold rounded-md hover:bg-red-50 transition-colors text-base"
         >
           <FaSignOutAlt className="text-lg" />
-          Logout
+          {t("logout")}
         </button>
       </aside>
 
-      {/* Overlay - Only for Mobile */}
       {isOpen && (
         <div
           onClick={toggleSidebar}

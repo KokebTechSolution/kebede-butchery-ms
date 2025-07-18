@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { fetchMenuItems, updateMenuItem, deleteMenuItem, fetchMenuCategories } from '../../api/menu';
+import { useTranslation } from 'react-i18next';
+import { fetchMenuItems, updateMenuItem, deleteMenuItem } from '../../api/menu';
 import axiosInstance from '../../api/axiosInstance';
 import { format } from 'date-fns';
 
 const MenuTable = ({ refreshFlag }) => {
+    const { t } = useTranslation();
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -21,7 +23,7 @@ const MenuTable = ({ refreshFlag }) => {
             setMenuItems(data);
         } catch (err) {
             console.error('Error fetching menu items:', err);
-            setError('Failed to load menu items.');
+            setError(t('error_loading_menu'));
         } finally {
             setLoading(false);
         }
@@ -41,15 +43,14 @@ const MenuTable = ({ refreshFlag }) => {
         loadCategories();
     }, []);
 
-    // Refresh table when refreshFlag changes (insertion happens)
     useEffect(() => {
         loadMenuItems();
     }, [refreshFlag]);
 
     const renderDate = (dateString) => {
-        if (!dateString) return 'N/A';
+        if (!dateString) return t('not_available');
         const date = new Date(dateString);
-        if (isNaN(date)) return 'Invalid Date';
+        if (isNaN(date)) return t('invalid_date');
         return format(date, 'PPpp');
     };
 
@@ -66,31 +67,31 @@ const MenuTable = ({ refreshFlag }) => {
     const handleSaveEdit = async () => {
         try {
             await updateMenuItem(selectedItem.id, selectedItem);
-            alert('Menu item updated successfully!');
+            alert(t('menu_item_updated'));
             setMenuItems(menuItems.map(m => (m.id === selectedItem.id ? selectedItem : m)));
             setIsEditModalOpen(false);
         } catch (error) {
             console.error('Error updating menu item:', error);
-            alert('Error updating menu item.');
+            alert(t('error_updating_menu'));
         }
     };
 
     const handleConfirmDelete = async () => {
         try {
             await deleteMenuItem(selectedItem.id);
-            alert('Menu item deleted successfully!');
+            alert(t('menu_item_deleted'));
             setMenuItems(menuItems.filter(m => m.id !== selectedItem.id));
             setIsDeleteModalOpen(false);
         } catch (error) {
             console.error('Error deleting menu item:', error);
-            alert('Error deleting menu item.');
+            alert(t('error_deleting_menu'));
         }
     };
 
     const applyDiscount = () => {
         const discount = parseFloat(discountValue);
         if (isNaN(discount) || discount <= 0 || discount >= 100) {
-            alert('Enter a valid discount percentage (1-99%).');
+            alert(t('invalid_discount'));
             return;
         }
 
@@ -100,20 +101,20 @@ const MenuTable = ({ refreshFlag }) => {
         }));
 
         setMenuItems(discountedItems);
-        alert(`Applied ${discount}% discount to all menu item prices.`);
+        alert(t('discount_applied', { discount }));
     };
 
-    if (loading) return <p>Loading menu items...</p>;
+    if (loading) return <p>{t('loading')}</p>;
     if (error) return <p className="text-red-500">{error}</p>;
 
     return (
         <div className="p-4">
-            <h1 className="text-2xl font-bold mb-4">Menu Items List</h1>
+            <h1 className="text-2xl font-bold mb-4">{t('menu_list')}</h1>
 
             <div className="mb-4 flex space-x-2 items-center">
                 <input
                     type="number"
-                    placeholder="Discount %"
+                    placeholder={t('discount_percent')}
                     className="border p-2 rounded"
                     value={discountValue}
                     onChange={(e) => setDiscountValue(e.target.value)}
@@ -122,14 +123,14 @@ const MenuTable = ({ refreshFlag }) => {
                     onClick={applyDiscount}
                     className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                 >
-                    Apply Discount
+                    {t('apply_discount')}
                 </button>
                 <select
                     className="border p-2 rounded ml-4"
                     value={selectedCategory}
                     onChange={e => setSelectedCategory(e.target.value)}
                 >
-                    <option value="all">All Categories</option>
+                    <option value="all">{t('all_categories')}</option>
                     {categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.category_name}</option>
                     ))}
@@ -139,14 +140,14 @@ const MenuTable = ({ refreshFlag }) => {
             <table className="min-w-full bg-white border border-gray-200 rounded-xl">
                 <thead>
                     <tr className="bg-gray-100">
-                        <th className="p-2 border">ID</th>
-                        <th className="p-2 border">Name</th>
-                        <th className="p-2 border">Price</th>
-                        <th className="p-2 border">Is Available</th>
-                        <th className="p-2 border">Item Type</th>
-                        <th className="p-2 border">Created At</th>
-                        <th className="p-2 border">Updated At</th>
-                        <th className="p-2 border">Actions</th>
+                        <th className="p-2 border">{t('id')}</th>
+                        <th className="p-2 border">{t('name')}</th>
+                        <th className="p-2 border">{t('price')}</th>
+                        <th className="p-2 border">{t('available')}</th>
+                        <th className="p-2 border">{t('item_type')}</th>
+                        <th className="p-2 border">{t('created_at')}</th>
+                        <th className="p-2 border">{t('updated_at')}</th>
+                        <th className="p-2 border">{t('actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -157,7 +158,7 @@ const MenuTable = ({ refreshFlag }) => {
                                 <td className="p-2 border text-center">{item.id}</td>
                                 <td className="p-2 border text-center">{item.name}</td>
                                 <td className="p-2 border text-center">{item.price}</td>
-                                <td className="p-2 border text-center">{item.is_available ? 'Yes' : 'No'}</td>
+                                <td className="p-2 border text-center">{item.is_available ? t('yes') : t('no')}</td>
                                 <td className="p-2 border text-center">{item.item_type}</td>
                                 <td className="p-2 border text-center">{renderDate(item.created_at)}</td>
                                 <td className="p-2 border text-center">{renderDate(item.updated_at)}</td>
@@ -166,13 +167,13 @@ const MenuTable = ({ refreshFlag }) => {
                                         onClick={() => handleEdit(item)}
                                         className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
                                     >
-                                        Edit
+                                        {t('edit')}
                                     </button>
                                     <button
                                         onClick={() => handleDelete(item)}
                                         className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                                     >
-                                        Delete
+                                        {t('delete')}
                                     </button>
                                 </td>
                             </tr>
@@ -184,15 +185,15 @@ const MenuTable = ({ refreshFlag }) => {
             {isEditModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded shadow-md w-96">
-                        <h2 className="text-xl font-bold mb-4">Edit Menu Item</h2>
-                        <label className="block mb-2 font-semibold">Name</label>
+                        <h2 className="text-xl font-bold mb-4">{t('edit_menu_item')}</h2>
+                        <label className="block mb-2 font-semibold">{t('name')}</label>
                         <input
                             type="text"
                             className="border p-2 w-full rounded mb-4"
                             value={selectedItem.name}
                             onChange={(e) => setSelectedItem({ ...selectedItem, name: e.target.value })}
                         />
-                        <label className="block mb-2 font-semibold">Price</label>
+                        <label className="block mb-2 font-semibold">{t('price')}</label>
                         <input
                             type="number"
                             className="border p-2 w-full rounded mb-4"
@@ -204,13 +205,13 @@ const MenuTable = ({ refreshFlag }) => {
                                 onClick={() => setIsEditModalOpen(false)}
                                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                             <button
                                 onClick={handleSaveEdit}
                                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                             >
-                                Save
+                                {t('save')}
                             </button>
                         </div>
                     </div>
@@ -221,20 +222,22 @@ const MenuTable = ({ refreshFlag }) => {
             {isDeleteModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded shadow-md w-96">
-                        <h2 className="text-xl font-bold mb-4 text-center">Confirm Deletion</h2>
-                        <p className="mb-4 text-center">Are you sure you want to delete: <strong>{selectedItem.name}</strong>?</p>
+                        <h2 className="text-xl font-bold mb-4 text-center">{t('confirm_delete')}</h2>
+                        <p className="mb-4 text-center">
+                            {t('confirm_delete_text', { name: selectedItem.name })}
+                        </p>
                         <div className="flex justify-center space-x-4">
                             <button
                                 onClick={() => setIsDeleteModalOpen(false)}
                                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                             <button
                                 onClick={handleConfirmDelete}
                                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                             >
-                                Delete
+                                {t('delete')}
                             </button>
                         </div>
                     </div>
