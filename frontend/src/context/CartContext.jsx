@@ -205,11 +205,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     setActiveTableId(tableId);
     setTableCarts(prev => ({
       ...prev,
-      [tableId]: [] // Clear the cart first
-    }));
-    setTableCarts(prev => ({
-      ...prev,
-      [tableId]: items // Then load only the items you want to edit
+      [tableId]: items // Directly replace the cart for this table
     }));
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };

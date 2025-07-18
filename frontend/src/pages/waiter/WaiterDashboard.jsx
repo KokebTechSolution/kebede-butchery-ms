@@ -32,7 +32,8 @@ const WaiterDashboard = () => {
     updateOrder, 
     deleteOrder, 
     clearCart,
-    user
+    user,
+    orders
   } = useCart();
   const { tokens } = useAuth();
 
@@ -63,6 +64,20 @@ const WaiterDashboard = () => {
     setMessage('');
     setSelectedOrderId(null);
     setEditingOrderId(null);
+
+    // Check for open order for this table
+    const openOrder = (orders || []).find(
+      o => (o.table === table.id || o.table_number === table.number) && o.cashier_status !== 'printed'
+    );
+    if (openOrder) {
+      // Load open order's items into cart for editing
+      clearCart();
+      loadCartForEditing(table.id, openOrder.items);
+      setEditingOrderId(openOrder.id);
+    } else {
+      clearCart();
+      setEditingOrderId(null);
+    }
   };
 
   const handleOrder = async () => {
