@@ -117,8 +117,9 @@ export const deleteMenuItem = async (id) => {
 // Fetch all menu categories
 export const fetchMenuCategories = async () => {
     try {
-        const response = await axiosInstance.get('menu/menucategories/');
+        const response = await axiosInstance.get('inventory/categories/');
         return response.data;
+        console.log('Fetched menu categories:', response.data);
     } catch (error) {
         console.error('❌ Error fetching menu categories:', error);
         throw error;

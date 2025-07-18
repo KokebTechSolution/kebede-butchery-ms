@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { addUser } from '../../api/stafflist';
 
 const ROLES = [
-  { value: '', label: 'Select Role' },
-  { value: 'waiter', label: 'Waiter' },
-  { value: 'bartender', label: 'Bartender' },
-  { value: 'meat', label: 'Meat Counter' },
-  { value: 'cashier', label: 'Cashier' },
-  { value: 'manager', label: 'Branch Manager' },
-  { value: 'owner', label: 'Owner' },
-  { value: 'staff', label: 'Staff' },
+  { value: '', labelKey: 'select_role' },
+  { value: 'waiter', labelKey: 'roles.waiter' },
+  { value: 'bartender', labelKey: 'roles.bartender' },
+  { value: 'meat', labelKey: 'roles.meat' },
+  { value: 'cashier', labelKey: 'roles.cashier' },
+  { value: 'manager', labelKey: 'roles.manager' },
+  { value: 'owner', labelKey: 'roles.owner' },
+  { value: 'staff', labelKey: 'roles.staff' },
 ];
 
 function AddStaffForm({ onSuccess, onCancel }) {
+  const { t } = useTranslation();
+
   const [formData, setFormData] = useState({
     username: '',
     first_name: '',
@@ -29,9 +32,9 @@ function AddStaffForm({ onSuccess, onCancel }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : (name === 'branch' ? Number(value) : value),
+      [name]: type === 'checkbox' ? checked : name === 'branch' ? Number(value) : value,
     }));
   };
 
@@ -59,9 +62,9 @@ function AddStaffForm({ onSuccess, onCancel }) {
             Array.isArray(msgs) ? `${field}: ${msgs.join(', ')}` : `${field}: ${msgs}`
           )
           .join('\n');
-        setError(messages || 'Failed to add user. Please check your input.');
+        setError(messages || t('error_default'));
       } else {
-        setError(`Failed to add user. ${err.message || ''}`);
+        setError(t('error_default') + ` ${err.message || ''}`);
       }
     } finally {
       setSubmitting(false);
@@ -80,7 +83,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="text"
           name="username"
-          placeholder="Username"
+          placeholder={t('username')}
           required
           value={formData.username}
           onChange={handleChange}
@@ -90,7 +93,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="text"
           name="first_name"
-          placeholder="First Name"
+          placeholder={t('first_name')}
           required
           value={formData.first_name}
           onChange={handleChange}
@@ -100,7 +103,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="text"
           name="last_name"
-          placeholder="Last Name"
+          placeholder={t('last_name')}
           required
           value={formData.last_name}
           onChange={handleChange}
@@ -110,7 +113,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="tel"
           name="phone_number"
-          placeholder="Phone Number"
+          placeholder={t('phone_number')}
           value={formData.phone_number}
           onChange={handleChange}
           className="w-full border px-4 py-2 rounded"
@@ -123,9 +126,9 @@ function AddStaffForm({ onSuccess, onCancel }) {
           required
           className="w-full border px-4 py-2 rounded"
         >
-          {ROLES.map(role => (
+          {ROLES.map((role) => (
             <option key={role.value} value={role.value}>
-              {role.label}
+              {t(role.labelKey)}
             </option>
           ))}
         </select>
@@ -133,7 +136,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="number"
           name="branch"
-          placeholder="Branch ID"
+          placeholder={t('branch_id')}
           required
           value={formData.branch}
           onChange={handleChange}
@@ -143,7 +146,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
         <input
           type="password"
           name="password"
-          placeholder="Password"
+          placeholder={t('password')}
           required
           value={formData.password}
           onChange={handleChange}
@@ -160,7 +163,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
             id="is_active"
           />
           <label htmlFor="is_active" className="text-sm text-gray-700">
-            Active
+            {t('active')}
           </label>
         </div>
 
@@ -171,7 +174,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
             className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
             disabled={submitting}
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="submit"
@@ -180,7 +183,7 @@ function AddStaffForm({ onSuccess, onCancel }) {
               submitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
-            {submitting ? 'Adding...' : 'Add Staff'}
+            {submitting ? t('adding') : t('add_staff')}
           </button>
         </div>
       </form>

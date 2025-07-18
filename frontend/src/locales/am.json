@@ -24,7 +24,7 @@
   "staff_management": "የሰራተኞች አስተዳደር",
 
   "request": "የመጠጥ ጥያቄዎች",
-  "menu_management": "የምናሌ አስተዳደር",
+
   "logout": "ውጣ",
   "branch_panel": "የቅርንጫፍ ፓኔል",
       "product_name": "የምርት ስም",
@@ -46,6 +46,201 @@
   "edit_menu_item": "ምናሌ ንጥልን ያርትዑ",
   "confirm_delete_menu_item": "ይህን ምናሌ ንጥል ማጥፋት እርግጠኛ ነዎት?",
   "menu_item_deleted_success": "ምናሌ ንጥል በተሳካ ሁኔታ ተሰርዟል!",
-  "error_deleting_menu_item": "ምናሌ ንጥልን ማጥፋት በተሳካ ሁኔታ አልተቻለም።"
+  "error_deleting_menu_item": "ምናሌ ንጥልን ማጥፋት በተሳካ ሁኔታ አልተቻለም።",
+      "title": "የምናሌ ዝርዝር",
+    "discount_placeholder": "የቅናሽ መቶኛ",
+    "apply_discount": "ቅናሽ አፍልጥ",
+    "all_categories": "ሁሉም ምድቦች",
+    "id": "መለያ",
+    "name": "ስም",
+    "is_available": "ይገኛል",
 
+    "created_at": "የተፈጠረበት ቀን",
+    "updated_at": "የተቀየረበት ቀን",
+    "actions": "ተግባሮት",
+    "edit": "አርትዕ",
+    "delete": "ሰርዝ",
+    "edit_item": "ዝርዝር አርትዕ",
+    "confirm_delete": "ማጥፊያን ያረጋግጡ",
+    "confirm_delete_text": "{{name}} ማጥፋት ትፈልጋለህ?",
+
+  "price_per_unit": "ዋጋ (በአንድ)",
+  "quantity_type": "የመጠን አይነት",
+  "carton": "ካርቶን",
+  "bottle": "ባለጭማቂ",
+  "unit": "አንድ",
+  "bottles_per_carton": "በካርቶን ውስጥ የሚገኙ ባለጭማቂዎች",
+  "carton_quantity": "የካርቶን መጠን",
+  "bottle_quantity": "የባለጭማቂ መጠን",
+  "unit_quantity": "የአንድ መጠን",
+  "minimum_threshold": "ዝቅተኛ መጠን",
+  "running_out": "በመጠናቀቅ ላይ",
+  "save_changes": "ለውጦቹን ያስቀምጡ",
+
+  "calculated_bottle_quantity": "የተስተካከለ የባለጭማቂ መጠን",
+  "inventory_updated": "እቃው በትክክል ተዘምኗል!",
+  "error_updating_inventory": "እቃ ማዘመን ላይ ስህተት ተፈጥሯል",
+  "name_required": "ስም አስፈላጊ ነው።",
+  "category_required": "ምድብ አስፈላጊ ነው።",
+  "valid_price_required": "ትክክለኛ ዋጋ ያስገቡ።",
+  "choose_quantity_type": "የመጠን አይነት ይምረጡ",
+  "required": "ይህ መስክ አስፈላጊ ነው።",
+  "threshold_required": "ዝቅተኛ መጠን አስፈላጊ ነው።",
+
+
+  "inventory_dashboard": "የእቃ አስተዳደር ቅርጸ ምስል",
+  "total_products": "ጠቅላላ እቃዎች",
+  "running_low": "ዝቅ ያለ",
+  "inventory_value": "የእቃ እሴት",
+  "add_product": "እቃ ያክሉ",
+  "add_new_product": "አዲስ እቃ ያክሉ",
+  "edit_product": "እቃ ያስተካክሉ",
+
+  "uses_carton": "ካሳ ይጠቀማል",
+
+  "carton_qty": "የካሳ ብዛት",
+  "bottle_qty": "የቡቃያ ብዛት",
+  "unit_qty": "የአንድነት ብዛት",
+  "branch": "ቅርንጫፍ",
+
+  "in_stock": "በአሁኑ ጊዜ አለ",
+
+  "yes": "አዎን",
+  "no": "አይ",
+  "no_products_found": "ምንም እቃ አልተገኘም።",
+  "confirm_delete_product": "ይህን እቃ ለማጥፋት እርግጠኛ ነዎት?",
+  "loading_inventory": "እቃዎችን በመጫን ላይ...",
+  "total_money_cartons": "የካሳዎች ጠቅላላ ዋጋ",
+  "add_new_product_info": "አዲስ የእቃ መረጃ ያክሉ",
+  "error_loading_data": "መረጃዎችን ማግኘት አልተቻለም",
+
+  "select_item_type": "የእቃ ዓይነት ይምረጡ",
+
+  "add_new_product_name": "አዲስ የምርት ስም አክል",
+  "enter_new_product_name": "አዲስ የምርት ስም አስገባ",
+
+  "unit_price": "ዋጋ በአንድ እቃ",
+
+  "total_bottles": "ጠቅላላ ቦታሎች",
+
+  "shots_per_bottle": "ሾቶች በአንድ ቦታል",
+  "calculated_shots_per_bottle": "የተሰራ ሾቶች በቦታል",
+  "total_shots": "ጠቅላላ ሾቶች",
+  "liter_quantity": "የሊትር ብዛት",
+  "shots_per_liter": "ሾቶች በአንድ ሊትር",
+  "calculated_shots_per_liter": "የተሰራ ሾቶች በሊትር",
+
+  "add_product_to_list": "ምርት ወደ ዝርዝር አክል",
+  "only_beverages_allowed": "ብቻ መጠጦች ይፈቀዱበታል።",
+  "products_in_queue": "በተዘጋጀ ዝርዝር ያሉ ምርቶች፦",
+
+  "remove_product": "ምርት አስወግድ",
+  "remove": "አስወግድ",
+
+
+  "product_name_required": "የምርት ስም አስፈላጊ ነው።",
+ 
+  "price_required": "ዋጋ በአንድ እቃ አስፈላጊ ነው።",
+  "price_must_be_positive": "ዋጋ ከዜሮ በላይ ያለ ቁጥር መሆን አለበት።",
+  "quantity_type_required": "የብዛት አይነት አስፈላጊ ነው።",
+  "bottles_per_carton_positive": "ቦታሎች በአንድ ካርቶን ከዜሮ በላይ መሆን አለበት።",
+  "carton_quantity_non_negative": "የካርቶን ብዛት ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "bottle_quantity_non_negative": "የቦታል ብዛት ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "shots_per_bottle_non_negative": "ሾቶች በአንድ ቦታል ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "unit_quantity_non_negative": "የእቃ ብዛት ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "shots_per_liter_non_negative": "ሾቶች በአንድ ሊትር ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "minimum_threshold_non_negative": "አነስተኛ ደረጃ ከዜሮ ወይም ከዚያ በላይ መሆን አለበት።",
+  "branch_info_missing": "የቅርንጫፍ መረጃ አልተገኘም። እባክዎን እንደገና ይግቡ።",
+  "duplicate_product_name": "የምርት ስም ተደጋጋሚ ነው።",
+  "add_at_least_one_product": "እባክዎን ቢያንስ አንድ ምርት ያክሉ።",
+  "submit_success": "ምርቶችና እቃዎች በተሳካ ሁኔታ ተልከዋል!",
+  "submit_error": "ላክተው ጊዜ ስህተት አጋጥሟል",
+  "inventory_requests_title": "የእቃ ጥያቄዎች",
+  "new_request_button": "አዲስ ጥያቄ",
+  "loading_requests": "ጥያቄዎች በመጫን ላይ...",
+  "no_requests_found": "እንደገና ጥያቄ አልተገኘም።",
+  "product": "ምርት",
+
+  "quantity": "ብዛት",
+  "unit_type": "የክፍል አይነት",
+
+  "requested_at": "የተጠየቀበት ጊዜ",
+  "status": "ሁኔታ",
+
+  "accept": "አረጋግጥ",
+  "reject": "አቁም",
+  "reached": "ደርሷል",
+  "not_reached": "አልደረሰም",
+  "no_actions": "እርምጃ የለም",
+  "na": "የለም",
+  "error_loading_requests": "ጥያቄዎችን ማስመልከት አልተቻለም",
+  "error_loading_products": "ምርቶችን ማስመልከት አልተቻለም",
+  "error_loading_branches": "ቅርንጫፎችን ማስመልከት አልተቻለም",
+  "accept_failed": "ጥያቄውን ማረጋገጥ አልተቻለም",
+  "reject_failed": "ጥያቄውን መከልከል አልተቻለም",
+  "form_validation_error": "እባክዎ ምርት፣ ቅርንጫፍ እና ትክክለኛ ብዛት ያስገቡ።",
+  "request_submitted_successfully": "ጥያቄዎት በተሳካ ሁኔታ ተልኳል!",
+  "unknown_submission_error": "ምንም አልተለወጠም ስለሆነ ጥያቄው አልተሳካም።",
+  "pending": "በመጠባበቅ ላይ",
+  "accepted": "ተቀብሏል",
+  "rejected": "ተከልክሏል",
+      "new_inventory_request": "ጠቅላላ እቃ ጥያቄ",
+    "close_modal": "መስኮቱን ዝጋ",
+
+    "select_branch": "-- ቅርንጫፍ ምረጥ --",
+    "submit_request": "ጥያቄ አቅርብ",
+    "menu_list": "የምናሌ ዝርዝር",
+
+    "select_role": "ሚና ይምረጡ",
+
+      "waiter": "አገልጋይ",
+      "bartender": "ባር ሰራተኛ",
+      "meat": "የሥጋ ገበሬ",
+      "cashier": "ካሽየር",
+      "manager": "የቅርንጫፍ አስተዳደር",
+      "owner": "ባለቤት",
+      "staff": "ሰራተኛ",
+    "password": "የይለፍ ቃል",
+
+
+    "adding": "እየታከም...",
+
+    "error_default": "የተጠቃሚን መጨመር አልተሳካም። እባክዎን ግባችሁን ያረጋግጡ።",
+
+
+
+      "branch_staff": "የቅጥ ሠራተኞች",
+  "add_staff": "ሠራተኛ አክል",
+  "loading": "እየጫነ ነው...",
+  "failed_load_staff_list": "የሠራተኞች ዝርዝር ማስመጣት አልተቻለም።",
+  "no_staff_found": "ሠራተኞች አልተገኙም።",
+  "username": "የተጠቃሚ ስም",
+  "first_name": "ስም",
+  "last_name": "የአያት ስም",
+  "phone_number": "ስልክ ቁጥር",
+  "role": "ሚና",
+
+  "date_joined": "የተመዘገበበት ቀን",
+  "last_updated": "የመጨረሻ አሻሻይ",
+
+  "active": "በስራ ላይ",
+  "inactive": "አያገለግልም",
+
+  "reset_password": "የይለፍ ቃል እንደገና ማቀናበር",
+
+  "failed_update_user": "የተጠቃሚውን መረጃ ማሻሻል አልተሳካም።",
+  "password_reset_success": "የይለፍ ቃል በተሳካ ሁኔታ ተመለሰ።",
+  "failed_reset_password": "የይለፍ ቃል መቀየር አልተሳካም።",
+  "confirm_delete_user": "ይህን ተጠቃሚ ማስወገድ ትፈልጋለህ?",
+  "failed_delete_user": "ተጠቃሚውን ማስወገድ አልተሳካም።",
+  "edit_staff": "ሠራተኛን አርትዕ",
+
+  "save": "አስቀምጥ",
+  "reset_password_for": "{{username}} የይለፍ ቃል እንደገና ማቀናበር",
+  "new_password": "አዲስ የይለፍ ቃል",
+  "reset": "እንደገና ማቀናበር",
+  "add_new_staff": "አዲስ ሠራተኛ አክል",
+
+  "roles": "የስራ ድርሻ",
+  "choose_language":"ቋንቋ ቀይር"
 }

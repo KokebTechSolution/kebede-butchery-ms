@@ -36,6 +36,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
 
+
 class InventoryRequestViewSet(viewsets.ModelViewSet):
     queryset = InventoryRequest.objects.all()
     serializer_class = InventoryRequestSerializer

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
-// Helper to get CSRF token from cookie
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
@@ -20,6 +20,7 @@ function getCookie(name) {
 
 const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess }) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const branchId = user?.branch || null;
 
   const [formData, setFormData] = useState({
@@ -84,27 +85,27 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
   const validateForm = () => {
     let err = {};
-    if (!formData.name.trim()) err.name = 'Name required';
-    if (!formData.category) err.category = 'Category required';
+    if (!formData.name.trim()) err.name = t('name_required');
+    if (!formData.category) err.category = t('category_required');
     if (!formData.price_per_unit || Number(formData.price_per_unit) < 0)
-      err.price_per_unit = 'Valid price required';
-    if (!formData.quantityType) err.quantityType = 'Choose quantity type';
+      err.price_per_unit = t('valid_price_required');
+    if (!formData.quantityType) err.quantityType = t('choose_quantity_type');
 
     if (formData.quantityType === 'carton') {
       if (!formData.bottles_per_carton || Number(formData.bottles_per_carton) <= 0)
-        err.bottles_per_carton = 'Required';
+        err.bottles_per_carton = t('required');
       if (!formData.carton_quantity || Number(formData.carton_quantity) < 0)
-        err.carton_quantity = 'Required';
+        err.carton_quantity = t('required');
     } else if (formData.quantityType === 'bottle') {
       if (formData.bottle_quantity === '' || Number(formData.bottle_quantity) < 0)
-        err.bottle_quantity = 'Required';
+        err.bottle_quantity = t('required');
     } else if (formData.quantityType === 'unit') {
       if (formData.unit_quantity === '' || Number(formData.unit_quantity) < 0)
-        err.unit_quantity = 'Required';
+        err.unit_quantity = t('required');
     }
 
     if (formData.minimum_threshold === '' || Number(formData.minimum_threshold) < 0)
-      err.minimum_threshold = 'Threshold required';
+      err.minimum_threshold = t('threshold_required');
 
     setErrors(err);
     return Object.keys(err).length === 0;
@@ -134,28 +135,22 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     const csrfToken = getCookie('csrftoken');
 
     try {
-      // Update product
       await axios.put(
         `http://localhost:8000/api/inventory/inventory/${product.id}/`,
         updatedProduct,
         {
           withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
+          headers: { 'X-CSRFToken': csrfToken },
         }
       );
 
-      // Update or create stock
       if (stockId) {
         await axios.put(
           `http://localhost:8000/api/inventory/stocks/${stockId}/`,
           updatedStock,
           {
             withCredentials: true,
-            headers: {
-              'X-CSRFToken': csrfToken,
-            },
+            headers: { 'X-CSRFToken': csrfToken },
           }
         );
       } else {
@@ -164,19 +159,17 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
           updatedStock,
           {
             withCredentials: true,
-            headers: {
-              'X-CSRFToken': csrfToken,
-            },
+            headers: { 'X-CSRFToken': csrfToken },
           }
         );
       }
 
-      alert('Inventory updated!');
+      alert(t('inventory_updated'));
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Update failed:', err.response?.data || err.message);
-      alert(`Error updating inventory: ${err.response?.data?.detail || err.message}`);
+      alert(`${t('error_updating_inventory')}: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -186,7 +179,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         type="text"
         name="name"
         value={formData.name}
-        placeholder="Product Name"
+        placeholder={t('product_name')}
         onChange={handleChange}
         className="border p-2 w-full"
       />
@@ -198,7 +191,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         onChange={handleChange}
         className="border p-2 w-full"
       >
-        <option value="">Select Category</option>
+        <option value="">{t('select_category')}</option>
         {categories.map((cat) => (
           <option key={cat.id} value={cat.id}>
             {cat.category_name}
@@ -211,14 +204,14 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         type="number"
         name="price_per_unit"
         value={formData.price_per_unit}
-        placeholder="Price per unit"
+        placeholder={t('price_per_unit')}
         onChange={handleChange}
         className="border p-2 w-full"
       />
       {errors.price_per_unit && <p className="text-red-500 text-sm">{errors.price_per_unit}</p>}
 
       <div>
-        <label className="block font-semibold">Quantity Type</label>
+        <label className="block font-semibold">{t('quantity_type')}</label>
         {['carton', 'bottle', 'unit'].map((type) => (
           <label key={type} className="inline-flex items-center mr-4">
             <input
@@ -228,7 +221,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
               checked={formData.quantityType === type}
               onChange={handleChange}
             />
-            <span className="ml-2 capitalize">{type}</span>
+            <span className="ml-2 capitalize">{t(type)}</span>
           </label>
         ))}
         {errors.quantityType && <p className="text-red-500 text-sm">{errors.quantityType}</p>}
@@ -239,7 +232,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
           <input
             type="number"
             name="bottles_per_carton"
-            placeholder="Bottles per Carton"
+            placeholder={t('bottles_per_carton')}
             value={formData.bottles_per_carton}
             onChange={handleChange}
             className="border p-2 w-full"
@@ -250,7 +243,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
           <input
             type="number"
             name="carton_quantity"
-            placeholder="Carton Quantity"
+            placeholder={t('carton_quantity')}
             value={formData.carton_quantity}
             onChange={handleChange}
             className="border p-2 w-full"
@@ -263,7 +256,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
             value={formData.bottle_quantity}
             readOnly
             className="border p-2 w-full bg-gray-100"
-            aria-label="Calculated bottle quantity"
+            aria-label={t('calculated_bottle_quantity')}
           />
         </>
       )}
@@ -272,7 +265,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         <input
           type="number"
           name="bottle_quantity"
-          placeholder="Bottle Quantity"
+          placeholder={t('bottle_quantity')}
           value={formData.bottle_quantity}
           onChange={handleChange}
           className="border p-2 w-full"
@@ -283,7 +276,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         <input
           type="number"
           name="unit_quantity"
-          placeholder="Unit Quantity"
+          placeholder={t('unit_quantity')}
           value={formData.unit_quantity}
           onChange={handleChange}
           className="border p-2 w-full"
@@ -293,7 +286,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       <input
         type="number"
         name="minimum_threshold"
-        placeholder="Minimum Threshold"
+        placeholder={t('minimum_threshold')}
         value={formData.minimum_threshold}
         onChange={handleChange}
         className="border p-2 w-full"
@@ -309,21 +302,15 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
           checked={formData.running_out}
           onChange={handleChange}
         />
-        <span>Running Out</span>
+        <span>{t('running_out')}</span>
       </label>
 
       <div className="flex justify-between mt-4">
-        <button
-          onClick={handleSubmit}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Save Changes
+        <button onClick={handleSubmit} className="bg-blue-600 text-white px-4 py-2 rounded">
+          {t('save_changes')}
         </button>
-        <button
-          onClick={onClose}
-          className="bg-gray-400 text-white px-4 py-2 rounded"
-        >
-          Cancel
+        <button onClick={onClose} className="bg-gray-400 text-white px-4 py-2 rounded">
+          {t('cancel')}
         </button>
       </div>
     </div>

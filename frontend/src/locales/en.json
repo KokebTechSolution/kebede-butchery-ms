@@ -37,5 +37,182 @@
   "edit_menu_item": "Edit Menu Item",
   "confirm_delete_menu_item": "Are you sure you want to delete this menu item?",
   "menu_item_deleted_success": "Menu item deleted successfully!",
-  "error_deleting_menu_item": "Error deleting menu item."
+  "error_deleting_menu_item": "Error deleting menu item.",
+
+  "price_per_unit": "Price per Unit",
+  "quantity_type": "Quantity Type",
+  "carton": "Carton",
+  "bottle": "Bottle",
+  "unit": "Unit",
+  "bottles_per_carton": "Bottles per Carton",
+  "carton_quantity": "Carton Quantity",
+  "bottle_quantity": "Bottle Quantity",
+  "unit_quantity": "Unit Quantity",
+  "minimum_threshold": "Minimum Threshold",
+  "running_out": "Running Out",
+  "save_changes": "Save Changes",
+
+  "calculated_bottle_quantity": "Calculated Bottle Quantity",
+  "inventory_updated": "Inventory updated successfully!",
+  "error_updating_inventory": "Error updating inventory",
+  "name_required": "Name is required.",
+  "category_required": "Category is required.",
+  "valid_price_required": "Valid price is required.",
+  "choose_quantity_type": "Choose a quantity type",
+  "required": "This field is required.",
+  "threshold_required": "Minimum threshold is required.",
+    "inventory_dashboard": "Inventory Dashboard",
+  "total_products": "Total Products",
+  "running_low": "Running Low",
+  "inventory_value": "Inventory Value",
+  "add_product": "Add Product",
+  "add_new_product": "Add New Product",
+  "edit_product": "Edit Product",
+  "delete": "Delete",
+  "edit": "Edit",
+  "name": "Name",
+
+  "uses_carton": "Uses Carton",
+  "carton_qty": "Carton Qty",
+  "bottle_qty": "Bottle Qty",
+  "unit_qty": "Unit Qty",
+  "branch": "Branch",
+
+  "in_stock": "In Stock",
+  "actions": "Actions",
+  "yes": "Yes",
+  "no": "No",
+  "no_products_found": "No products found.",
+  "confirm_delete_product": "Are you sure you want to delete this product?",
+  "loading_inventory": "Loading inventory...",
+  "total_money_cartons": "Total Carton Value",
+  "add_new_product_info": "Add New Product Info",
+  "error_loading_data": "Error loading data",
+
+
+
+
+
+  "select_item_type": "Select Item Type",
+
+  "add_new_product_name": "Add New Product Name",
+  "enter_new_product_name": "Enter New Product Name",
+
+  "unit_price": "Unit Price",
+
+  "total_bottles": "Total Bottles",
+
+  "shots_per_bottle": "Shots per Bottle",
+  "calculated_shots_per_bottle": "Calculated Shots per Bottle",
+  "total_shots": "Total Shots",
+  "liter_quantity": "Liter Quantity",
+  "shots_per_liter": "Shots per Liter",
+  "calculated_shots_per_liter": "Calculated Shots per Liter",
+
+  "add_product_to_list": "Add Product to List",
+  "only_beverages_allowed": "Only beverages are allowed.",
+  "products_in_queue": "Products in Queue:",
+
+  "remove_product": "Remove product",
+  "remove": "Remove",
+
+
+  "product_name_required": "Product name is required.",
+
+  "price_required": "Price per unit is required.",
+  "price_must_be_positive": "Price per unit must be a non-negative number.",
+  "quantity_type_required": "Quantity type is required.",
+  "bottles_per_carton_positive": "Bottles per carton must be greater than 0.",
+  "carton_quantity_non_negative": "Carton quantity must be 0 or more.",
+  "bottle_quantity_non_negative": "Bottle quantity must be 0 or more.",
+  "shots_per_bottle_non_negative": "Shots per bottle must be 0 or more.",
+  "unit_quantity_non_negative": "Unit quantity must be 0 or more.",
+  "shots_per_liter_non_negative": "Shots per liter must be 0 or more.",
+  "minimum_threshold_non_negative": "Minimum threshold must be 0 or more.",
+  "branch_info_missing": "Branch info not found. Please login again.",
+  "duplicate_product_name": "Duplicate product name in this batch.",
+  "add_at_least_one_product": "Please add at least one product.",
+  "submit_success": "Products and stock submitted successfully!",
+  "submit_error": "Error submitting products",
+   "inventory_requests_title": "Inventory Requests",
+  "new_request_button": "New Request",
+  "loading_requests": "Loading requests...",
+  "no_requests_found": "No requests found.",
+  "product": "Product",
+
+  "quantity": "Quantity",
+  "unit_type": "Unit Type",
+
+  "requested_at": "Requested At",
+  "status": "Status",
+
+  "accept": "Accept",
+  "reject": "Reject",
+  "reached": "Reached",
+  "not_reached": "Not Reached",
+  "no_actions": "No actions",
+  "na": "N/A",
+  "error_loading_requests": "Error loading requests",
+  "error_loading_products": "Error loading products",
+  "error_loading_branches": "Error loading branches",
+  "accept_failed": "Failed to accept the request",
+  "reject_failed": "Failed to reject the request",
+  "form_validation_error": "Please select a product, branch, and enter a valid quantity.",
+  "request_submitted_successfully": "Request submitted successfully!",
+  "unknown_submission_error": "Submission failed due to an unknown error.",
+  "pending": "Pending",
+  "accepted": "Accepted",
+  "rejected": "Rejected",
+    "new_inventory_request": "New Inventory Request",
+  "close_modal": "Close modal",
+  "select_branch": "-- Select Branch --",
+  "submit_request": "Submit Request",
+      "username": "Username",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "phone_number": "Phone Number",
+    "select_role": "Select Role",
+  "password": "Password",
+      "waiter": "Waiter",
+      "bartender": "Bartender",
+      "meat": "Meat Counter",
+      "cashier": "Cashier",
+      "manager": "Branch Manager",
+      "owner": "Owner",
+      "staff": "Staff",
+    "active": "Active",
+    "adding": "Adding...",
+
+    "error_default": "Failed to add user. Please check your input.",
+     "branch_staff": "Branch Staff",
+  "add_staff": "Add Staff",
+  "loading": "Loading...",
+  "failed_load_staff_list": "Failed to load staff list.",
+  "no_staff_found": "No staff members found.",
+
+
+
+  "date_joined": "Date Joined",
+  "last_updated": "Last Updated",
+
+  "inactive": "Inactive",
+
+  "reset_password": "Reset Password",
+
+  "failed_update_user": "Failed to update user.",
+  "password_reset_success": "Password reset successfully.",
+  "failed_reset_password": "Failed to reset password.",
+  "confirm_delete_user": "Are you sure you want to delete this user?",
+  "failed_delete_user": "Failed to delete user.",
+  "edit_staff": "Edit Staff",
+
+  "save": "Save",
+  "reset_password_for": "Reset Password for {{username}}",
+  "new_password": "New Password",
+  "reset": "Reset",
+  "add_new_staff": "Add New Staff",
+
+  "roles": "Role"
+
+
 }
