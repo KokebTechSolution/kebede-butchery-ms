@@ -86,6 +86,15 @@ class StockSerializer(serializers.ModelSerializer):
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(), source='branch', write_only=True
     )
+    total_carton_price = serializers.SerializerMethodField()
+
+    def get_total_carton_price(self, obj):
+        product = obj.product
+        if product.uses_carton and product.bottles_per_carton and product.price_per_unit:
+            return float(obj.carton_quantity * product.bottles_per_carton * product.price_per_unit)
+        elif not product.uses_carton and product.price_per_unit:
+            return float(obj.bottle_quantity * product.price_per_unit)
+        return 0.0
 
     class Meta:
         model = Stock
@@ -100,6 +109,7 @@ class StockSerializer(serializers.ModelSerializer):
             'unit_quantity',
             'minimum_threshold',
             'running_out',
+            'total_carton_price',
         ]
 
 # Inventory Transaction (✔️ Enhanced with carton-to-bottle logic)

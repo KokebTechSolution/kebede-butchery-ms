@@ -33,7 +33,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
-    waiterName = serializers.CharField(source='created_by.username', read_only=True)
+    waiterName = serializers.CharField(source='created_by.first_name', read_only=True)
     has_payment = serializers.SerializerMethodField()
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)

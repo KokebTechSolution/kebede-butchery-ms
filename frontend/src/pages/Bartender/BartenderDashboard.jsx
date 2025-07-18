@@ -21,6 +21,13 @@ export default function BartenderDashboard() {
 
   const [inventoryRequests, setInventoryRequests] = useState([]);
 
+  const [filterDate, setFilterDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   useEffect(() => {
     if (lastMessage) {
       alert(lastMessage.message);
@@ -58,10 +65,10 @@ export default function BartenderDashboard() {
       case 'Reports':
         return <Reports />;
       case 'Closed':
-        return <ClosedOrders orders={getClosedOrders()} />;
+        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
       case 'Orders':
       default:
-        return <Pending />;
+        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };
 

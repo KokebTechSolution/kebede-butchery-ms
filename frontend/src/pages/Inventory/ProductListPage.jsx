@@ -164,6 +164,7 @@ const ProductListPage = () => {
               <th className="border px-4 py-2">Uses Carton</th>
               <th className="border px-4 py-2">Bottles/Carton</th>
               <th className="border px-4 py-2">Carton Qty</th>
+              <th className="border px-4 py-2">Total Price</th>
               <th className="border px-4 py-2">Bottle Qty</th>
               <th className="border px-4 py-2">Unit Qty</th>
               <th className="border px-4 py-2">Branch</th>
@@ -189,6 +190,7 @@ const ProductListPage = () => {
                   <td className="border px-4 py-2">{stock.unit_quantity}</td>
                   <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
                   <td className="border px-4 py-2">
+                
                     {stock.running_out ? (
                       <span className="text-red-500 font-semibold">Running Out</span>
                     ) : (
@@ -204,6 +206,7 @@ const ProductListPage = () => {
                     </button>
                     <button
                       onClick={() => handleDelete(stock.product?.id)}
+                    
                       className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
                     >
                       Delete
@@ -219,6 +222,15 @@ const ProductListPage = () => {
               </tr>
             )}
           </tbody>
+          <tfoot>
+            <tr>
+              <td className="border px-4 py-2 font-bold text-right" colSpan="7">Total Money (All Cartons):</td>
+              <td className="border px-4 py-2 font-bold" colSpan="1">
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+              </td>
+              <td className="border px-4 py-2" colSpan="4"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 

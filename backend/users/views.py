@@ -8,7 +8,13 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
+
 from rest_framework.exceptions import NotFound, PermissionDenied
+
+from rest_framework.exceptions import PermissionDenied
+from orders.models import Order
+from branches.models import Table
+from django.db.models import Q
 from .serializers import (
     UserListSerializer,
     UserCreateUpdateSerializer,
@@ -109,6 +115,7 @@ class UserViewSet(ModelViewSet):
             return Response({"error": "Password is required"}, status=400)
         user.set_password(new_password)
         user.save()
+
         return Response({"status": "Password reset successfully"})
 
 class CurrentUserView(APIView):
@@ -117,3 +124,30 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserLoginSerializer(request.user)
         return Response(serializer.data)
+
+        return Response({'status': 'Password reset successfully'})
+
+
+class WaiterUnsettledTablesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from users.models import User
+        waiters = User.objects.filter(role='waiter')
+        result = []
+        for waiter in waiters:
+            # Find orders for this waiter in the required state
+            orders = Order.objects.filter(
+                created_by=waiter,
+                cashier_status='ready_for_payment'
+            ).select_related('table')
+            table_numbers = list({o.table.number for o in orders if o.table})
+            total_amount = sum([o.total_money or 0 for o in orders])
+            result.append({
+                'name': waiter.get_full_name() or waiter.username,
+                'tables': table_numbers,
+                'amount': float(total_amount),
+                'orders': orders.count(),
+            })
+        return Response(result)
+
