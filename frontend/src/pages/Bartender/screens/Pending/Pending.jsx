@@ -8,7 +8,14 @@ import NotificationPopup from '../../../../components/NotificationPopup.jsx';
 
 
 export const Pending = () => {
-  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useBeverages ();
+  const [filterDate, setFilterDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useBeverages(filterDate);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
   const [showNotification, setShowNotification] = useState(false);
@@ -125,6 +132,16 @@ export const Pending = () => {
           onClose={() => setShowNotification(false)}
         />
       )}
+      <div className="mb-6 flex items-center gap-4">
+        <label htmlFor="order-date-filter" className="font-medium">Filter by Date:</label>
+        <input
+          id="order-date-filter"
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value)}
+          className="p-2 border rounded"
+        />
+      </div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
         <button

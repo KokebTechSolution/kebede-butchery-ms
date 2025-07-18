@@ -24,12 +24,21 @@ class MenuViewSet(viewsets.ModelViewSet):
         available_sections = []
 
         for section in menu.sections.all():
-            available_items = section.menuitem_set.filter(
-                is_available=True,
-                product__stock__running_out=False
-            ).distinct()
+            # Include items that are available and either:
+            # - have a product and the product's stock is not running out
+            # - or have no product (e.g., food items)
+            available_items = section.menuitem_set.filter(is_available=True).distinct()
+            filtered_items = []
+            for item in available_items:
+                if item.product:
+                    # Only include if product's stock is not running out
+                    stock_qs = item.product.stock_set.all()
+                    if not stock_qs.exists() or not stock_qs.filter(running_out=False).exists():
+                        continue
+                # If no product, always include (food item)
+                filtered_items.append(item)
 
-            if available_items.exists():
+            if filtered_items:
                 available_sections.append({
                     'id': section.id,
                     'name': section.name,
@@ -40,7 +49,7 @@ class MenuViewSet(viewsets.ModelViewSet):
                             'description': item.description,
                             'price': item.price
                         }
-                        for item in available_items
+                        for item in filtered_items
                     ]
                 })
 

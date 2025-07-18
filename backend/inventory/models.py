@@ -149,6 +149,7 @@ class InventoryTransaction(models.Model):
     unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
     transaction_date = models.DateTimeField(default=timezone.now)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # <-- Added field
 
     def __str__(self):
         return f"{self.transaction_type.title()} - {self.product.name} ({self.quantity} {self.unit_type}) at {self.branch.name}"

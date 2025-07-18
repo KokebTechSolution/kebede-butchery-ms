@@ -85,7 +85,15 @@ class BeverageOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
+        queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
+        date = self.request.query_params.get('date')
+        start = self.request.query_params.get('start')
+        end = self.request.query_params.get('end')
+        if date:
+            queryset = queryset.filter(created_at__date=parse_date(date))
+        elif start and end:
+            queryset = queryset.filter(created_at__date__gte=parse_date(start), created_at__date__lte=parse_date(end))
+        return queryset
 
 
 class UpdateCashierStatusView(generics.UpdateAPIView):

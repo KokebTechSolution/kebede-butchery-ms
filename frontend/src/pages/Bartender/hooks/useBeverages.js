@@ -7,7 +7,7 @@ export const useBeverages = () => {
   const { user } = useAuth();
   const branchId = user?.branch;
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (date) => {
     try {
       const response = await axiosInstance.get(`/orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent

@@ -10,7 +10,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
     is_running_out = serializers.SerializerMethodField()
     
     # Explicit foreign key field for product
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = MenuItem

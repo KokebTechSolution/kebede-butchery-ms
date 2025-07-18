@@ -12,9 +12,16 @@ import Reports from "./screens/Reports";
 
 export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
+  const [filterDate, setFilterDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const userName = "Bartender"; 
   const { lastMessage } = useNotifications();
-  const { orders } = useBeverages();
+  const { orders } = useBeverages(filterDate);
 //  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
   useEffect(() => {
     if (lastMessage) {
@@ -37,10 +44,10 @@ export default function BartenderDashboard() {
       case 'Reports':
         return <Reports />;
       case 'Closed':
-        return <ClosedOrders orders={getClosedOrders()} />;
+        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
       case 'Orders':
       default:
-        return <Pending />;
+        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };
 

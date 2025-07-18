@@ -169,6 +169,7 @@ const ProductListPage = () => {
               <th className="border px-4 py-2">Uses Carton</th>
               <th className="border px-4 py-2">Bottles/Carton</th>
               <th className="border px-4 py-2">Carton Qty</th>
+              <th className="border px-4 py-2">Total Price</th>
               <th className="border px-4 py-2">Bottle Qty</th>
               <th className="border px-4 py-2">Unit Qty</th>
               <th className="border px-4 py-2">Min Threshold</th>
@@ -177,49 +178,51 @@ const ProductListPage = () => {
             </tr>
           </thead>
           <tbody>
-            {products.length > 0 ? (
-              products.map(product => (
+            {stocks.length > 0 ? (
+              stocks.map(stock => (
                 <tr
-                  key={product.id}
-                  className={`text-center hover:bg-gray-50 ${editingProductId === product.id ? 'bg-yellow-100' : ''}`}
+                  key={stock.id}
+                  className="text-center hover:bg-gray-50"
                 >
-                  <td className="border px-4 py-2">{product.name}</td>
-                  <td className="border px-4 py-2">{product.category_name}</td>
-                  <td className="border px-4 py-2">{product.item_type_name}</td>
-                  <td className="border px-4 py-2">{product.uses_carton ? 'Yes' : 'No'}</td>
-                  <td className="border px-4 py-2">{product.bottles_per_carton}</td>
-                  <td className="border px-4 py-2">{product.carton_quantity}</td>
-                  <td className="border px-4 py-2">{product.bottle_quantity}</td>
-                  <td className="border px-4 py-2">{product.unit_quantity}</td>
-                  <td className="border px-4 py-2">{product.minimum_threshold}</td>
+                  <td className="border px-4 py-2">{stock.product?.name}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.category_name}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name}</td>
+                  <td className="border px-4 py-2">{stock.product?.uses_carton ? 'Yes' : 'No'}</td>
+                  <td className="border px-4 py-2">{stock.product?.bottles_per_carton}</td>
+                  <td className="border px-4 py-2">{stock.carton_quantity}</td>
+                  <td className="border px-4 py-2">{stock.total_carton_price !== undefined ? stock.total_carton_price : ''}</td>
+                  <td className="border px-4 py-2">{stock.bottle_quantity}</td>
+                  <td className="border px-4 py-2">{stock.unit_quantity}</td>
+                  <td className="border px-4 py-2">{stock.minimum_threshold}</td>
                   <td className="border px-4 py-2">
-                    {product.running_out ? (
+                    {stock.running_out ? (
                       <span className="text-red-500 font-semibold">Running Out</span>
                     ) : (
                       <span className="text-green-500 font-semibold">In Stock</span>
                     )}
                   </td>
                   <td className="border px-4 py-2 space-x-1">
+                    {/* You may need to update action handlers to work with stock instead of product */}
                     <button
-                      onClick={() => window.location.href = `/restock/${product.id}`}
+                      onClick={() => window.location.href = `/restock/${stock.product?.id}`}
                       className="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
                     >
                       Restock
                     </button>
                     <button
-                      onClick={() => window.location.href = `/sell/${product.id}`}
+                      onClick={() => window.location.href = `/sell/${stock.product?.id}`}
                       className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600"
                     >
                       Sell
                     </button>
                     <button
-                      onClick={() => handleEdit(product.id)}
+                      onClick={() => handleEdit(stock.product?.id)}
                       className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => handleDelete(stock.product?.id)}
                       className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
                     >
                       Delete
@@ -229,12 +232,21 @@ const ProductListPage = () => {
               ))
             ) : (
               <tr>
-                <td className="border px-4 py-4 text-center text-gray-500" colSpan="11">
-                  No products found.
+                <td className="border px-4 py-4 text-center text-gray-500" colSpan="12">
+                  No stock found.
                 </td>
               </tr>
             )}
           </tbody>
+          <tfoot>
+            <tr>
+              <td className="border px-4 py-2 font-bold text-right" colSpan="7">Total Money (All Cartons):</td>
+              <td className="border px-4 py-2 font-bold" colSpan="1">
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+              </td>
+              <td className="border px-4 py-2" colSpan="4"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 
