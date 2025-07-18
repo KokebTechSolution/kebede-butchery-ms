@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import axiosInstance from '../../../api/axiosInstance';
 
-export const useBeverages = () => {
+export const useBeverages = (filterDate) => {
 
   const [orders, setOrders] = useState([]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (date) => {
     try {
-      const response = await axios.get('http://localhost:8000/api/orders/beverages/');
+      let url = 'http://localhost:8000/api/orders/beverages/';
+      if (date) {
+        url += `?date=${date}`;
+      }
+      const response = await axios.get(url);
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -16,11 +20,10 @@ export const useBeverages = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
-    const intervalId = setInterval(fetchOrders, 10000); 
-
+    fetchOrders(filterDate);
+    const intervalId = setInterval(() => fetchOrders(filterDate), 10000);
     return () => clearInterval(intervalId);
-  }, []);
+  }, [filterDate]);
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
