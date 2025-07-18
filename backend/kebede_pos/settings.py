@@ -195,7 +195,11 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  # For local dev
-
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  # Use True in production
+CSRF_COOKIE_SECURE = False 
 
 """
 from pathlib import Path
