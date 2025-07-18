@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axiosInstance from "C:/Users/user/Desktop/KokebTech/kebede-butchery-ms/frontend/src/api/axiosInstance";
+import axiosInstance from '../../../../../../api/axiosInstance';
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent } from "../../../../components/ui/card";
 import {
