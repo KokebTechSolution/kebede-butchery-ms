@@ -69,11 +69,22 @@ const ProductListPage = () => {
   const totalProducts = products.length;
   const runningLowProducts = products.filter((p) => p.running_out).length;
   const totalInventoryValue = products.reduce((sum, product) => {
-    return (
-      sum +
-      (parseFloat(product.price_per_unit || 0) * (product.bottle_quantity || 0))
-    );
+    const stock = stocks.find((s) => s.product?.id === product.id);
+    if (!stock) return sum;
+
+    const cartonQty = stock.carton_quantity || 0;
+    const bottleQty = stock.bottle_quantity || 0;
+    const unitQty = stock.unit_quantity || 0;
+
+    const pricePerUnit = parseFloat(product.price_per_unit || 0);
+    const bottlesPerCarton = product.bottles_per_carton || 1;
+
+    // Calculate total bottles = bottles in cartons + bottles + units (if unit = bottle here)
+    const totalBottles = cartonQty * bottlesPerCarton + bottleQty + unitQty;
+
+    return sum + pricePerUnit * totalBottles;
   }, 0);
+
 
   const handleProductAdded = () => {
     setShowAddModal(false);

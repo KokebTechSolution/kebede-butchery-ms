@@ -15,6 +15,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// Remove JWT token interceptors since sessions handle auth state
+
 
 export default axiosInstance;

@@ -85,10 +85,15 @@ export const fetchRequests = async () => {
 };
 
 // Accept inventory request
-export const acceptRequest = async (requestId) => {
-  const response = await axios.post(`${BASE_URL}requests/${requestId}/accept/`, {}, modifyConfig);
+export const acceptRequest = async (requestId, amount) => {
+  const response = await axios.post(
+    `${BASE_URL}requests/${requestId}/accept/`,
+    { amount },  // ✅ Send amount in request body
+    modifyConfig
+  );
   return response.data;
 };
+
 
 // Reject inventory request
 export const rejectRequest = async (requestId) => {
