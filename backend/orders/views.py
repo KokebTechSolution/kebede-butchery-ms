@@ -79,14 +79,16 @@ class FoodOrderListView(generics.ListAPIView):
         if date:
             queryset = queryset.filter(created_at__date=date)
         return queryset
-
 class BeverageOrderListView(generics.ListAPIView):
     serializer_class = BeverageOrderSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
-
+        branch_id = self.request.query_params.get('branch_id')
+        queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
+        if branch_id:
+            queryset = queryset.filter(branch_id=branch_id)
+        return queryset
 
 class UpdateCashierStatusView(generics.UpdateAPIView):
     queryset = Order.objects.all()
@@ -248,29 +250,78 @@ class WaiterStatsView(APIView):
             'average_rating': average_rating,
             'active_tables': active_tables,
         })
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from orders.models import OrderItem
+from orders.serializers import OrderItemSerializer
+from rest_framework.permissions import AllowAny
+from inventory.models import BarmanStock
+from django.db import transaction
 
 class OrderItemStatusUpdateView(APIView):
     permission_classes = [AllowAny]
 
+    @transaction.atomic
     def patch(self, request, pk):
         try:
-            item = OrderItem.objects.get(pk=pk)
+            item = OrderItem.objects.select_related('order').get(pk=pk)
         except OrderItem.DoesNotExist:
             return Response({'error': 'Order item not found'}, status=status.HTTP_404_NOT_FOUND)
+
         status_value = request.data.get('status')
         if status_value not in ['pending', 'accepted', 'rejected']:
             return Response({'error': 'Invalid status value'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Beverage stock logic
+        if status_value == 'accepted' and item.item_type == 'beverage':
+            bartender = request.user
+            try:
+                # Match by item name and branch
+                barman_stock = BarmanStock.objects.select_related('stock__product').get(
+                    bartender=bartender,
+                    stock__product__name__iexact=item.name,
+                    stock__branch=item.order.branch
+                )
+            except BarmanStock.DoesNotExist:
+                return Response(
+                    {'error': f"No barman stock found for '{item.name}'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if barman_stock.bottle_quantity < item.quantity:
+                return Response(
+                    {'error': f"Not enough bottles. Available: {barman_stock.bottle_quantity}, Required: {item.quantity}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Deduct quantity
+            barman_stock.bottle_quantity -= item.quantity
+
+            # Get original bottle capacity from inventory_stock
+            original_bottle_capacity = barman_stock.stock.bottle_quantity
+            twenty_percent = original_bottle_capacity * 0.2
+
+            # Check if running low
+            if barman_stock.bottle_quantity < twenty_percent:
+                barman_stock.running_out = True
+            else:
+                barman_stock.running_out = False
+
+            barman_stock.save()
+
         item.status = status_value
         item.save()
-        # Recalculate order total_money based only on accepted items
+
+        # Update order total
         order = item.order
-        total = sum(i.price * i.quantity for i in order.items.all() if i.status == 'accepted')
-        order.total_money = total
-        # Set cashier_status to 'ready_for_payment' if all items are accepted or rejected (no pending), else 'pending'
-        item_statuses = [i.status for i in order.items.all()]
-        if all(s in ['accepted', 'rejected'] for s in item_statuses):
+        order.total_money = sum(i.price * i.quantity for i in order.items.filter(status='accepted'))
+
+        all_statuses = order.items.values_list('status', flat=True)
+        if all(s in ['accepted', 'rejected'] for s in all_statuses):
             order.cashier_status = 'ready_for_payment'
         else:
             order.cashier_status = 'pending'
         order.save()
-        return Response(OrderItemSerializer(item).data)
+
+        return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)

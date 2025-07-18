@@ -83,7 +83,9 @@ const MenuForm = ({
       const isBeverage =
         (selectedCategory?.name || '').toLowerCase() === 'beverage' ||
         formData.item_type === 'beverage';
-
+      const isFood = 
+        (selectedCategory?.name || '').toLowerCase() === 'food' ||
+        formData.item_type === 'food';
       let productName = '';
       if (isBeverage) {
         const selectedProduct = availableProducts.find((p) => p.id == formData.product);
@@ -95,8 +97,10 @@ const MenuForm = ({
       const payload = {
         ...formData,
         name: productName,
-        product: isBeverage ? formData.product : null,
+        product: isBeverage | isFood
       };
+
+
 
       if (selectedItem) {
         await updateMenuItem(selectedItem.id, payload);

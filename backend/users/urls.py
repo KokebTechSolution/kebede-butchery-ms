@@ -2,22 +2,15 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
+from .views import UserViewSet, SessionLoginView, SessionLogoutView, CurrentUserView, get_csrf
 
-from .views import CustomTokenObtainPairView, UserViewSet, LoginView
-
-# DRF router for CRUD operations
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
-    # JWT Authentication (login and token refresh)
-    path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
-    # Optional: Custom login endpoint if you want username/password authentication
-    path('custom-login/', LoginView.as_view(), name='custom_login'),
-
-    # Include the CRUD user routes
+    path('login/', SessionLoginView.as_view(), name='session-login'),
+    path('logout/', SessionLogoutView.as_view(), name='session-logout'),
+    path('me/', CurrentUserView.as_view(), name='current-user'),
+    path("csrf/", get_csrf),
     path('', include(router.urls)),
 ]

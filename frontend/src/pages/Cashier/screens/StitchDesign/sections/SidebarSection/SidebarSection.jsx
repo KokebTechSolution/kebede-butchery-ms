@@ -31,7 +31,7 @@ export const SidebarSection = () => {
       const printedOrders = await getPrintedOrders(date);
       setOrders(printedOrders);
     } catch (error) {
-      // Handle error appropriately
+      console.error("Failed to fetch orders:", error);
     }
   };
 
@@ -73,20 +73,27 @@ export const SidebarSection = () => {
 
   // Sort: unprocessed first, then newest first by order_number
   const sortedOrders = [...orders].sort((a, b) => {
-    // Unprocessed first
     if (a.has_payment !== b.has_payment) {
       return a.has_payment ? 1 : -1;
     }
-    // Newest first by order_number (string compare, descending)
     if (b.order_number && a.order_number) {
       return b.order_number.localeCompare(a.order_number);
     }
-    // Fallback to created_at if available
     if (b.created_at && a.created_at) {
       return new Date(b.created_at) - new Date(a.created_at);
     }
     return 0;
   });
+
+  // Utility to format payment option label for UI display
+  const formatPaymentOption = (opt) => {
+    if (!opt) return 'N/A';
+    if (Array.isArray(opt)) opt = opt[0];
+    if (typeof opt === 'string' && opt.startsWith('"') && opt.endsWith('"')) {
+      opt = opt.slice(1, -1);
+    }
+    return opt.charAt(0).toUpperCase() + opt.slice(1);
+  };
 
   return (
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
@@ -99,10 +106,7 @@ export const SidebarSection = () => {
           id="order-date-filter"
           type="date"
           value={filterDate}
-          onChange={e => {
-            setFilterDate(e.target.value);
-            fetchOrders(e.target.value); // Immediately fetch orders for new date
-          }}
+          onChange={e => setFilterDate(e.target.value)}
           className="mb-4 p-2 border rounded"
         />
       </div>
@@ -150,7 +154,7 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       <ul className="space-y-1">
-                        {order.items.map((item, itemIndex) => (
+                        {(order.items ?? []).map((item, itemIndex) => (
                           <li key={item.id || `${item.name}-${itemIndex}`} className="text-sm">
                             <span className="font-medium">{item.quantity}x</span> {item.name}
                             <span className="text-[#876363] ml-2">({item.price})</span>
@@ -170,7 +174,7 @@ export const SidebarSection = () => {
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {order.payment_option ? (order.payment_option.charAt(0).toUpperCase() + order.payment_option.slice(1)) : 'N/A'}
+                        {formatPaymentOption(order.payment_option)}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 align-top">
@@ -180,6 +184,7 @@ export const SidebarSection = () => {
                         </span>
                       ) : (
                         <button
+                          type="button"
                           className={`w-full rounded-lg px-4 py-2 font-bold text-sm transition-colors duration-200 [font-family:'Work_Sans',Helvetica] 
                             ${clickedIndex === index
                               ? 'bg-red-600 text-white'

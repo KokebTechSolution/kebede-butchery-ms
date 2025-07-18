@@ -1,0 +1,21 @@
+{
+  "unauthorized": "Hayyamamuu hin dandeenye",
+  "owner_dashboard": "Daashboordii Abbaa Qabeenyaa",
+  "manager_dashboard": "Daashboordii Bulchaa",
+  "waiter_dashboard": "Daashboordii Tajaajilaa",
+  "cashier_dashboard": "Daashboordii Kaashiyaa",
+  "bartender_dashboard": "Daashboordii Bartender",
+  "meat_dashboard": "Daashboordii Foonii",
+  "add_new_products": "Oomisha Haaraa Dabaluu",
+  "branch_id": "ID Kutaa",
+  "receipt_image": "Suuraa Ragaa",
+  "submit_all": "Hundaa Ergi",
+    "welcome": "Baga nagaan dhuftan {{name}} 🍻",
+  "dashboard_tip": "💡 Gorsa: Dhugaatii tartiiba itti dhihaateen qopheessi. Bakka hojii kee qulqulluu fi sirrii ta’ee tursi.",
+  "bar_operations": "Hojiiwwan Baarii",
+  "manage_bar": "Ajajawwan dhugaatii, kuusaa baarii fi gabaasa gurgurtaa sirnaan to’achuuf.",
+  "orders": "Ajajawwan",
+  "closed": "Cufamee jira",
+  "inventory": "Kuusaa",
+  "reports": "Gabaasa"
+}

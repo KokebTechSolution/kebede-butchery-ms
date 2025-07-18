@@ -1,15 +1,14 @@
 import React from 'react';
 
-const BarmanStockStatus = ({ stocks, tab, setTab }) => {
-  // Filter stocks based on selected tab
-  const filteredStocks = stocks.filter((stock) =>
-    tab === 'available' ? !stock.running_out : stock.running_out
-  );
+const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
+  // Filter stocks by bartenderId and tab
+  const filteredStocks = stocks
+    .filter(stock => String(stock.bartender_id) === String(bartenderId))
+    .filter(stock => (tab === 'available' ? !stock.running_out : stock.running_out));
 
   return (
     <div className="p-4">
       <h2 className="text-2xl font-semibold mb-4">Barman Stock Status</h2>
-
       <div className="mb-4 flex gap-4">
         <button
           onClick={() => setTab('available')}
@@ -28,7 +27,6 @@ const BarmanStockStatus = ({ stocks, tab, setTab }) => {
           Running Out
         </button>
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full border table-auto text-center">
           <thead className="bg-gray-100">

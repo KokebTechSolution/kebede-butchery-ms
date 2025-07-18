@@ -377,9 +377,9 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
-            return self.queryset
-        return self.queryset.filter(bartender=user)
+        qs = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
+        return qs if user.is_staff else qs.filter(bartender=user)
+
 
 
     def perform_create(self, serializer):

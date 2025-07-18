@@ -1,0 +1,21 @@
+{
+  "unauthorized": "Unauthorized",
+  "owner_dashboard": "Owner Dashboard",
+  "manager_dashboard": "Manager Dashboard",
+  "waiter_dashboard": "Waiter Dashboard",
+  "cashier_dashboard": "Cashier Dashboard",
+  "bartender_dashboard": "Bartender Dashboard",
+  "meat_dashboard": "Meat Dashboard",
+  "add_new_products": "Add New Products",
+  "branch_id": "Branch ID",
+  "receipt_image": "Receipt Image",
+  "submit_all": "Submit All",
+  "welcome": "Welcome, {{name}} 🍻",
+  "dashboard_tip": "💡 Tip: Prepare beverages in the order they were received. Keep your bar station clean and organized.",
+  "bar_operations": "Bar Operations",
+  "manage_bar": "Manage beverage orders, bar inventory, and sales reports efficiently.",
+  "orders": "Orders",
+  "closed": "Closed",
+  "inventory": "Inventory",
+  "reports": "Reports"
+}

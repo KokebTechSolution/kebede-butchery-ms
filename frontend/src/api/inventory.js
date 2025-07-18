@@ -1,108 +1,120 @@
-// src/api/inventory.js
-
 import axios from 'axios';
 
+// Base URL for inventory API
 const BASE_URL = 'http://localhost:8000/api/inventory/';
-const INVENTORY_URL = `${BASE_URL}inventory/`;
-const getToken = () => localStorage.getItem('access');
 
-const axiosConfig = () => ({
+// Utility to read cookie by name (for CSRF token)
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// CSRF token from cookie
+const csrfToken = getCookie('csrftoken');
+
+// Axios config for GET requests (with credentials)
+const getConfig = {
+  withCredentials: true,
+};
+
+// Axios config for POST/PUT/PATCH requests (with credentials + CSRF token)
+const modifyConfig = {
+  withCredentials: true,
   headers: {
-    Authorization: `Bearer ${getToken()}`,
+    'X-CSRFToken': csrfToken,
     'Content-Type': 'application/json',
   },
-});
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access');
-  return { Authorization: `Bearer ${token}` };
 };
+
 // Fetch all inventory items
 export const fetchInventory = async () => {
-  const response = await axios.get(INVENTORY_URL, axiosConfig());
+  const response = await axios.get(`${BASE_URL}inventory/`, getConfig);
   return response.data;
 };
 
 // Fetch single inventory item by ID
 export const fetchInventoryById = async (id) => {
-  const response = await axios.get(`${INVENTORY_URL}${id}/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}inventory/${id}/`, getConfig);
   return response.data;
 };
 
 // Restock an inventory item
 export const restockInventory = async (id, restockData) => {
-  const response = await axios.post(`${INVENTORY_URL}${id}/restock/`, restockData, axiosConfig());
+  const response = await axios.post(`${BASE_URL}inventory/${id}/restock/`, restockData, modifyConfig);
   return response.data;
 };
 
 // Record a sale for an inventory item
 export const sellInventory = async (id, saleData) => {
-  const response = await axios.post(`${INVENTORY_URL}${id}/sale/`, saleData, axiosConfig());
+  const response = await axios.post(`${BASE_URL}inventory/${id}/sale/`, saleData, modifyConfig);
   return response.data;
 };
 
 // Fetch item types
 export const fetchItemTypes = async () => {
-  const response = await axios.get(`${BASE_URL}itemtypes/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}itemtypes/`, getConfig);
   return response.data;
 };
 
 // Fetch categories
 export const fetchCategories = async () => {
-  const response = await axios.get(`${BASE_URL}categories/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}categories/`, getConfig);
   return response.data;
 };
 
 // Fetch branches
 export const fetchBranches = async () => {
-  const response = await axios.get(`${BASE_URL}branches/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}branches/`, getConfig);
   return response.data;
 };
 
 // Fetch inventory requests
 export const fetchRequests = async () => {
-  const response = await axios.get(`${BASE_URL}requests/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}requests/`, getConfig);
   return response.data;
 };
 
 // Accept inventory request
-export const acceptRequest = async (requestId) => {
+export const acceptRequest = async (requestId, amount) => {
   const response = await axios.post(
     `${BASE_URL}requests/${requestId}/accept/`,
-    {}, // empty POST body
-    axiosConfig()
+    { amount },  // ✅ Send amount in request body
+    modifyConfig
   );
   return response.data;
 };
 
+
 // Reject inventory request
 export const rejectRequest = async (requestId) => {
-  const response = await axios.post(
-    `${BASE_URL}requests/${requestId}/reject/`,
-    {}, // empty POST body
-    axiosConfig()
-  );
+  const response = await axios.post(`${BASE_URL}requests/${requestId}/reject/`, {}, modifyConfig);
   return response.data;
 };
 
 // Fetch stocks
 export const fetchStocks = async () => {
-  const response = await axios.get(`${BASE_URL}stocks/`, axiosConfig());
+  const response = await axios.get(`${BASE_URL}stocks/`, getConfig);
   return response.data;
 };
 
-export const ReachRequest = (id) => {
-  return axios.post(
-    `http://localhost:8000/api/inventory/requests/${id}/reach/`,
-    null,
-    { headers: getAuthHeaders() }
-  );
+// Mark request as reached
+export const ReachRequest = async (id) => {
+  const response = await axios.post(`${BASE_URL}requests/${id}/reach/`, null, modifyConfig);
+  return response.data;
 };
 
-// Mark a request as not reached (reached_status = false)
-export const NotReachRequest = (id) => {
-  return axios.post(
-    `http://localhost:8000/api/inventory/requests/${id}/not_reach/`,
-    null,
-    { headers: getAuthHeaders() }
-  );
+// Mark request as not reached
+export const NotReachRequest = async (id) => {
+  const response = await axios.post(`${BASE_URL}requests/${id}/not_reach/`, null, modifyConfig);
+  return response.data;
 };

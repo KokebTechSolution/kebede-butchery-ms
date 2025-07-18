@@ -17,7 +17,10 @@ export const getPrintedOrders = async (date, start, end) => {
 
 export const updatePaymentOption = async (orderId, paymentOption) => {
     try {
-        const response = await axiosInstance.patch(`/orders/${orderId}/update-payment-option/`, { payment_option: paymentOption });
+        const response = await axiosInstance.patch(
+            `/orders/${orderId}/update-payment-option/`,
+            { payment_option: paymentOption }
+        );
         return response.data;
     } catch (error) {
         console.error('Failed to update payment option:', error);
@@ -47,4 +50,4 @@ export const getMyOrders = async (date) => {
         console.error('Failed to fetch orders:', error);
         throw error;
     }
-}; 
+};

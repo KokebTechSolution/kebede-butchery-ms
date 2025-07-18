@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   fetchRequests,
   acceptRequest,
   rejectRequest,
-} from '../../api/inventory';
-import axios from 'axios';
+} from '../../api/inventory'; // <- make sure these use axios withCredentials too
 import NewRequest from './NewRequest';
 
 const InventoryRequestList = () => {
@@ -33,7 +33,7 @@ const InventoryRequestList = () => {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const data = await fetchRequests();
+      const data = await fetchRequests(); // make sure this internally uses withCredentials
       setRequests(data);
     } catch (err) {
       console.error('Failed to fetch requests:', err);
@@ -45,9 +45,8 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const token = localStorage.getItem('access');
       const res = await axios.get('http://localhost:8000/api/inventory/inventory/', {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setProducts(res.data);
     } catch (err) {
@@ -57,9 +56,8 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const token = localStorage.getItem('access');
       const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setBranches(res.data);
     } catch (err) {
@@ -70,7 +68,7 @@ const InventoryRequestList = () => {
   const handleAccept = async (id) => {
     setProcessingId(id);
     try {
-      await acceptRequest(id);
+      await acceptRequest(id); // ensure this uses withCredentials
       await loadRequests();
     } catch (err) {
       console.error('Accept failed:', err);
@@ -83,7 +81,7 @@ const InventoryRequestList = () => {
   const handleReject = async (id) => {
     setProcessingId(id);
     try {
-      await rejectRequest(id);
+      await rejectRequest(id); // ensure this uses withCredentials
       await loadRequests();
     } catch (err) {
       console.error('Reject failed:', err);
@@ -110,7 +108,6 @@ const InventoryRequestList = () => {
     }
 
     try {
-      const token = localStorage.getItem('access');
       await axios.post(
         'http://localhost:8000/api/inventory/requests/',
         {
@@ -121,10 +118,8 @@ const InventoryRequestList = () => {
           branch_id: parseInt(formData.branch),
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true,
         }
       );
 
@@ -156,6 +151,8 @@ const InventoryRequestList = () => {
       setFormMessage(messages.join(' | ') || 'Submission failed due to an unknown error.');
     }
   };
+
+
 
   return (
     <div className="p-4">

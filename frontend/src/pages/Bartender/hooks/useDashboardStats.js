@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-axios.defaults.withCredentials = true;
+import axiosInstance from "../../api/axiosInstance"; // assume this has withCredentials: true
 
 export function useDashboardStats() {
   const [stats, setStats] = useState({
@@ -10,34 +8,41 @@ export function useDashboardStats() {
     lowStock: 0,
     staffCount: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [ordersRes, inventoryRes, stockRes, staffRes] = await Promise.all([
+        axiosInstance.get("/orders/beverages/"),
+        axiosInstance.get("/api/inventory/barman-stock/"),
+        axiosInstance.get("/api/inventory/barman-stock/?running_out=true"),
+        axiosInstance.get("/api/users/users"),
+      ]);
+
+      const pendingOrders = ordersRes.data.filter(o =>
+        o.items.some(i => i.status === "pending")
+      ).length;
+
+      setStats({
+        pendingOrders,
+        inventoryItems: inventoryRes.data.length,
+        lowStock: stockRes.data.length,
+        staffCount: staffRes.data.length,
+      });
+    } catch (err) {
+      console.error("Error fetching dashboard stats:", err.response?.data || err.message);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [ordersRes, inventoryRes, stockRes, staffRes] = await Promise.all([
-          axios.get("http://localhost:8000/api/orders/beverages/"),
-          axios.get("http://localhost:8000/api/inventory/barman-stock/"),
-          axios.get("http://localhost:8000/api/inventory/barman-stock/?running_out=true"),
-          axios.get("http://localhost:8000/api/users/users"),
-        ]);
-
-        const pendingOrders = ordersRes.data.filter(o =>
-          o.items.some(i => i.status === "pending")
-        ).length;
-
-        setStats({
-          pendingOrders,
-          inventoryItems: inventoryRes.data.length,
-          lowStock: stockRes.data.length,
-          staffCount: staffRes.data.length,
-        });
-      } catch (err) {
-        console.error("Error fetching dashboard stats:", err.response?.data || err.message);
-      }
-    };
-
     fetchStats();
   }, []);
 
-  return stats;
+  return { stats, loading, error, refresh: fetchStats };
 }

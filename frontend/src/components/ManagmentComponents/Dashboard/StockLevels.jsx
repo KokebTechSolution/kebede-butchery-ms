@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../../api/axiosInstance"; // adjust path as needed
 
 export default function StockLevels() {
   const [stockItems, setStockItems] = useState([]);
@@ -7,8 +7,8 @@ export default function StockLevels() {
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
 
-  const API_URL = "http://localhost:8000/api/products/low-stock/";
-  const STOCK_THRESHOLD = 10; // ✅ You can adjust this globally
+  const API_URL = "products/low-stock/"; // relative path for axiosInstance
+  const STOCK_THRESHOLD = 10; // You can adjust this globally
 
   useEffect(() => {
     fetchStockItems();
@@ -19,9 +19,7 @@ export default function StockLevels() {
     setError("");
 
     try {
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-      });
+      const response = await axiosInstance.get(API_URL);
       setStockItems(response.data);
     } catch (err) {
       console.error("Error fetching stock items:", err);
@@ -40,6 +38,7 @@ export default function StockLevels() {
         <button
           onClick={fetchStockItems}
           className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+          disabled={loading}
         >
           Refresh
         </button>
