@@ -1,64 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { createProduct, fetchItemTypes } from '../../api/product';
+import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 
 const AddProductsForm = ({ onSuccess, onCancel }) => {
+  const { t } = useTranslation();
+  const [itemTypes, setItemTypes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
-    type_id: '', // Item Type (number)
+    type_id: '',
     unit: '',
     price_per_unit: '',
-    stock_qty: '',
-    branch_id: '', // ✅ Correct field name
-    is_active: true,
-    expiration_date: '',
   });
 
-  const [itemTypes, setItemTypes] = useState([]);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
-    const loadItemTypes = async () => {
-      try {
-        const types = await fetchItemTypes();
-        setItemTypes(types);
-      } catch (err) {
-        console.error('Error fetching item types:', err);
-        setError('Failed to load item types.');
-      }
-    };
-
-    loadItemTypes();
+    fetchItemTypes();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const fetchItemTypes = async () => {
+    try {
+      const response = await axios.get('/api/inventory/item-types/');
+      setItemTypes(response.data);
+    } catch (error) {
+      console.error('Error fetching item types:', error);
+    }
+  };
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : (['type_id', 'price_per_unit', 'stock_qty'].includes(name) ? Number(value) : value),
-    }));
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setError('');
 
     try {
-      // Basic validation
-      if (!formData.name || !formData.category || !formData.type_id || !formData.unit || !formData.price_per_unit || !formData.stock_qty || !formData.expiration_date || !formData.branch_id) {
-        setError('Please fill all required fields.');
-        setLoading(false);
-        return;
-      }
-
-      // Send formData to the API
-      const newProduct = await createProduct(formData);
-      onSuccess(newProduct);
+      const response = await axios.post('/api/inventory/products/', formData);
+      onSuccess(response.data);
     } catch (err) {
-      console.error('Error creating product:', err.response?.data || err);
+      console.error('Error creating product:', err);
 
       // Friendly error message
       if (err.response?.data) {
@@ -68,7 +55,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         }
         setError(messages.join(' | '));
       } else {
-        setError('Failed to create product. Please check your input.');
+        setError(t('failed_create_product'));
       }
 
     } finally {
@@ -83,7 +70,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         name="name"
         value={formData.name}
         onChange={handleChange}
-        placeholder="Product Name"
+        placeholder={t('product_name')}
         className="w-full border px-4 py-2 rounded"
         required
       />
@@ -93,7 +80,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         name="category"
         value={formData.category}
         onChange={handleChange}
-        placeholder="Product Category"
+        placeholder={t('product_category')}
         className="w-full border px-4 py-2 rounded"
         required
       />
@@ -105,7 +92,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         className="w-full border px-4 py-2 rounded"
         required
       >
-        <option value="">Select Item Type</option>
+        <option value="">{t('select_item_type')}</option>
         {itemTypes.map((type) => (
           <option key={type.id} value={type.id}>
             {type.type_name}
@@ -118,7 +105,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         name="unit"
         value={formData.unit}
         onChange={handleChange}
-        placeholder="Unit (e.g. piece, kg)"
+        placeholder={t('unit_placeholder')}
         className="w-full border px-4 py-2 rounded"
         required
       />
@@ -128,66 +115,31 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
         name="price_per_unit"
         value={formData.price_per_unit}
         onChange={handleChange}
-        placeholder="Price per Unit"
+        placeholder={t('price_per_unit_placeholder')}
         className="w-full border px-4 py-2 rounded"
         required
       />
 
-      <input
-        type="number"
-        name="stock_qty"
-        value={formData.stock_qty}
-        onChange={handleChange}
-        placeholder="Stock Quantity"
-        className="w-full border px-4 py-2 rounded"
-        required
-      />
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
 
-      <input
-        type="text"
-        name="branch"
-        value={formData.branch_id}
-        onChange={handleChange}
-        placeholder="Branch ID"
-        className="w-full border px-4 py-2 rounded"
-        required
-      />
-
-      <input
-        type="date"
-        name="expiration_date"
-        value={formData.expiration_date}
-        onChange={handleChange}
-        className="w-full border px-4 py-2 rounded"
-        required
-      />
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          name="is_active"
-          checked={formData.is_active}
-          onChange={handleChange}
-        />
-        <label>Active</label>
-      </div>
-
-      {error && <p className="text-red-500">{error}</p>}
-
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-        >
-          Cancel
-        </button>
+      <div className="flex gap-3">
         <button
           type="submit"
           disabled={loading}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Saving...' : 'Save'}
+          {loading ? t('saving') : t('save_changes')}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400"
+        >
+          {t('cancel')}
         </button>
       </div>
     </form>

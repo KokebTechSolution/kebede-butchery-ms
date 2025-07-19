@@ -1,82 +1,87 @@
 # menu/views.py
 
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Menu, MenuItem, MenuSection, MenuCategory
-from .serializers import (
-    MenuSerializer,
-    MenuItemSerializer,
-    MenuSectionSerializer,
-    MenuCategorySerializer
-)
-
-from inventory.models import Stock
-
-
-class MenuViewSet(viewsets.ModelViewSet):
-    queryset = Menu.objects.all()
-    serializer_class = MenuSerializer
-
-    @action(detail=True, methods=['get'])
-    def available_items(self, request, pk=None):
-        menu = self.get_object()
-        available_sections = []
-
-        for section in menu.sections.all():
-            # Include items that are available and either:
-            # - have a product and the product's stock is not running out
-            # - or have no product (e.g., food items)
-            available_items = section.menuitem_set.filter(is_available=True).distinct()
-            filtered_items = []
-            for item in available_items:
-                if item.product:
-                    # Only include if product's stock is not running out
-                    stock_qs = item.product.stock_set.all()
-                    if not stock_qs.exists() or not stock_qs.filter(running_out=False).exists():
-                        continue
-                # If no product, always include (food item)
-                filtered_items.append(item)
-
-            if filtered_items:
-                available_sections.append({
-                    'id': section.id,
-                    'name': section.name,
-                    'items': [
-                        {
-                            'id': item.id,
-                            'product_name': item.product.name if item.product else item.name,
-                            'description': item.description,
-                            'price': item.price
-                        }
-                        for item in filtered_items
-                    ]
-                })
-
-        return Response({
-            'menu_id': menu.id,
-            'menu_name': menu.name,
-            'sections': available_sections
-        })
-
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
+from .models import MenuItem
+from .serializers import MenuItemSerializer, MenuItemCreateSerializer
+from inventory.models import Category as InventoryCategory
 
 class MenuItemViewSet(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        # ✅ Ensures the product_id is saved properly
-        serializer.save()
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return MenuItemCreateSerializer
+        return MenuItemSerializer
 
-    def perform_update(self, serializer):
-        serializer.save()
+    def get_queryset(self):
+        queryset = MenuItem.objects.all()
+        
+        # Filter by item type if provided
+        item_type = self.request.query_params.get('item_type', None)
+        if item_type:
+            queryset = queryset.filter(item_type=item_type)
+        
+        # Filter by availability if provided
+        is_available = self.request.query_params.get('is_available', None)
+        if is_available is not None:
+            queryset = queryset.filter(is_available=is_available.lower() == 'true')
+        
+        # Filter by category if provided
+        category_id = self.request.query_params.get('category', None)
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        return queryset
 
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """Get available inventory categories for menu items"""
+        item_type = request.query_params.get('item_type', None)
+        
+        if item_type:
+            # Filter categories by item type
+            categories = InventoryCategory.objects.filter(item_type__type_name__iexact=item_type)
+        else:
+            # Get all categories
+            categories = InventoryCategory.objects.all()
+        
+        category_data = []
+        for category in categories:
+            category_data.append({
+                'id': category.id,
+                'name': category.category_name,
+                'item_type': category.item_type.type_name
+            })
+        
+        return Response(category_data)
 
-class MenuSectionViewSet(viewsets.ModelViewSet):
-    queryset = MenuSection.objects.all()
-    serializer_class = MenuSectionSerializer
-
-
-class MenuCategoryViewSet(viewsets.ModelViewSet):
-    queryset = MenuCategory.objects.all()
-    serializer_class = MenuCategorySerializer
+    @action(detail=False, methods=['get'])
+    def available_products(self, request):
+        """Get available inventory products that can be linked to menu items"""
+        from inventory.models import Product
+        
+        products = Product.objects.all()
+        
+        # Filter by category if provided
+        category_id = request.query_params.get('category', None)
+        if category_id:
+            products = products.filter(category_id=category_id)
+        
+        product_data = []
+        for product in products:
+            product_data.append({
+                'id': product.id,
+                'name': product.name,
+                'category': product.category.category_name,
+                'item_type': product.category.item_type.type_name,
+                'base_unit': product.base_unit,
+                'price_per_unit': product.price_per_unit
+            })
+        
+        return Response(product_data)

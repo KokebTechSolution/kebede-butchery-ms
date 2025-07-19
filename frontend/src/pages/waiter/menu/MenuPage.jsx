@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
+import { MdArrowBack } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
+import Cart from '../../../components/Cart/Cart';
 import { useCart } from '../../../context/CartContext';
 import { fetchMenuItems } from '../../../api/menu'; // Updated import
 import './MenuPage.css';
 
+// Import original hardcoded menu items as fallback
+import { mainCourseItems, fishDishesItems, otherFoodItems } from './items/food/foodItems';
+import { coldbeverageItems, hotbeverageItems } from './items/drink/drinkItems';
+
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [activeTab, setActiveTab] = useState('food');
-    const { setActiveTable, cartItems, orders, clearCart } = useCart();
+    const [loading, setLoading] = useState(true);
+    const { setActiveTable, orders, clearCart } = useCart();
 
     useEffect(() => {
         if (table && table.id) {
@@ -19,31 +25,33 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     useEffect(() => {
         const loadMenuItems = async () => {
             try {
+                setLoading(true);
                 const items = await fetchMenuItems();
                 setMenuItems(items);
             } catch (error) {
-                console.error('❌ Error loading menu items:', error);
+                console.error('❌ Error loading menu items from API, using fallback items:', error);
+                // Use original hardcoded items as fallback
+                const fallbackItems = [
+                    ...mainCourseItems,
+                    ...fishDishesItems,
+                    ...otherFoodItems,
+                    ...coldbeverageItems,
+                    ...hotbeverageItems
+                ];
+                setMenuItems(fallbackItems);
+            } finally {
+                setLoading(false);
             }
         };
         loadMenuItems();
     }, []);
 
-    if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
+    if (loading) return <div>Loading menu...</div>;
+    if (!menuItems || menuItems.length === 0) return <div>No menu items available.</div>;
 
-    // Group items by type and then by category
-    const groupByCategory = (items) => {
-        const grouped = {};
-        items.forEach(item => {
-            if (!grouped[item.category_name]) grouped[item.category_name] = [];
-            grouped[item.category_name].push(item);
-        });
-        return grouped;
-    };
-
-    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
-    const foodByCategory = groupByCategory(foodItems);
-    const beverageByCategory = groupByCategory(beverageItems);
+    // Filter items by main type (food vs beverage)
+    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available !== false);
+    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available !== false);
 
     // Filter previous orders for this table
     const previousOrders = orders.filter(order => order.table_number === table?.id);
@@ -65,131 +73,44 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                         onClick={() => setActiveTab('food')}
                         disabled={isReadyToPay}
                     >
-                        Food
+                        FOOD
                     </button>
                     <button
                         className={`menu-tab ${activeTab === 'beverage' ? 'active' : ''}`}
                         onClick={() => setActiveTab('beverage')}
                         disabled={isReadyToPay}
                     >
-                        beverages
+                        DRINK
                     </button>
                 </div>
                 {activeTab === 'food' && (
                     <div className="menu-section">
-                        {Object.keys(foodByCategory).map(category => (
-                            <div key={category} className="menu-category-section">
-                                <h3>{category}</h3>
-                                <div className="menu-items-grid">
-                                    {foodByCategory[category].map(item => (
-                                        <MenuItem key={item.id} item={item} disabled={isReadyToPay} />
-                                    ))}
-                                </div>
+                        <div className="menu-category-section">
+                            <h3>FOOD</h3>
+                            <div className="menu-items-grid">
+                                {foodItems.map(item => (
+                                    <MenuItem key={item.id || item.name} item={item} disabled={isReadyToPay} />
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 )}
                 {activeTab === 'beverage' && (
                     <div className="menu-section">
-                        {Object.keys(beverageByCategory).map(category => (
-                            <div key={category} className="menu-category-section">
-                                <h3>{category}</h3>
-                                <div className="menu-items-grid">
-                                    {beverageByCategory[category].map(item => (
-                                        <MenuItem key={item.id} item={item} disabled={isReadyToPay} />
-                                    ))}
-                                </div>
+                        <div className="menu-category-section">
+                            <h3>DRINK</h3>
+                            <div className="menu-items-grid">
+                                {beverageItems.map(item => (
+                                    <MenuItem key={item.id || item.name} item={item} disabled={isReadyToPay} />
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 )}
             </div>
-            <div style={{ flex: 1, minWidth: 300 }}>
-                <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001', marginBottom: 24 }}>
-                    <h3 style={{ marginBottom: 8 }}>🛒 Current Order</h3>
-                    {cartItems.length === 0 ? (
-                        <div>No items in current order.</div>
-                    ) : (
-                        <ul style={{ marginBottom: 12 }}>
-                            {cartItems.map(item => (
-                                <li key={item.name}>
-                                    {item.name} × {item.quantity} — ${(item.price * item.quantity).toFixed(2)}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <div style={{ fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>
-                        Running Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
-                      </span>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          style={{
-                            background: '#4ade80',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: 4,
-                            padding: '8px 20px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'background 0.2s, color 0.2s',
-                          }}
-                          disabled={cartItems.length === 0}
-                          onClick={onOrder}
-                          onMouseOver={e => e.currentTarget.style.background = '#22c55e'}
-                          onMouseOut={e => e.currentTarget.style.background = '#4ade80'}
-                          onMouseDown={e => e.currentTarget.style.background = '#16a34a'}
-                          onMouseUp={e => e.currentTarget.style.background = '#22c55e'}
-                        >
-                          Order
-                        </button>
-                        {cartItems.length > 0 && (
-                          <button
-                            style={{
-                              background: '#ff4444',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: 4,
-                              padding: '8px 20px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              marginLeft: 8,
-                              transition: 'background 0.2s, color 0.2s',
-                            }}
-                            onClick={clearCart}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                </div>
-                <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001' }}>
-                    <h4 style={{ marginBottom: 8 }}>Previous Orders</h4>
-                    {previousOrders.length === 0 ? (
-                        <div>No previous orders.</div>
-                    ) : (
-                        previousOrders.map(order => (
-                            <div key={order.id} style={{ borderBottom: '1px solid #eee', marginBottom: 8, paddingBottom: 8, background: editingOrderId === order.id ? '#e0f7fa' : 'transparent' }}>
-                                <div>
-                                    Order #{order.order_number} <span style={{ float: 'right' }}>${order.total_money}</span>
-                                    {editingOrderId === order.id && <span style={{ color: '#007bff', marginLeft: 8 }}>(Editing)</span>}
-                                </div>
-                                <div style={{ fontSize: 13, color: '#656565' }}>
-                                    {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                                    {(() => {
-                                      if (order.food_status && order.food_status !== 'not_applicable') {
-                                        return ` • ${order.food_status}`;
-                                      } else if (order.beverage_status && order.beverage_status !== 'not_applicable') {
-                                        return ` • ${order.beverage_status}`;
-                                      } else {
-                                        return '';
-                                      }
-                                    })()}
-                                </div>
-                            </div>
-                        ))
-                    )}
+            <div style={{ flex: 1 }}>
+                <div className="cart-container">
+                    <Cart onOrder={onOrder} onClearCart={clearCart} />
                 </div>
             </div>
         </div>

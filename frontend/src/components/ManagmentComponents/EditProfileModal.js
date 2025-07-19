@@ -1,66 +1,55 @@
-import React, { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
-import { updateUser } from "../../api/stafflist";
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
-const EditProfileModal = ({ onClose }) => {
-  const { user, updateUser: updateUserInContext } = useAuth();
+const EditProfileModal = ({ isOpen, onClose }) => {
+  const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    phone_number: user?.phone_number || '',
+    email: user?.email || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const handlePasswordChange = (e) => setPassword(e.target.value);
-  const handleConfirmPasswordChange = (e) => setConfirmPassword(e.target.value);
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    // Validation if password is being changed
-    if (password.trim() !== "") {
-      if (password.length < 6) {
-        setError("Password must be at least 6 characters long.");
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError("Passwords do not match.");
-        return;
-      }
-    }
+    setLoading(true);
+    setMessage('');
 
     try {
-      // Prepare payload with required fields always included
-      const payload = {
-        username: user.username,
-        role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        phone_number: user.phone_number,
-      };
-
-      // Add password only if changed
-      if (password.trim() !== "") {
-        payload.password = password;
-      }
-
-      const updatedUser = await updateUser(user.id, payload);
-      updateUserInContext(updatedUser);
-      onClose();
+      await updateUser(formData);
+      setMessage('Profile updated successfully!');
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } catch (error) {
-      console.error("Failed to update profile", error);
-      alert(error.message || "Failed to update profile");
+      setMessage('Failed to update profile. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">Edit Profile</h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">{t('edit_profile')}</h2>
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
 
           {/* Readonly fields */}
           <div>
-            <label className="block text-sm font-semibold">Username</label>
+            <label className="block text-sm font-semibold">{t('username')}</label>
             <input
               value={user.username}
               readOnly
@@ -69,7 +58,7 @@ const EditProfileModal = ({ onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold">First Name</label>
+            <label className="block text-sm font-semibold">{t('first_name')}</label>
             <input
               value={user.first_name}
               readOnly
@@ -78,7 +67,7 @@ const EditProfileModal = ({ onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold">Last Name</label>
+            <label className="block text-sm font-semibold">{t('last_name')}</label>
             <input
               value={user.last_name}
               readOnly
@@ -87,7 +76,7 @@ const EditProfileModal = ({ onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold">Phone Number</label>
+            <label className="block text-sm font-semibold">{t('phone_number')}</label>
             <input
               value={user.phone_number}
               readOnly
@@ -96,7 +85,7 @@ const EditProfileModal = ({ onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold">Role</label>
+            <label className="block text-sm font-semibold">{t('roles.manager')}</label>
             <input
               value={user.role}
               readOnly
@@ -106,51 +95,42 @@ const EditProfileModal = ({ onClose }) => {
 
           {/* Editable password */}
           <div>
-            <label className="block text-sm font-semibold">New Password</label>
+            <label className="block text-sm font-semibold">{t('password')}</label>
             <input
+              type="password"
               name="password"
-              type="password"
-              value={password}
-              onChange={handlePasswordChange}
-              placeholder="Enter new password"
-              className="w-full border border-gray-300 p-2 rounded-lg"
-              autoComplete="new-password"
+              placeholder="Enter new password (optional)"
+              onChange={handleChange}
+              className="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold">Confirm New Password</label>
-            <input
-              name="confirm_password"
-              type="password"
-              value={confirmPassword}
-              onChange={handleConfirmPasswordChange}
-              placeholder="Confirm new password"
-              className="w-full border border-gray-300 p-2 rounded-lg"
-              autoComplete="new-password"
-            />
-          </div>
-
-          {/* Show validation error */}
-          {error && (
-            <div className="text-red-600 font-semibold">
-              {error}
+          {/* Message display */}
+          {message && (
+            <div className={`p-3 rounded-lg text-sm ${
+              message.includes('successfully') 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {message}
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4">
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? t('saving') : t('save_changes')}
+            </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400"
+              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800"
-            >
-              Save
+              {t('cancel')}
             </button>
           </div>
         </form>

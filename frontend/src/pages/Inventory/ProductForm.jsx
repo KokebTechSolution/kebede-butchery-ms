@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -21,8 +20,7 @@ function getCookie(name) {
   return cookieValue;
 }
 
-const AddProductForm = () => {
-  const navigate = useNavigate();
+const AddProductForm = ({ onSuccess, onCancel }) => {
   const { user } = useAuth();
   const branchId = user?.branch || null;
   const { t } = useTranslation();
@@ -204,17 +202,15 @@ const AddProductForm = () => {
 
     try {
       for (const product of products) {
+        // Step 1: Create Product with proper backend model structure
         const productFormData = new FormData();
         productFormData.append('name', product.name);
         productFormData.append('category_id', product.category);
+        productFormData.append('base_unit', product.quantityType); // Map quantityType to base_unit
         productFormData.append('price_per_unit', product.price_per_unit);
-        productFormData.append('uses_carton', product.uses_carton ? 'true' : 'false');
-        productFormData.append('bottles_per_carton', product.bottles_per_carton);
         if (product.receipt_image) {
           productFormData.append('receipt_image', product.receipt_image);
         }
-        productFormData.append('shot_per_bottle', product.shot_per_bottle);
-        productFormData.append('shot_per_liter', product.shot_per_liter);
 
         const productResponse = await axios.post(
           'http://localhost:8000/api/inventory/inventory/',
@@ -230,16 +226,19 @@ const AddProductForm = () => {
 
         const createdProduct = productResponse.data;
 
+        // Step 2: Create Stock with StockUnit
         await axios.post(
           'http://localhost:8000/api/inventory/stocks/',
           {
-            carton_quantity: product.carton_quantity,
-            bottle_quantity: product.bottle_quantity,
-            unit_quantity: product.unit_quantity,
-            branch_id: product.branch_id,
             product_id: createdProduct.id,
+            branch_id: product.branch_id,
             minimum_threshold: product.minimum_threshold,
             running_out: product.running_out,
+            // StockUnit data
+            unit_type: product.quantityType,
+            quantity: product.quantityType === 'carton' ? product.carton_quantity : 
+                     product.quantityType === 'bottle' ? product.bottle_quantity : 
+                     product.unit_quantity,
           },
           {
             withCredentials: true,
@@ -254,7 +253,11 @@ const AddProductForm = () => {
       setProducts([]);
       setSelectedItemType('');
       setAllowedToAdd(false);
-      navigate('/branch-manager/inventory');
+      
+      // Call onSuccess callback instead of navigating
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       console.error('Submit error:', err.response?.data || err.message);
       alert(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
@@ -273,7 +276,7 @@ const AddProductForm = () => {
   };
 
   return (
-    <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
+    <div className="p-4 max-w-3xl mx-auto overflow-y-auto">
       <h1 className="text-2xl font-bold mb-4">{t('add_new_products')}</h1>
 
       <div className="mb-4">
@@ -556,13 +559,23 @@ const AddProductForm = () => {
               </li>
             ))}
           </ul>
-          <button
-            onClick={handleSubmitAll}
-            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded"
-            disabled={products.length === 0}
-          >
-            {t('submit_all')}
-          </button>
+          <div className="flex space-x-4 mt-4">
+            <button
+              onClick={handleSubmitAll}
+              className="bg-blue-600 text-white px-6 py-2 rounded"
+              disabled={products.length === 0}
+            >
+              {t('submit_all')}
+            </button>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="bg-gray-500 text-white px-6 py-2 rounded"
+              >
+                {t('cancel')}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

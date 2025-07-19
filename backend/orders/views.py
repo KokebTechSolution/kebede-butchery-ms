@@ -288,12 +288,24 @@ class OrderItemStatusUpdateView(APIView):
             return Response({'error': 'Order item not found'}, status=status.HTTP_404_NOT_FOUND)
 
         status_value = request.data.get('status')
+        print(f"=== ORDER ITEM STATUS UPDATE DEBUG ===")
+        print(f"Item ID: {pk}")
+        print(f"Item Name: {item.name}")
+        print(f"Item Type: {item.item_type}")
+        print(f"Unit Type: {getattr(item, 'unit_type', 'unit')}")
+        print(f"Requested Status: {status_value}")
+        print(f"Request Data: {request.data}")
+        
         if status_value not in ['pending', 'accepted', 'rejected']:
-            return Response({'error': 'Invalid status value'}, status=status.HTTP_400_BAD_REQUEST)
+            print(f"ERROR: Invalid status value '{status_value}'")
+            return Response({'error': f'Invalid status value: {status_value}. Must be one of: pending, accepted, rejected'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Beverage stock logic
         if status_value == 'accepted' and item.item_type == 'beverage':
             bartender = request.user
+            print(f"Bartender: {bartender}")
+            print(f"Branch: {item.order.branch}")
+            
             try:
                 # Match by item name and branch
                 barman_stock = BarmanStock.objects.select_related('stock__product').get(
@@ -301,35 +313,48 @@ class OrderItemStatusUpdateView(APIView):
                     stock__product__name__iexact=item.name,
                     stock__branch=item.order.branch
                 )
+                print(f"Found BarmanStock: {barman_stock}")
+                
+                # Get the unit type from the order item (what the waiter ordered)
+                # Default to 'unit' if unit_type is not set
+                unit_type = getattr(item, 'unit_type', 'unit')
+                print(f"Ordered unit type: {unit_type}")
+                
+                # Get available quantity for this unit type
+                available_quantity = barman_stock.get_quantity_by_unit_type(unit_type)
+                print(f"Available {unit_type} quantity: {available_quantity}")
+                print(f"Required quantity: {item.quantity}")
+                
             except BarmanStock.DoesNotExist:
+                print(f"ERROR: No barman stock found for '{item.name}'")
+                # Let's check what barman stocks exist for this bartender
+                existing_stocks = BarmanStock.objects.filter(bartender=bartender, stock__branch=item.order.branch)
+                print(f"Available stocks for this bartender: {[f'{s.stock.product.name} ({s.carton_quantity} cartons, {s.bottle_quantity} bottles, {s.litre_quantity} litres)' for s in existing_stocks]}")
+                
                 return Response(
-                    {'error': f"No barman stock found for '{item.name}'"},
+                    {'error': f"No barman stock found for '{item.name}'. Please check inventory."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if barman_stock.bottle_quantity < item.quantity:
+            if available_quantity < item.quantity:
+                print(f"ERROR: Not enough {unit_type} stock. Available: {available_quantity}, Required: {item.quantity}")
                 return Response(
-                    {'error': f"Not enough bottles. Available: {barman_stock.bottle_quantity}, Required: {item.quantity}"},
+                    {'error': f"Not enough {unit_type} stock. Available: {available_quantity}, Required: {item.quantity}"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Deduct quantity
-            barman_stock.bottle_quantity -= item.quantity
+            # Deduct quantity from the appropriate unit type
+            barman_stock.reduce_quantity_by_unit_type(unit_type, item.quantity)
+            print(f"Updated {unit_type} quantity: {barman_stock.get_quantity_by_unit_type(unit_type)}")
 
-            # Get original bottle capacity from inventory_stock
-            original_bottle_capacity = barman_stock.stock.bottle_quantity
-            twenty_percent = original_bottle_capacity * 0.2
-
-            # Check if running low
-            if barman_stock.bottle_quantity < twenty_percent:
-                barman_stock.running_out = True
-            else:
-                barman_stock.running_out = False
-
+            # Check if running low based on minimum threshold
+            barman_stock.check_running_out()
+            print(f"BarmanStock saved. Running out: {barman_stock.running_out}")
             barman_stock.save()
 
         item.status = status_value
         item.save()
+        print(f"Item status updated to: {status_value}")
 
         # Update order total
         order = item.order
@@ -341,5 +366,6 @@ class OrderItemStatusUpdateView(APIView):
         else:
             order.cashier_status = 'pending'
         order.save()
+        print(f"Order updated. Total: {order.total_money}, Cashier status: {order.cashier_status}")
 
         return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)

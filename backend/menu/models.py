@@ -1,35 +1,7 @@
 # menu/models.py
 
 from django.db import models
-from inventory.models import Product, Stock  
-
-class MenuCategory(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Menu(models.Model):
-    name = models.CharField(max_length=100)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    items = models.ManyToManyField('MenuItem', related_name='menus', blank=True)
-
-    def __str__(self):
-        return self.name
-
-
-class MenuSection(models.Model):
-    menu = models.ForeignKey(Menu, on_delete=models.CASCADE, related_name='sections')
-    name = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} - {self.menu.name}"
-
+from inventory.models import Product, Stock, Category as InventoryCategory
 
 class MenuItem(models.Model):
     FOOD = 'food'
@@ -44,9 +16,8 @@ class MenuItem(models.Model):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
-    category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
+    category = models.ForeignKey(InventoryCategory, on_delete=models.CASCADE, null=True, blank=True)
     is_available = models.BooleanField(default=True)
-    product = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL)
     product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

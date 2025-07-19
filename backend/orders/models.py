@@ -62,13 +62,22 @@ class OrderItem(models.Model):
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
     ]
+    UNIT_TYPES = [
+        ('carton', 'Carton'),
+        ('bottle', 'Bottle'),
+        ('litre', 'Litre'),
+        ('unit', 'Unit'),
+        ('shot', 'Shot'),
+    ]
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     item_type = models.CharField(max_length=20, choices=ORDER_ITEM_TYPE)
+    unit_type = models.CharField(max_length=20, choices=UNIT_TYPES, default='unit')
     status = models.CharField(max_length=20, choices=ITEM_STATUS, default='pending')
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    
     def __str__(self):
-        return f"{self.name} x {self.quantity}"
+        return f"{self.name} x {self.quantity} {self.unit_type}"
 

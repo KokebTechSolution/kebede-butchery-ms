@@ -1,138 +1,90 @@
 from rest_framework import serializers
 from .models import MenuItem
-from inventory.models import Product, Category as InventoryCategory  # Make sure this is the right import
-from .models import Menu, MenuSection, MenuItem, MenuCategory
-
+from inventory.models import Category as InventoryCategory, ItemType
+from inventory.serializers import CategorySerializer
 
 class MenuItemSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
-    stock_info = serializers.SerializerMethodField()
-    is_running_out = serializers.SerializerMethodField()
-    
-    product = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(),
-        allow_null=True,
-        required=False
-    )
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = MenuItem
         fields = [
-            'id',
-            'name',
-            'description',
-            'price',
-            'item_type',
-            'category',
-            'category_name',
-            'is_available',
-            'product',
-            'stock_info',
-            'is_running_out',
-            'created_at',
-            'updated_at',
+            'id', 'name', 'description', 'price', 'item_type', 
+            'category', 'category_id', 'is_available', 'product',
+            'created_at', 'updated_at'
         ]
+        read_only_fields = ['created_at', 'updated_at']
 
-    def get_stock_info(self, obj):
-        branch_id = self.context.get('branch_id')
-        if not branch_id:
-            return None
-
-        stock = obj.get_stock_for_branch(branch_id)
-        if not stock:
-            return None
-
-        return {
-            'cartons': stock.carton_quantity,
-            'bottles': stock.bottle_quantity,
-            'units': stock.unit_quantity,
-        }
-
-    def get_is_running_out(self, obj):
-        branch_id = self.context.get('branch_id')
-        if not branch_id:
-            return None
-        return obj.is_running_out(branch_id)
+    def to_representation(self, instance):
+        """Custom representation to include category object"""
+        data = super().to_representation(instance)
+        if instance.category:
+            data['category'] = {
+                'id': instance.category.id,
+                'name': instance.category.category_name,
+                'item_type': instance.category.item_type.type_name
+            }
+        return data
 
     def create(self, validated_data):
-        product = validated_data.pop('product', None)
-        menu_category = validated_data.get('category')
-
-        if product is None:
-            if menu_category is None:
-                raise serializers.ValidationError({
-                    'category': 'Category is required to create a new product.'
-                })
-
-            # Use the correct field name here, either `category_name` or `name`
+        """Create menu item with automatic category handling"""
+        category_id = validated_data.pop('category_id', None)
+        
+        if category_id:
             try:
-                inventory_category = InventoryCategory.objects.get(category_name=menu_category.name)
+                # Try to get existing category
+                category = InventoryCategory.objects.get(id=category_id)
+                validated_data['category'] = category
             except InventoryCategory.DoesNotExist:
-                raise serializers.ValidationError({
-                    'category': f'No matching inventory category found for "{menu_category.name}"'
-                })
-
-            product_name = validated_data.get('name')
-            product_price_per_unit = validated_data.get('price')  
-
-            product = Product.objects.create(
-                name=product_name,
-                category=inventory_category,
-                price_per_unit=product_price_per_unit,
-            
-                # Add any other mandatory Product fields here with defaults if needed
-            )
-
-        validated_data['product'] = product
+                # Create new category if it doesn't exist
+                item_type_name = validated_data.get('item_type', 'food')
+                item_type, created = ItemType.objects.get_or_create(
+                    type_name=item_type_name,
+                    defaults={'type_name': item_type_name}
+                )
+                
+                # Create a default category name
+                category_name = f"{item_type_name.title()} Category"
+                category = InventoryCategory.objects.create(
+                    category_name=category_name,
+                    item_type=item_type
+                )
+                validated_data['category'] = category
+        
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        product = validated_data.pop('product', None)
-        menu_category = validated_data.get('category', instance.category)
-
-        if product is None and instance.product is None:
-            if menu_category is None:
-                raise serializers.ValidationError({
-                    'category': 'Category is required to create a new product.'
-                })
-
+        """Update menu item with automatic category handling"""
+        category_id = validated_data.pop('category_id', None)
+        
+        if category_id:
             try:
-                inventory_category = InventoryCategory.objects.get(category_name=menu_category.name)
+                category = InventoryCategory.objects.get(id=category_id)
+                validated_data['category'] = category
             except InventoryCategory.DoesNotExist:
-                raise serializers.ValidationError({
-                    'category': f'No matching inventory category found for "{menu_category.name}"'
-                })
-
-            product_name = validated_data.get('name', instance.name)
-            product_price = validated_data.get('price', instance.price)
-
-            product = Product.objects.create(
-                name=product_name,
-                category=inventory_category,
-                price=product_price,
-                # Add any other mandatory Product fields here with defaults if needed
-            )
-            validated_data['product'] = product
-        elif product is not None:
-            validated_data['product'] = product
-
+                # Create new category if it doesn't exist
+                item_type_name = validated_data.get('item_type', instance.item_type)
+                item_type, created = ItemType.objects.get_or_create(
+                    type_name=item_type_name,
+                    defaults={'type_name': item_type_name}
+                )
+                
+                category_name = f"{item_type_name.title()} Category"
+                category = InventoryCategory.objects.create(
+                    category_name=category_name,
+                    item_type=item_type
+                )
+                validated_data['category'] = category
+        
         return super().update(instance, validated_data)
 
-class MenuSectionSerializer(serializers.ModelSerializer):
-    items = MenuItemSerializer(many=True, read_only=True)
+class MenuItemCreateSerializer(serializers.ModelSerializer):
+    category_id = serializers.IntegerField(required=False)
 
     class Meta:
-        model = MenuSection
-        fields = ['id', 'name', 'items', 'created_at', 'updated_at']
-
-class MenuSerializer(serializers.ModelSerializer):
-    items = MenuItemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Menu
-        fields = ['id', 'name', 'is_active', 'created_at', 'updated_at', 'items']
-
-class MenuCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MenuCategory
-        fields = ['id', 'name']
+        model = MenuItem
+        fields = [
+            'name', 'description', 'price', 'item_type', 
+            'category_id', 'is_available', 'product'
+        ]
