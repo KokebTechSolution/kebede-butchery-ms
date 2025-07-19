@@ -73,8 +73,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   };
 
   const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
-  // Only allow print if all items are accepted
-  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted');
+  // Only allow print if all items are accepted or rejected
+  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected');
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (

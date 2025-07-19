@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useInventory } from '../../hooks/useInventory';
+import { useOrders } from '../../hooks/useOrders';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -34,82 +35,93 @@ const getStatusText = (status) => {
 };
 
 export const Inventory = () => {
+  const [filterDate, setFilterDate] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const { inventory, getLowStockItems } = useInventory();
   const lowStockItems = getLowStockItems();
+  const { getActiveOrders, getClosedOrders } = useOrders(filterDate);
+  const activeOrders = getActiveOrders();
+  const closedOrders = getClosedOrders();
+  const allOrders = [...activeOrders, ...closedOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // Map low stock items to waiter names who ordered them
+  const lowStockWithWaiters = lowStockItems.map(item => {
+    // Find all waiter names who have ordered this item in active orders
+    const waiterNames = Array.from(new Set(
+      activeOrders.flatMap(order =>
+        order.items
+          .filter(orderItem => orderItem.name === item.name)
+          .map(() => order.waiterName || order.created_by_username || 'Unknown')
+      )
+    ));
+    return { ...item, waiterNames };
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-[#111416] mb-2">Inventory Management</h1>
-        <p className="text-[#6b7582]">Monitor your food inventory levels</p>
-      </div>
-
-      {lowStockItems.length > 0 && (
-        <Card className="mb-6 border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-800">
-              <AlertTriangle className="h-5 w-5" />
-              Low Stock Alert
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-orange-700 mb-3">
-              {lowStockItems.length} item(s) need attention:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {lowStockItems.map((item) => (
-                <span
-                  key={item.id}
-                  className="px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800"
-                >
-                  {item.name}
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
+      {/* Order History Section */}
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Food Inventory
+            Order History
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex items-center gap-4">
+            <label htmlFor="order-date-filter" className="font-medium">Filter by Date:</label>
+            <input
+              id="order-date-filter"
+              type="date"
+              value={filterDate}
+              onChange={e => setFilterDate(e.target.value)}
+              className="p-2 border rounded"
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#e5e8ea]">
-                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Name</th>
-                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Remaining Quantity</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Order #</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Table</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Waiter</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Items</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[#111416]">Time</th>
                   <th className="text-left py-3 px-4 font-semibold text-[#111416]">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {inventory.map((item) => (
-                  <tr key={item.id} className="border-b border-[#f2f2f4] hover:bg-[#f8f9fa]">
-                    <td className="py-4 px-4 font-medium text-[#111416]">{item.name}</td>
-                    <td className="py-4 px-4 text-[#6b7582] capitalize">{item.type}</td>
-                    <td className="py-4 px-4 text-[#111416]">
-                      {item.remainingQuantity} {item.unit}
-                      <span className="text-[#6b7582] text-sm ml-1">
-                        / {item.maxQuantity} {item.unit}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
-                          item.status
-                        )}`}
-                      >
-                        {getStatusText(item.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {allOrders.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-6 text-gray-400">No orders found for today.</td></tr>
+                ) : (
+                  allOrders.map(order => (
+                    <tr key={order.id} className="border-b border-[#f2f2f4] hover:bg-[#f8f9fa]">
+                      <td className="py-3 px-4">{order.order_number}</td>
+                      <td className="py-3 px-4">{order.table_number || 'N/A'}</td>
+                      <td className="py-3 px-4">{order.waiterName || order.created_by_username || 'Unknown'}</td>
+                      <td className="py-3 px-4">
+                        <ul>
+                          {order.items.map((item, idx) => (
+                            <li key={idx}>{item.name} × {item.quantity} <span style={{fontSize: '11px', color: item.status === 'accepted' ? '#16a34a' : item.status === 'rejected' ? '#dc2626' : '#b45309'}}>[{item.status}]</span></li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td className="py-3 px-4">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</td>
+                      <td className="py-3 px-4">
+                        {order.has_payment ? (
+                          <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">Paid</span>
+                        ) : (
+                          <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700 text-xs font-semibold">Unpaid</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
