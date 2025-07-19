@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Package, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -7,7 +7,16 @@ import { useReports } from '../../hooks/useReports';
 const COLORS = ['#10b981', '#ef4444'];
 
 export const Reports = () => {
-  const { reportData } = useReports();
+  // Use today's date by default
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const [filterDate, setFilterDate] = useState(getTodayDateString());
+  const { reportData } = useReports(filterDate);
 
   const pieData = [
     { name: 'Sold', value: reportData.totalSold, color: '#10b981' },
@@ -32,6 +41,16 @@ export const Reports = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-6 flex items-center gap-4">
+        <label htmlFor="report-date-filter" className="font-medium">Filter by Date:</label>
+        <input
+          id="report-date-filter"
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value)}
+          className="p-2 border rounded"
+        />
+      </div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-[#111416] mb-2">Reports Dashboard</h1>
         <p className="text-[#6b7582]">Track your daily performance and trends</p>

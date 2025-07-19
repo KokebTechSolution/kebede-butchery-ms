@@ -65,23 +65,29 @@ const WaiterDashboard = () => {
     setSelectedOrderId(null);
     setEditingOrderId(null);
 
-    // Check for open order for this table
-    const openOrder = (orders || []).find(
-      o => (o.table === table.id || o.table_number === table.number) && o.cashier_status !== 'printed'
+    // Always check for open order for this table (not printed)
+    const tableOrders = (orders || []).filter(
+      o => (o.table === table.id || o.table_number === table.number)
     );
+    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
+    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
     if (openOrder) {
       // Load open order's items into cart for editing
       clearCart();
       loadCartForEditing(table.id, openOrder.items);
       setEditingOrderId(openOrder.id);
+      console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
     } else {
       clearCart();
       setEditingOrderId(null);
+      if (lastOrder && lastOrder.cashier_status === 'printed') {
+        setMessage('Last order is printed. Creating a new order.');
+        console.log('[DEBUG] Last order is printed. New order will be created.');
+      }
     }
   };
 
   const handleOrder = async () => {
-    // Only require table selection for new orders, not for editing
     if (!editingOrderId && (!selectedTable || !selectedTable.id)) {
       setMessage('You must select a table before placing an order.');
       setCurrentPage('tables');
@@ -93,15 +99,14 @@ const WaiterDashboard = () => {
     }
 
     if (cartItems.length === 0) {
-      // If editing, deleting the last item should DELETE the order
       if (editingOrderId) {
         try {
           await axiosInstance.delete(`/orders/${editingOrderId}/`);
-          deleteOrder(editingOrderId); // Update local state
+          deleteOrder(editingOrderId);
           setMessage('Order cancelled and deleted.');
         } catch (error) {
-          console.error("Error deleting order:", error);
-          setMessage("Failed to delete order from server.");
+          console.error('Error deleting order:', error);
+          setMessage('Failed to delete order from server.');
         }
         setEditingOrderId(null);
         setCurrentPage('tables');
@@ -111,8 +116,24 @@ const WaiterDashboard = () => {
       return;
     }
 
-    // Determine if we are updating an existing order or creating a new one
+    // Always check for open order before editing
+    const tableOrders = (orders || []).filter(
+      o => (o.table === selectedTable.id || o.table_number === selectedTable.number)
+    );
+    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
+    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
+    let editingOrder = null;
     if (editingOrderId) {
+      editingOrder = orders.find(o => o.id === editingOrderId);
+      if (editingOrder && editingOrder.cashier_status === 'printed') {
+        setEditingOrderId(null);
+        clearCart();
+        setMessage('Last order is printed. Creating a new order.');
+        console.log('[DEBUG] Last order is printed. New order will be created.');
+      }
+    }
+
+    if (openOrder && editingOrderId && editingOrder && editingOrder.cashier_status !== 'printed') {
       // Logic for UPDATING an order
       const updatedOrderData = {
         items: cartItems.map(item => ({
@@ -122,24 +143,21 @@ const WaiterDashboard = () => {
           item_type: item.item_type || 'food'
         }))
       };
-
       try {
         const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
-        
         const updatedOrder = response.data;
         updateOrder(editingOrderId, updatedOrder.items);
         setSelectedOrderId(editingOrderId);
         setMessage('Order updated successfully!');
-
+        console.log('[DEBUG] Updated order:', editingOrderId);
       } catch (error) {
         console.error('Order update error:', error);
         setMessage('There was an issue updating your order.');
       }
-
     } else {
       // Logic for CREATING a new order
       const newOrderData = {
-        table: selectedTable.id, // Always use the selected table's ID
+        table: selectedTable.id,
         items: cartItems.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -149,7 +167,6 @@ const WaiterDashboard = () => {
         waiter_username: user?.username,
         waiter_table_number: selectedTable?.number
       };
-
       try {
         const newOrderId = await placeOrder(newOrderData);
         if (!newOrderId) {
@@ -157,12 +174,12 @@ const WaiterDashboard = () => {
         }
         setSelectedOrderId(newOrderId);
         setMessage('Order placed successfully!');
+        console.log('[DEBUG] Placed new order:', newOrderId);
       } catch (error) {
         console.error('Order submission error:', error);
         setMessage(error.message || 'There was an issue placing your order.');
       }
     }
-  
     setEditingOrderId(null);
     setCurrentPage('orderDetails');
   };

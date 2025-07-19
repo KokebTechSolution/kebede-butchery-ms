@@ -36,7 +36,7 @@ export const useOrders = (filterDate) => {
       // Update the order's status in the local state instead of removing it
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order.id === orderId ? { ...order, status: status } : order
+          order.id === orderId ? { ...order, food_status: status } : order
         )
       );
 
@@ -91,6 +91,17 @@ export const useOrders = (filterDate) => {
   const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
   const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
 
+  // Add this function to update cashier_status
+  const setOrderPrinted = async (orderId) => {
+    try {
+      await axios.patch(`http://localhost:8000/api/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      // Optionally, refresh orders after printing
+      fetchOrders(filterDate);
+    } catch (error) {
+      console.error('Failed to set order as printed', error);
+    }
+  };
+
   return {
     orders,
     acceptOrder,
@@ -101,6 +112,7 @@ export const useOrders = (filterDate) => {
     getClosedOrders,
     getActiveOrders,
     acceptOrderItem,
-    rejectOrderItem
+    rejectOrderItem,
+    setOrderPrinted // <-- export the new function
   };
 };

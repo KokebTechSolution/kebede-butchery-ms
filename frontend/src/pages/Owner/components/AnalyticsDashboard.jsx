@@ -49,6 +49,7 @@ function getDateRange(range) {
 
 const AnalyticsDashboard = () => {
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [prevAnalyticsData, setPrevAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState('This Month');
@@ -56,9 +57,30 @@ const AnalyticsDashboard = () => {
   useEffect(() => {
     const { start, end } = getDateRange(dateRange);
     setLoading(true);
+    // Fetch current period
     axiosInstance.get(`/owner/dashboard/?start=${start}&end=${end}`)
       .then(response => {
         setAnalyticsData(response.data);
+        // Fetch previous period for revenue growth
+        let prevStart, prevEnd;
+        if (dateRange === 'This Month') {
+          const startDate = new Date(start);
+          prevStart = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1).toISOString().slice(0, 10);
+          prevEnd = new Date(startDate.getFullYear(), startDate.getMonth(), 0).toISOString().slice(0, 10);
+        } else if (dateRange === 'This Year') {
+          const startDate = new Date(start);
+          prevStart = new Date(startDate.getFullYear() - 1, 0, 1).toISOString().slice(0, 10);
+          prevEnd = new Date(startDate.getFullYear() - 1, 11, 31).toISOString().slice(0, 10);
+        } else {
+          // fallback: previous month
+          const startDate = new Date(start);
+          prevStart = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1).toISOString().slice(0, 10);
+          prevEnd = new Date(startDate.getFullYear(), startDate.getMonth(), 0).toISOString().slice(0, 10);
+        }
+        return axiosInstance.get(`/owner/dashboard/?start=${prevStart}&end=${prevEnd}`);
+      })
+      .then(prevResponse => {
+        setPrevAnalyticsData(prevResponse.data);
         setLoading(false);
       })
       .catch(() => {
@@ -70,6 +92,12 @@ const AnalyticsDashboard = () => {
   if (loading) return <div>Loading analytics...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
   if (!analyticsData) return <div>No analytics data available.</div>;
+
+  // Calculate Revenue Growth
+  let revenueGrowth = 0;
+  if (prevAnalyticsData && prevAnalyticsData.kpi && prevAnalyticsData.kpi.totalRevenue > 0) {
+    revenueGrowth = ((analyticsData.kpi.totalRevenue - prevAnalyticsData.kpi.totalRevenue) / prevAnalyticsData.kpi.totalRevenue) * 100;
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
@@ -92,7 +120,13 @@ const AnalyticsDashboard = () => {
           <KpiCard title="Cost of Inventory" value={analyticsData.kpi.costOfInventory} isCurrency />
           <KpiCard title="Profit of Inventory" value={analyticsData.kpi.profitOfInventory} isCurrency isProfitLoss />
           <KpiCard title="Operating Expenses" value={analyticsData.kpi.operatingExpenses} isCurrency />
-          <KpiCard title="Net Profit" value={analyticsData.kpi.netProfit} isCurrency isProfitLoss />
+          {/* Net Profit replaced with Income from Food */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 mb-1">INCOME FROM FOOD</p>
+            <p className="text-2xl font-bold text-green-600">
+              ${analyticsData.kpi.foodIncome?.toLocaleString() ?? '0'}
+            </p>
+          </div>
           <KpiCard title="Avg Order Value" value={analyticsData.kpi.avgOrderValue} isCurrency />
         </div>
 
@@ -121,47 +155,7 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Additional Insights */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Profit Margin */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-2 mb-4">
-              <Calculator className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Profit Margin</h3>
-            </div>
-            <p className="text-2xl font-bold text-green-600 mb-2">
-              {((analyticsData.kpi.netProfit / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
-            </p>
-            <p className="text-sm text-gray-600">
-              Strong profit margins indicate efficient operations and good pricing strategy.
-            </p>
-          </div>
-
-          {/* Revenue Growth */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-2 mb-4">
-              <Target className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Revenue Growth</h3>
-            </div>
-            <p className="text-2xl font-bold text-blue-600 mb-2">+12.5%</p>
-            <p className="text-sm text-gray-600">
-              Month-over-month revenue growth showing steady business expansion.
-            </p>
-          </div>
-
-          {/* Cost Efficiency */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-2 mb-4">
-              <DollarSign className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Cost Efficiency</h3>
-            </div>
-            <p className="text-2xl font-bold text-purple-600 mb-2">
-              {((analyticsData.kpi.costOfInventory / analyticsData.kpi.totalRevenue) * 100).toFixed(1)}%
-            </p>
-            <p className="text-sm text-gray-600">
-              Cost of inventory as percentage of revenue, indicating operational efficiency.
-            </p>
-          </div>
-        </div>
+        {/* Removed Profit Margin, Revenue Growth, and Cost Efficiency cards */}
       </div>
     </div>
   );

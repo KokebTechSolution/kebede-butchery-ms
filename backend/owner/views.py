@@ -104,6 +104,20 @@ class OwnerDashboardView(APIView):
             order_total = sum(item.price * item.quantity for item in beverage_items)
             profit_of_inventory += order_total
 
+        # Calculate food income: sum of accepted food items from closed (printed and paid) orders in the date range
+        closed_orders = Order.objects.filter(
+            created_by_id__in=waiter_ids,
+            cashier_status='printed',
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+            payment__is_completed=True
+        ).distinct()
+        food_income = 0
+        for order in closed_orders:
+            food_items = order.items.filter(item_type='food', status='accepted')
+            order_food_total = sum(item.price * item.quantity for item in food_items)
+            food_income += order_food_total
+
         data = {
             'kpi': {
                 'totalRevenue': float(total_sales),
@@ -111,7 +125,8 @@ class OwnerDashboardView(APIView):
                 'profitOfInventory': float(profit_of_inventory),
                 'operatingExpenses': float(operating_expenses),
                 'netProfit': float(net_profit),
-                'avgOrderValue': float(avg_order_value)
+                'avgOrderValue': float(avg_order_value),
+                'foodIncome': float(food_income)
             },
             'profitTrend': profit_trend,
             'topSellingItems': top_selling_items

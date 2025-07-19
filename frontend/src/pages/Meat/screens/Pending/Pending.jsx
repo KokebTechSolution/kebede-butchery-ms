@@ -3,6 +3,7 @@ import { FaLock } from 'react-icons/fa';
 import { useOrders } from '../../hooks/useOrders';
 import NotificationPopup from '../../../../components/NotificationPopup.jsx';
 import ClosedOrders from './ClosedOrders';
+import { OrderCard } from '../../components/OrderCard';
 
 const getTodayDateString = () => {
   const today = new Date();
@@ -12,9 +13,8 @@ const getTodayDateString = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export const Pending = () => {
-  const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem } = useOrders(filterDate);
+export const Pending = ({ filterDate, setFilterDate }) => {
+  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, setOrderPrinted } = useOrders(filterDate);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
   const [showClosed, setShowClosed] = useState(false);
@@ -125,57 +125,16 @@ export const Pending = () => {
                   const hasPendingItems = order.items.some(item => item.status === 'pending');
                   const staff = order.waiterName || order.created_by_username || 'Unknown';
                   return (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-semibold text-gray-900">
-                          Order #{order.order_number} <span style={{ color: '#888', marginLeft: 8 }}>({staff})</span>
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
-                        </span>
-                        <span className="text-lg font-bold text-blue-700">
-                          ${(
-                            order.total_money && Number(order.total_money) > 0
-                              ? Number(order.total_money)
-                              : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
-                          ).toFixed(2)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="space-y-2">
-                          {order.items.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center text-sm py-1">
-                              <span>{item.name} × {item.quantity}</span>
-                              <span>${(item.price * item.quantity).toFixed(2)}</span>
-                              <span className="ml-4">
-                                {item.status === 'pending' && (
-                                  <>
-                                    <button
-                                      onClick={() => acceptOrderItem(item.id)}
-                                      className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
-                                    >
-                                      Accept
-                                    </button>
-                                    <button
-                                      onClick={() => rejectOrderItem(item.id)}
-                                      className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                )}
-                                {item.status === 'accepted' && (
-                                  <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
-                                )}
-                                {item.status === 'rejected' && (
-                                  <span className="text-red-700">Rejected</span>
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      onAcceptOrder={acceptOrder}
+                      onRejectOrder={rejectOrder}
+                      onAcceptItem={acceptOrderItem}
+                      onRejectItem={rejectOrderItem}
+                      onPrint={setOrderPrinted}
+                      showActions={true}
+                    />
                   );
                 })}
               </div>

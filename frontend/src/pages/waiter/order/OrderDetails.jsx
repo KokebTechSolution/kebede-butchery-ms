@@ -73,7 +73,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   };
 
   const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
-  const canPrint = currentOrder && currentOrder.items.every(item => item.status !== 'pending');
+  // Only allow print if all items are accepted
+  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted');
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
@@ -115,6 +116,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                     throw new Error('Failed to update cashier status');
                   }
                   setPrintedOrders(prev => [...prev, currentOrder.id]);
+                  window.location.href = window.location.href; // Reload but stay on the same page
                 } catch (error) {
                   console.error('Error updating cashier status:', error);
                 }
