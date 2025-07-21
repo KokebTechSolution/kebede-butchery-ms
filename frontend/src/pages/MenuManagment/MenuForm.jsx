@@ -3,6 +3,7 @@ import {
   createMenuItem,
   updateMenuItem,
   fetchMenuCategories,
+  syncMenuCategoriesWithInventory,
 } from '../../api/menu';
 import { fetchAvailableProducts } from '../../api/stock';
 
@@ -27,7 +28,18 @@ const MenuForm = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchMenuCategories().then(setCategories);
+    const loadCategories = async () => {
+      try {
+        await syncMenuCategoriesWithInventory();
+        const categories = await fetchMenuCategories();
+        console.log('📦 Loaded categories:', categories);
+        setCategories(categories);
+      } catch (error) {
+        console.error('❌ Failed to load categories:', error);
+      }
+    };
+
+    loadCategories();
     fetchAvailableProducts().then(setAvailableProducts);
   }, []);
 
@@ -53,27 +65,9 @@ const MenuForm = ({
     }
   }, [selectedItem]);
 
-  // Find selected category object from categories array
-  const selectedCategory = categories.find(cat => cat.id === Number(formData.category));
-
-  // Check beverage or food by category's item_type.type_name or formData.item_type
   const isBeverage =
-    forcebeverageOnly ||
-    (selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
-     selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
-     formData.item_type?.toLowerCase() === 'beverage');
-
-  const isFood =
-    selectedCategory?.item_type?.type_name?.toLowerCase() === 'food' ||
-    formData.item_type?.toLowerCase() === 'food';
-
-  // Filter categories based on selected item_type (food or beverage)
-  const filteredCategories = formData.item_type
-    ? categories.filter(cat =>
-        cat.item_type?.type_name?.toLowerCase() ===
-        (formData.item_type === 'beverage' ? 'beverage' : 'food')
-      )
-    : categories;
+    forcebeverageOnly || formData.item_type?.toLowerCase() === 'beverage';
+  const isFood = formData.item_type?.toLowerCase() === 'food';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -137,7 +131,6 @@ const MenuForm = ({
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-      // Reset category if item_type changes to prevent mismatch
       ...(name === 'item_type' ? { category: '' } : {}),
     }));
   };
@@ -176,11 +169,15 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         >
           <option value="">-- Select Category --</option>
-          {filteredCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.category_name}
-            </option>
-          ))}
+          {categories.length === 0 ? (
+            <option disabled>No categories available</option>
+          ) : (
+            categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))
+          )}
         </select>
       </div>
 

@@ -55,67 +55,12 @@ class MenuItemSerializer(serializers.ModelSerializer):
         return obj.is_running_out(branch_id)
 
     def create(self, validated_data):
-        product = validated_data.pop('product', None)
-        menu_category = validated_data.get('category')
-
-        if product is None:
-            if menu_category is None:
-                raise serializers.ValidationError({
-                    'category': 'Category is required to create a new product.'
-                })
-
-            # Use the correct field name here, either `category_name` or `name`
-            try:
-                inventory_category = InventoryCategory.objects.get(category_name=menu_category.name)
-            except InventoryCategory.DoesNotExist:
-                raise serializers.ValidationError({
-                    'category': f'No matching inventory category found for "{menu_category.name}"'
-                })
-
-            product_name = validated_data.get('name')
-            product_price_per_unit = validated_data.get('price')  
-
-            product = Product.objects.create(
-                name=product_name,
-                category=inventory_category,
-                price_per_unit=product_price_per_unit,
-            
-                # Add any other mandatory Product fields here with defaults if needed
-            )
-
-        validated_data['product'] = product
+        # Simply create the menu item with the provided data
+        # The product field can be null for food items
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        product = validated_data.pop('product', None)
-        menu_category = validated_data.get('category', instance.category)
-
-        if product is None and instance.product is None:
-            if menu_category is None:
-                raise serializers.ValidationError({
-                    'category': 'Category is required to create a new product.'
-                })
-
-            try:
-                inventory_category = InventoryCategory.objects.get(category_name=menu_category.name)
-            except InventoryCategory.DoesNotExist:
-                raise serializers.ValidationError({
-                    'category': f'No matching inventory category found for "{menu_category.name}"'
-                })
-
-            product_name = validated_data.get('name', instance.name)
-            product_price = validated_data.get('price', instance.price)
-
-            product = Product.objects.create(
-                name=product_name,
-                category=inventory_category,
-                price=product_price,
-                # Add any other mandatory Product fields here with defaults if needed
-            )
-            validated_data['product'] = product
-        elif product is not None:
-            validated_data['product'] = product
-
+        # Simply update the menu item with the provided data
         return super().update(instance, validated_data)
 
 class MenuSectionSerializer(serializers.ModelSerializer):

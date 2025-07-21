@@ -46,7 +46,9 @@ class SessionLogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print("🔒 Logging out session:", request.session.items())
         logout(request)
+        request.session.flush()  # ⬅️ Ensures session is destroyed on logout
         return Response({"message": "Logged out successfully."})
 
 
