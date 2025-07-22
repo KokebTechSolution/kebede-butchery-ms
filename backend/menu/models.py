@@ -1,10 +1,17 @@
 # menu/models.py
 
 from django.db import models
-from inventory.models import Product, Stock  
+from inventory.models import Product, Stock, Category as InventoryCategory
 
 class MenuCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    inventory_category = models.ForeignKey(
+        InventoryCategory,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='menu_categories'
+    )
 
     def __str__(self):
         return self.name
@@ -44,7 +51,7 @@ class MenuItem(models.Model):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
-    category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
+    category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE, null=True, blank=True)
     is_available = models.BooleanField(default=True)
     product = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL)
     product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE, null=True, blank=True)

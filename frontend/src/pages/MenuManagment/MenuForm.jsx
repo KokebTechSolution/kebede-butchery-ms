@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   createMenuItem,
   updateMenuItem,
-  fetchMenuCategories,
+  fetchAvailableProducts,
+  fetchInventoryCategories,
 } from '../../api/menu';
-import { fetchAvailableProducts } from '../../api/stock';
 
 const MenuForm = ({
   refreshMenu,
@@ -12,6 +12,7 @@ const MenuForm = ({
   clearSelection,
   closeModal,
   forcebeverageOnly,
+  menuItems = [], // <-- add menuItems prop with default empty array
 }) => {
   const [formData, setFormData] = useState({
     product: '',
@@ -26,11 +27,25 @@ const MenuForm = ({
   const [availableProducts, setAvailableProducts] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Load inventory categories and products
   useEffect(() => {
-    fetchMenuCategories().then(setCategories);
-    fetchAvailableProducts().then(setAvailableProducts);
+    const loadData = async () => {
+      try {
+        const [cats, products] = await Promise.all([
+          fetchInventoryCategories(),
+          fetchAvailableProducts(),
+        ]);
+        setCategories(cats);
+        setAvailableProducts(products);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        alert('❌ Failed to load categories or products.');
+      }
+    };
+    loadData();
   }, []);
 
+  // Load form data when editing
   useEffect(() => {
     if (selectedItem) {
       setFormData({
@@ -53,66 +68,80 @@ const MenuForm = ({
     }
   }, [selectedItem]);
 
-  // Find selected category object from categories array
-  const selectedCategory = categories.find(cat => cat.id === Number(formData.category));
+  // Get the selected inventory category object
+  const selectedCategory = categories.find(
+    (cat) => String(cat.id) === String(formData.category)
+  );
 
-  // Check beverage or food by category's item_type.type_name or formData.item_type
   const isBeverage =
     forcebeverageOnly ||
-    (selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
-     selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
-     formData.item_type?.toLowerCase() === 'beverage');
+    selectedCategory?.item_type?.type_name?.toLowerCase() === 'beverage' ||
+    formData.item_type?.toLowerCase() === 'beverage';
 
-  const isFood =
-    selectedCategory?.item_type?.type_name?.toLowerCase() === 'food' ||
-    formData.item_type?.toLowerCase() === 'food';
-
-  // Filter categories based on selected item_type (food or beverage)
   const filteredCategories = formData.item_type
-    ? categories.filter(cat =>
-        cat.item_type?.type_name?.toLowerCase() ===
-        (formData.item_type === 'beverage' ? 'beverage' : 'food')
+    ? categories.filter(
+        (cat) =>
+          cat.item_type?.type_name?.toLowerCase() ===
+          (formData.item_type === 'beverage' ? 'beverage' : 'food')
       )
     : categories;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 1. Validate required fields
+    if (!formData.item_type) {
+      alert('Please select item type.');
+      return;
+    }
+    if (!formData.category) {
+      alert('Please select a category.');
+      return;
+    }
+    if (isBeverage && !formData.product) {
+      alert('Please select a beverage product.');
+      return;
+    }
+    if (!isBeverage && !formData.product) {
+      alert('Please enter a food product name.');
+      return;
+    }
+    if (!formData.price || isNaN(formData.price) || Number(formData.price) <= 0) {
+      alert('Please enter a valid price.');
+      return;
+    }
+
+    // 2. Prevent duplicate menu items (optional, if you have menuItems in props or context)
+    const duplicate = menuItems.some(item =>
+      item.name?.toLowerCase() === (isBeverage
+        ? availableProducts.find(p => String(p.id) === String(formData.product))?.name?.toLowerCase()
+        : formData.product?.toLowerCase()) &&
+      String(item.category) === String(formData.category) &&
+      item.item_type === formData.item_type
+    );
+    if (duplicate) {
+      alert('A menu item with this name, category, and type already exists.');
+      return;
+    }
+
+    // 3. Build payload as before
+    const selectedCategory = categories.find(cat => String(cat.id) === String(formData.category));
+    const categoryName = selectedCategory ? selectedCategory.category_name : '';
+    const payload = {
+      name: isBeverage
+        ? availableProducts.find(p => String(p.id) === String(formData.product))?.name
+        : formData.product,
+      product: isBeverage ? formData.product : null,
+      description: formData.description,
+      price: formData.price,
+      is_available: formData.is_available,
+      category: null,
+      item_type: formData.item_type,
+      category_name: categoryName,
+    };
+
     setLoading(true);
-
     try {
-      let productName = '';
-      let productId = null;
-
-      if (isBeverage) {
-        const selectedProduct = availableProducts.find(
-          (p) => p.id == formData.product
-        );
-        if (!selectedProduct) {
-          alert('Please select a valid beverage product.');
-          setLoading(false);
-          return;
-        }
-        productName = selectedProduct.name;
-        productId = selectedProduct.id;
-      } else {
-        if (!formData.product) {
-          alert('Please enter a product name for food item.');
-          setLoading(false);
-          return;
-        }
-        productName = formData.product;
-      }
-
-      const payload = {
-        name: productName,
-        product: isBeverage ? productId : null,
-        description: formData.description,
-        price: formData.price,
-        is_available: formData.is_available,
-        category: formData.category,
-        item_type: formData.item_type,
-      };
-
       if (selectedItem) {
         await updateMenuItem(selectedItem.id, payload);
         alert('✅ Menu item updated successfully!');
@@ -120,13 +149,23 @@ const MenuForm = ({
         await createMenuItem(payload);
         alert('✅ Menu item created successfully!');
       }
-
       refreshMenu();
       closeModal();
       clearSelection();
     } catch (error) {
       console.error('❌ Error saving menu item:', error);
-      alert('❌ Error saving menu item. Please try again.');
+      const backendErrors = error.response?.data;
+      let message = '❌ Error saving menu item.';
+      if (backendErrors) {
+        if (typeof backendErrors === 'string') {
+          message = backendErrors;
+        } else if (typeof backendErrors === 'object') {
+          message = Object.entries(backendErrors)
+            .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+            .join('\n');
+        }
+      }
+      alert(message);
     } finally {
       setLoading(false);
     }
@@ -137,7 +176,6 @@ const MenuForm = ({
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-      // Reset category if item_type changes to prevent mismatch
       ...(name === 'item_type' ? { category: '' } : {}),
     }));
   };
@@ -145,7 +183,7 @@ const MenuForm = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 p-4 max-h-[80vh] overflow-y-auto touch-manipulation"
+      className="space-y-4 p-4 max-h-[80vh] overflow-y-auto"
     >
       {/* Item Type */}
       {!forcebeverageOnly && (
@@ -164,7 +202,6 @@ const MenuForm = ({
           </select>
         </div>
       )}
-
       {/* Category */}
       <div>
         <label className="block mb-1">Category</label>
@@ -183,7 +220,6 @@ const MenuForm = ({
           ))}
         </select>
       </div>
-
       {/* Product */}
       <div>
         <label className="block mb-1">Product</label>
@@ -214,7 +250,6 @@ const MenuForm = ({
           />
         )}
       </div>
-
       {/* Description */}
       <div>
         <label className="block mb-1">Description</label>
@@ -225,7 +260,6 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         />
       </div>
-
       {/* Price */}
       <div>
         <label className="block mb-1">Price</label>
@@ -238,7 +272,6 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         />
       </div>
-
       {/* Availability */}
       <div className="flex items-center gap-2">
         <input
@@ -249,7 +282,6 @@ const MenuForm = ({
         />
         <label>Available</label>
       </div>
-
       {/* Buttons */}
       <div className="flex justify-between gap-4">
         <button
@@ -265,7 +297,7 @@ const MenuForm = ({
             clearSelection();
             closeModal();
           }}
-          className="flex-1 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400 cursor-pointer"
+          className="flex-1 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
         >
           Cancel
         </button>

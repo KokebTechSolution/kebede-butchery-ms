@@ -157,3 +157,15 @@ const addNewCategory = async (categoryName, itemTypeId) => {
     throw error;
   }
 };
+
+// Fetch all inventory categories (for menu form dropdown)
+export const fetchInventoryCategories = async () => {
+    const response = await axiosInstance.get('inventory/categories/');
+    return response.data;
+};
+
+// Fetch all available products (for beverage selection)
+export const fetchAvailableProducts = async () => {
+    const response = await axiosInstance.get('inventory/inventory/');
+    return response.data;
+};

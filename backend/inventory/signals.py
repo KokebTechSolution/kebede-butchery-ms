@@ -8,7 +8,8 @@ from .models import Product, AuditLog
 def track_product_update(sender, instance, created, **kwargs):
     action = 'create' if created else 'update'
     AuditLog.objects.create(
-        product=instance,
-        action_type=action,
-        note=f"Product {action}d via system auto-log",
+        action=action,
+        notes=f"Product {action}d via system auto-log",
+        content_object=instance,
+        # Optionally, set user=kwargs.get('user') if available
     )

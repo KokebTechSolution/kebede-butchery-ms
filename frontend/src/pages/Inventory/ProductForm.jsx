@@ -4,6 +4,7 @@ import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
 
 // Helper to get CSRF token from cookies
 function getCookie(name) {
@@ -35,21 +36,25 @@ const AddProductForm = () => {
   const [products, setProducts] = useState([]);
   const [isNewName, setIsNewName] = useState(true);
   const [errors, setErrors] = useState(null);
+  const [measurements, setMeasurements] = useState([
+    { from_unit: '', to_unit: '', amount_per: '', is_default_sales_unit: false }
+  ]);
+  const [productUnits, setProductUnits] = useState([]); // Added for base unit selection
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const initialFormData = {
     name: '',
     category: '',
-    price_per_unit: '',
-    quantityType: '',
-    bottles_per_carton: '',
-    carton_quantity: '',
-    bottle_quantity: '',
-    unit_quantity: '',
+    base_unit_id: '',
+    base_unit_price: '',
+    description: '',
+    volume_per_base_unit_ml: '',
     minimum_threshold: '',
     running_out: false,
     receipt_image: null,
-    shot_per_bottle: '',
-    shot_per_liter: '',
+    initial_quantity: '', // NEW: for stock creation
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -60,16 +65,16 @@ const AddProductForm = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const [itemTypeData, categoryData, productRes] = await Promise.all([
+        const [itemTypeData, categoryData, productRes, unitRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('http://localhost:8000/api/inventory/inventory/', {
-            withCredentials: true,
-          }),
+          axios.get('http://localhost:8000/api/inventory/inventory/', { withCredentials: true }),
+          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
         setExistingProducts(productRes.data);
+        setProductUnits(unitRes.data); // <-- This must be set!
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -110,35 +115,56 @@ const AddProductForm = () => {
     }
   }, [formData.quantityType, formData.bottle_quantity, formData.shot_per_bottle, formData.unit_quantity, formData.shot_per_liter]);
 
+  // Measurement handlers
+  const handleMeasurementChange = (idx, field, value) => {
+    setMeasurements(measurements =>
+      measurements.map((m, i) =>
+        i === idx ? { ...m, [field]: value } : m
+      )
+    );
+  };
+
+  const addMeasurementRow = () => {
+    setMeasurements([...measurements, { from_unit: '', to_unit: '', amount_per: '', is_default_sales_unit: false }]);
+  };
+
+  const removeMeasurementRow = (idx) => {
+    setMeasurements(measurements.filter((_, i) => i !== idx));
+  };
+
   const validateForm = () => {
     let err = {};
 
     if (!formData.name.trim()) err.name = t('product_name_required');
     if (!formData.category) err.category = t('category_required');
-    if (!formData.price_per_unit) err.price_per_unit = t('price_required');
-    else if (isNaN(Number(formData.price_per_unit)) || Number(formData.price_per_unit) < 0)
-      err.price_per_unit = t('price_must_be_positive');
-    if (!formData.quantityType) err.quantityType = t('quantity_type_required');
-
-    if (formData.quantityType === 'carton') {
-      if (!formData.bottles_per_carton || Number(formData.bottles_per_carton) <= 0)
-        err.bottles_per_carton = t('bottles_per_carton_positive');
-      if (!formData.carton_quantity || Number(formData.carton_quantity) < 0)
-        err.carton_quantity = t('carton_quantity_non_negative');
-    } else if (formData.quantityType === 'bottle') {
-      if (formData.bottle_quantity === '' || Number(formData.bottle_quantity) < 0)
-        err.bottle_quantity = t('bottle_quantity_non_negative');
-      if (!formData.shot_per_bottle || Number(formData.shot_per_bottle) < 0)
-        err.shot_per_bottle = t('shots_per_bottle_non_negative');
-    } else if (formData.quantityType === 'unit') {
-      if (formData.unit_quantity === '' || Number(formData.unit_quantity) < 0)
-        err.unit_quantity = t('unit_quantity_non_negative');
-      if (!formData.shot_per_liter || Number(formData.shot_per_liter) < 0)
-        err.shot_per_liter = t('shots_per_liter_non_negative');
-    }
-
+    if (!formData.base_unit_id) err.base_unit_id = t('base_unit_required');
+    if (!formData.base_unit_price) err.base_unit_price = t('base_unit_price_required');
+    else if (isNaN(Number(formData.base_unit_price)) || Number(formData.base_unit_price) < 0)
+      err.base_unit_price = t('base_unit_price_must_be_positive');
     if (formData.minimum_threshold === '' || Number(formData.minimum_threshold) < 0)
       err.minimum_threshold = t('minimum_threshold_non_negative');
+    if (!formData.initial_quantity || isNaN(Number(formData.initial_quantity)) || Number(formData.initial_quantity) < 0)
+      err.initial_quantity = t('initial_quantity_required');
+
+    // Validate measurements
+    if (
+      measurements.length === 0 ||
+      measurements.some(m => !m.from_unit || !m.to_unit || m.amount_per === '')
+    ) {
+      err.measurements = 'Please add at least one valid measurement type, amount, and quantity.';
+    }
+    const types = measurements.map(m => m.from_unit);
+    if (new Set(types).size !== types.length) {
+      err.measurements = 'Duplicate measurement types are not allowed.';
+    }
+
+    if (
+      formData.category && // only if category is selected
+      categories.find(cat => cat.id === parseInt(formData.category))?.item_type?.type_name?.toLowerCase() === 'beverage' &&
+      !formData.base_unit_id
+    ) {
+      err.base_unit_id = 'Base unit is required for beverages.';
+    }
 
     setErrors(err);
 
@@ -147,6 +173,7 @@ const AddProductForm = () => {
 
   const handleAddToList = () => {
     setErrors(null);
+    setSuccessMessage('');
 
     if (!validateForm()) {
       return;
@@ -170,35 +197,39 @@ const AddProductForm = () => {
     const newProduct = {
       id: Date.now(),
       name: trimmedName,
-      category: Number(formData.category),
-      price_per_unit: parseFloat(formData.price_per_unit).toFixed(2),
-      quantityType: formData.quantityType,
-      uses_carton: formData.quantityType === 'carton',
-      bottles_per_carton:
-        formData.quantityType === 'carton' ? Number(formData.bottles_per_carton) : 0,
-      carton_quantity: Number(formData.carton_quantity) || 0,
-      bottle_quantity: Number(formData.bottle_quantity) || 0,
-      unit_quantity: parseFloat(formData.unit_quantity) || 0,
+      category_id: Number(formData.category),
+      base_unit_id: formData.base_unit_id ? Number(formData.base_unit_id) : null,
+      base_unit_price: formData.base_unit_price ? parseFloat(formData.base_unit_price) : null,
+      description: formData.description || '',
+      volume_per_base_unit_ml: formData.volume_per_base_unit_ml || null,
+      receipt_image: formData.receipt_image,
+      measurements: measurements.map(m => ({
+        from_unit: parseInt(m.from_unit),
+        to_unit: parseInt(m.to_unit),
+        amount_per: m.amount_per,
+        is_default_sales_unit: m.is_default_sales_unit || false
+      })),
       minimum_threshold: parseFloat(formData.minimum_threshold) || 0,
       running_out: Boolean(formData.running_out),
       branch_id: branchId,
-      receipt_image: formData.receipt_image,
-      shot_per_bottle: formData.shot_per_bottle || '',
-      shot_per_liter: formData.shot_per_liter || '',
+      initial_quantity: formData.initial_quantity,
     };
 
     setProducts((prev) => [...prev, newProduct]);
     setFormData(initialFormData);
     setIsNewName(true);
-    setTotalShotsPerBottle('');
-    setTotalShotsPerLiter('');
+    setMeasurements([{ from_unit: '', to_unit: '', amount_per: '', is_default_sales_unit: false }]);
   };
 
   const handleSubmitAll = async () => {
+    setSuccessMessage('');
+    setErrors(null);
     if (products.length === 0) {
-      alert(t('add_at_least_one_product'));
+      setErrors({ submit: t('add_at_least_one_product') });
       return;
     }
+    setShowConfirm(false);
+    setLoading(true);
 
     const csrfToken = getCookie('csrftoken');
 
@@ -206,15 +237,17 @@ const AddProductForm = () => {
       for (const product of products) {
         const productFormData = new FormData();
         productFormData.append('name', product.name);
-        productFormData.append('category_id', product.category);
-        productFormData.append('price_per_unit', product.price_per_unit);
-        productFormData.append('uses_carton', product.uses_carton ? 'true' : 'false');
-        productFormData.append('bottles_per_carton', product.bottles_per_carton);
+        productFormData.append('category_id', product.category_id);
+        productFormData.append('base_unit_id', product.base_unit_id || '');
+        productFormData.append('base_unit_price', product.base_unit_price || '');
+        productFormData.append('description', product.description || '');
+        productFormData.append('volume_per_base_unit_ml', product.volume_per_base_unit_ml || '');
+        productFormData.append('minimum_threshold', product.minimum_threshold);
+        productFormData.append('running_out', product.running_out ? 'true' : 'false');
         if (product.receipt_image) {
           productFormData.append('receipt_image', product.receipt_image);
         }
-        productFormData.append('shot_per_bottle', product.shot_per_bottle);
-        productFormData.append('shot_per_liter', product.shot_per_liter);
+        productFormData.append('measurements', JSON.stringify(product.measurements));
 
         const productResponse = await axios.post(
           'http://localhost:8000/api/inventory/inventory/',
@@ -233,12 +266,10 @@ const AddProductForm = () => {
         await axios.post(
           'http://localhost:8000/api/inventory/stocks/',
           {
-            carton_quantity: product.carton_quantity,
-            bottle_quantity: product.bottle_quantity,
-            unit_quantity: product.unit_quantity,
-            branch_id: product.branch_id,
             product_id: createdProduct.id,
-            minimum_threshold: product.minimum_threshold,
+            branch_id: product.branch_id,
+            quantity: Number(product.initial_quantity),
+            minimum_threshold_base_units: Number(product.minimum_threshold) || 0,
             running_out: product.running_out,
           },
           {
@@ -250,14 +281,19 @@ const AddProductForm = () => {
         );
       }
 
-      alert(t('submit_success'));
+      setSuccessMessage(t('submit_success'));
       setProducts([]);
       setSelectedItemType('');
       setAllowedToAdd(false);
+      setFormData(initialFormData);
+      setMeasurements([{ from_unit: '', to_unit: '', amount_per: '', is_default_sales_unit: false }]);
+      setTimeout(() => setSuccessMessage(''), 4000);
       navigate('/branch-manager/inventory');
     } catch (err) {
-      console.error('Submit error:', err.response?.data || err.message);
-      alert(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
+      const backendErrors = err.response?.data;
+      setErrors(backendErrors || { submit: err.message });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -275,7 +311,8 @@ const AddProductForm = () => {
   return (
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
       <h1 className="text-2xl font-bold mb-4">{t('add_new_products')}</h1>
-
+      {successMessage && <div className="bg-green-100 text-green-800 p-2 rounded mb-2">{successMessage}</div>}
+      {errors?.submit && <div className="bg-red-100 text-red-800 p-2 rounded mb-2">{errors.submit}</div>}
       <div className="mb-4">
         <label className="block font-semibold mb-1">{t('branch_id')}</label>
         <input
@@ -285,7 +322,6 @@ const AddProductForm = () => {
           className="border p-2 w-full bg-gray-100"
         />
       </div>
-
       <div className="mb-4">
         <label className="block font-semibold">{t('receipt_image')}</label>
         <input
@@ -297,20 +333,18 @@ const AddProductForm = () => {
           className="border p-2 w-full"
         />
       </div>
-
       <select
         value={selectedItemType}
         onChange={(e) => setSelectedItemType(e.target.value)}
         className="border p-2 w-full mb-4"
       >
-        <option value="">{t('select_item_type')}</option>
+        <option value="">Select Item Type</option>
         {itemTypes.map((item) => (
           <option key={item.id} value={item.id}>
             {item.type_name}
           </option>
         ))}
       </select>
-
       {allowedToAdd ? (
         <div className="space-y-4">
           <label className="block font-semibold">{t('product_name')}</label>
@@ -326,7 +360,6 @@ const AddProductForm = () => {
               </option>
             ))}
           </select>
-
           {isNewName && (
             <input
               type="text"
@@ -337,7 +370,6 @@ const AddProductForm = () => {
             />
           )}
           {errors?.name && <p className="text-red-500 text-sm">{errors.name}</p>}
-
           <select
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -353,152 +385,124 @@ const AddProductForm = () => {
               ))}
           </select>
           {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
-
+          {/* Base Unit */}
+          <label className="block font-semibold">{t('base_unit')}</label>
+          <select
+            value={formData.base_unit_id || ''}
+            onChange={e => setFormData({ ...formData, base_unit_id: e.target.value })}
+            className={`border p-2 w-full ${errors?.base_unit_id ? 'border-red-500' : ''}`}
+          >
+            <option value="">No Base Unit</option>
+            {productUnits.map(unit => (
+              <option key={unit.id} value={unit.id}>
+                {unit.unit_name}
+              </option>
+            ))}
+          </select>
+          {errors?.base_unit_id && <p className="text-red-500 text-sm">{errors.base_unit_id}</p>}
+          {/* Base Unit Price */}
           <input
             type="number"
-            placeholder={t('unit_price')}
-            value={formData.price_per_unit}
-            onChange={(e) => setFormData({ ...formData, price_per_unit: e.target.value })}
-            className={`border p-2 w-full ${errors?.price_per_unit ? 'border-red-500' : ''}`}
+            step="0.01"
+            placeholder={t('base_unit_price')}
+            value={formData.base_unit_price}
+            onChange={e => setFormData({ ...formData, base_unit_price: e.target.value })}
+            className={`border p-2 w-full ${errors?.base_unit_price ? 'border-red-500' : ''}`}
           />
-          {errors?.price_per_unit && (
-            <p className="text-red-500 text-sm">{errors.price_per_unit}</p>
-          )}
-
-          <div>
-            <label className="block font-semibold">{t('quantity_type')}</label>
-            {['carton', 'bottle', 'unit'].map((type) => (
-              <label key={type} className="inline-flex items-center mr-4">
+          {errors?.base_unit_price && <p className="text-red-500 text-sm">{errors.base_unit_price}</p>}
+          {/* Volume per Base Unit (for liquids) */}
+          {(() => {
+            const selectedBaseUnit = productUnits.find(u => u.id === Number(formData.base_unit_id));
+            if (selectedBaseUnit && selectedBaseUnit.is_liquid_unit) {
+              return (
                 <input
-                  type="radio"
-                  name="quantityType"
-                  value={type}
-                  checked={formData.quantityType === type}
-                  onChange={(e) => setFormData({ ...formData, quantityType: e.target.value })}
+                  type="number"
+                  step="0.01"
+                  placeholder={t('volume_per_base_unit_ml')}
+                  value={formData.volume_per_base_unit_ml}
+                  onChange={e => setFormData({ ...formData, volume_per_base_unit_ml: e.target.value })}
+                  className="border p-2 w-full"
                 />
-                <span className="ml-2 capitalize">{t(type)}</span>
-              </label>
+              );
+            }
+            return null;
+          })()}
+          {/* Description */}
+          <textarea
+            placeholder={t('description')}
+            value={formData.description}
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
+            className="border p-2 w-full"
+          />
+          {/* Initial Quantity */}
+          <input
+            type="number"
+            step="0.01"
+            placeholder={t('initial_quantity')}
+            value={formData.initial_quantity}
+            onChange={e => setFormData({ ...formData, initial_quantity: e.target.value })}
+            className={`border p-2 w-full ${errors?.initial_quantity ? 'border-red-500' : ''}`}
+          />
+          {errors?.initial_quantity && <p className="text-red-500 text-sm">{errors.initial_quantity}</p>}
+          {/* Measurement section */}
+          <div className="mb-4">
+            <label className="block font-semibold mb-1">Measurements</label>
+            {measurements.map((m, idx) => (
+              <div key={idx} className="flex gap-2 mb-2">
+                <select
+                  value={m.from_unit}
+                  onChange={e => handleMeasurementChange(idx, 'from_unit', e.target.value)}
+                  className="border p-2"
+                  required
+                >
+                  <option value="">From Unit</option>
+                  {productUnits.map(unit => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.unit_name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={m.to_unit}
+                  onChange={e => handleMeasurementChange(idx, 'to_unit', e.target.value)}
+                  className="border p-2"
+                  required
+                >
+                  <option value="">To Unit</option>
+                  {productUnits.map(unit => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.unit_name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={m.amount_per}
+                  onChange={e => handleMeasurementChange(idx, 'amount_per', e.target.value)}
+                  placeholder="Amount per"
+                  className="border p-2"
+                  required
+                />
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={m.is_default_sales_unit || false}
+                    onChange={e => handleMeasurementChange(idx, 'is_default_sales_unit', e.target.checked)}
+                  />
+                  Default Sales Unit
+                </label>
+                <button type="button" onClick={() => removeMeasurementRow(idx)}>
+                  Remove
+                </button>
+              </div>
             ))}
-            {errors?.quantityType && (
-              <p className="text-red-500 text-sm">{errors.quantityType}</p>
-            )}
+            <button type="button" onClick={addMeasurementRow} className="bg-blue-500 text-white px-2 py-1 rounded">
+              + Add Measurement
+            </button>
+            {errors?.measurements && <p className="text-red-500 text-sm">{errors.measurements}</p>}
           </div>
-
-          {/* Carton fields */}
-          {formData.quantityType === 'carton' && (
-            <>
-              <input
-                type="number"
-                placeholder={t('bottles_per_carton')}
-                value={formData.bottles_per_carton}
-                onChange={(e) =>
-                  setFormData({ ...formData, bottles_per_carton: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.bottles_per_carton ? 'border-red-500' : ''}`}
-              />
-              {errors?.bottles_per_carton && (
-                <p className="text-red-500 text-sm">{errors.bottles_per_carton}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('carton_quantity')}
-                value={formData.carton_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, carton_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.carton_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.carton_quantity && (
-                <p className="text-red-500 text-sm">{errors.carton_quantity}</p>
-              )}
-              <input
-                type="number"
-                value={formData.bottle_quantity}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_bottle_quantity')}
-                placeholder={t('total_bottles')}
-              />
-            </>
-          )}
-
-          {/* Bottle fields */}
-          {formData.quantityType === 'bottle' && (
-            <>
-              <input
-                type="number"
-                placeholder={t('bottle_quantity')}
-                value={formData.bottle_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, bottle_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.bottle_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.bottle_quantity && (
-                <p className="text-red-500 text-sm">{errors.bottle_quantity}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('shots_per_bottle')}
-                value={formData.shot_per_bottle}
-                onChange={(e) =>
-                  setFormData({ ...formData, shot_per_bottle: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.shot_per_bottle ? 'border-red-500' : ''}`}
-              />
-              {errors?.shot_per_bottle && (
-                <p className="text-red-500 text-sm">{errors.shot_per_bottle}</p>
-              )}
-              <input
-                type="number"
-                value={totalShotsPerBottle}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_shots_per_bottle')}
-                placeholder={t('total_shots')}
-              />
-            </>
-          )}
-
-          {/* Unit fields */}
-          {formData.quantityType === 'unit' && (
-            <>
-              <input
-                type="number"
-                step="0.01"
-                placeholder={t('liter_quantity')}
-                value={formData.unit_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, unit_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.unit_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.unit_quantity && (
-                <p className="text-red-500 text-sm">{errors.unit_quantity}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('shots_per_liter')}
-                value={formData.shot_per_liter}
-                onChange={(e) =>
-                  setFormData({ ...formData, shot_per_liter: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.shot_per_liter ? 'border-red-500' : ''}`}
-              />
-              {errors?.shot_per_liter && (
-                <p className="text-red-500 text-sm">{errors.shot_per_liter}</p>
-              )}
-              <input
-                type="number"
-                value={totalShotsPerLiter}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_shots_per_liter')}
-                placeholder={t('total_shots')}
-              />
-            </>
-          )}
-
           <input
             type="number"
             step="0.01"
@@ -512,7 +516,6 @@ const AddProductForm = () => {
           {errors?.minimum_threshold && (
             <p className="text-red-500 text-sm">{errors.minimum_threshold}</p>
           )}
-
           <label className="inline-flex items-center space-x-2">
             <input
               type="checkbox"
@@ -521,11 +524,11 @@ const AddProductForm = () => {
             />
             <span>{t('running_out')}</span>
           </label>
-
           <button
             type="button"
-            onClick={handleAddToList}
+            onClick={() => setShowConfirm(true)}
             className="bg-green-600 text-white px-4 py-2 rounded mt-4"
+            disabled={loading}
           >
             + {t('add_product_to_list')}
           </button>
@@ -533,7 +536,30 @@ const AddProductForm = () => {
       ) : (
         <div className="text-red-600">{t('only_beverages_allowed')}</div>
       )}
-
+      {showConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <div className="bg-white p-6 rounded shadow-lg max-w-sm w-full">
+            <h2 className="text-lg font-bold mb-2">{t('confirm_submission')}</h2>
+            <p className="mb-4">{t('are_you_sure_submit')}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="bg-gray-300 px-4 py-2 rounded"
+                onClick={() => setShowConfirm(false)}
+                disabled={loading}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+                onClick={handleSubmitAll}
+                disabled={loading}
+              >
+                {loading ? t('submitting') : t('confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {products.length > 0 && (
         <div className="mt-6">
           <h2 className="font-bold text-lg mb-2">{t('products_in_queue')}</h2>
@@ -541,15 +567,14 @@ const AddProductForm = () => {
             {products.map((p, idx) => (
               <li key={p.id} className="bg-gray-100 rounded p-2 flex justify-between items-center">
                 <span>
-                  {idx + 1}. {p.name} – {t('price')}: ${p.price_per_unit}
+                  {idx + 1}. {p.name} – {t('price')}: ${p.base_unit_price} – {t('initial_quantity')}: {p.initial_quantity}
                 </span>
                 <button
                   type="button"
-                  onClick={() =>
-                    setProducts((prev) => prev.filter((prod) => prod.id !== p.id))
-                  }
+                  onClick={() => setProducts((prev) => prev.filter((prod) => prod.id !== p.id))}
                   className="text-red-600 hover:underline"
                   aria-label={`${t('remove_product')} ${p.name}`}
+                  disabled={loading}
                 >
                   {t('remove')}
                 </button>
@@ -557,11 +582,11 @@ const AddProductForm = () => {
             ))}
           </ul>
           <button
-            onClick={handleSubmitAll}
+            onClick={() => setShowConfirm(true)}
             className="mt-4 bg-blue-600 text-white px-6 py-2 rounded"
-            disabled={products.length === 0}
+            disabled={products.length === 0 || loading}
           >
-            {t('submit_all')}
+            {loading ? t('submitting') : t('submit_all')}
           </button>
         </div>
       )}
