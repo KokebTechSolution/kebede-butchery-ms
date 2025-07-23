@@ -21,11 +21,10 @@ class BarmanStockSerializer(serializers.ModelSerializer):
             'branch_name',
             'bartender',
             'bartender_id',
-            'carton_quantity',
-            'bottle_quantity',
-            'unit_quantity',
-            'minimum_threshold',
+            'quantity_in_base_units',
+            'minimum_threshold_base_units',
             'running_out',
+            'last_stock_update',
             'quantity_basic_unit',
         ]
         read_only_fields = ['running_out']
@@ -101,11 +100,12 @@ class StockSerializer(serializers.ModelSerializer):
             'product_id',
             'branch',
             'branch_id',
-            'carton_quantity',
-            'bottle_quantity',
-            'unit_quantity',
-            'minimum_threshold',
+            'quantity_in_base_units',
+            'minimum_threshold_base_units',
             'running_out',
+            'last_stock_update',
+            'original_quantity',
+            'original_unit',
         ]
 
 # Inventory Transaction
@@ -179,3 +179,25 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
         if measurement:
             return obj.quantity * measurement.amount_per
         return obj.quantity  # fallback if no measurement found
+
+class ProductMeasurementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductMeasurement
+        fields = [
+            'id',
+            'product',
+            'product_id',
+            'from_unit',
+            'from_unit_id',
+            'to_unit',
+            'to_unit_id',
+            'amount_per',
+            'is_default_sales_unit',
+            'created_at',
+            'updated_at',
+        ]
+        extra_kwargs = {
+            'product': {'read_only': True},
+            'from_unit': {'read_only': True},
+            'to_unit': {'read_only': True},
+        }

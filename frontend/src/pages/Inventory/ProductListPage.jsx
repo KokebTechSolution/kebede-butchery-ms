@@ -138,8 +138,8 @@ const ProductListPage = () => {
           <thead className="bg-gray-100">
             <tr>
               {[
-                'name', 'category', 'item_type', 'uses_carton', 'bottles_per_carton',
-                'carton_qty', 'bottle_qty', 'unit_qty', 'branch', 'running_out', 'actions'
+                'name', 'category', 'item_type', 'branch', 'quantity_in_base_units',
+                'minimum_threshold_base_units', 'running_out', 'last_stock_update', 'actions'
               ].map((key) => (
                 <th key={key} className="border px-4 py-2">{t(key)}</th>
               ))}
@@ -152,17 +152,15 @@ const ProductListPage = () => {
                   <td className="border px-4 py-2">{stock.product?.name}</td>
                   <td className="border px-4 py-2">{stock.product?.category?.category_name}</td>
                   <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name}</td>
-                  <td className="border px-4 py-2">{stock.product?.uses_carton ? t('yes') : t('no')}</td>
-                  <td className="border px-4 py-2">{stock.product?.bottles_per_carton}</td>
-                  <td className="border px-4 py-2">{stock.carton_quantity}</td>
-                  <td className="border px-4 py-2">{stock.bottle_quantity}</td>
-                  <td className="border px-4 py-2">{stock.unit_quantity}</td>
                   <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.quantity_in_base_units}</td>
+                  <td className="border px-4 py-2">{stock.minimum_threshold_base_units}</td>
                   <td className="border px-4 py-2">
                     <span className={`font-semibold ${stock.running_out ? 'text-red-500' : 'text-green-500'}`}>
                       {stock.running_out ? t('running_out') : t('in_stock')}
                     </span>
                   </td>
+                  <td className="border px-4 py-2">{new Date(stock.last_stock_update).toLocaleString()}</td>
                   <td className="border px-4 py-2 space-x-2">
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}
@@ -175,7 +173,7 @@ const ProductListPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="11" className="border px-4 py-4 text-center text-gray-500">
+                <td colSpan="9" className="border px-4 py-4 text-center text-gray-500">
                   {t('no_products_found')}
                 </td>
               </tr>
@@ -183,9 +181,9 @@ const ProductListPage = () => {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
+              <td colSpan="4" className="border px-4 py-2 font-bold text-right">{t('total_inventory_value')}:</td>
               <td className="border px-4 py-2 font-bold">
-                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}
               </td>
               <td className="border px-4 py-2" colSpan="4"></td>
             </tr>

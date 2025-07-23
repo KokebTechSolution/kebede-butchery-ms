@@ -8,6 +8,7 @@ const NewRequest = ({
   formMessage,
   products,
   branches,
+  productUnits = [],
   handleFormChange,
   handleFormSubmit,
 }) => {
@@ -66,9 +67,18 @@ const NewRequest = ({
               className="w-full border p-2 rounded"
               required
             >
-              <option value="unit">Unit</option>
-              <option value="carton">Carton</option>
-              <option value="bottle">Bottle</option>
+              <option value="">-- Select Unit --</option>
+              {productUnits.length > 0
+                ? productUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.unit_name}
+                    </option>
+                  ))
+                : products.length > 0 && products.find(p => p.id == formData.product)?.base_unit && (
+                    <option value={products.find(p => p.id == formData.product).base_unit.id}>
+                      {products.find(p => p.id == formData.product).base_unit.unit_name}
+                    </option>
+                  )}
             </select>
           </div>
 

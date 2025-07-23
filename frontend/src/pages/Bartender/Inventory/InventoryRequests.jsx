@@ -3,6 +3,7 @@ import {
   fetchRequests,
   ReachRequest,
   NotReachRequest,
+  fetchProductMeasurements,
 } from '../../../api/inventory';
 import api from '../../../api/axiosInstance';
 import NewRequest from './NewRequest';
@@ -26,6 +27,7 @@ const InventoryRequestList = () => {
     branch: '',
   });
   const [formMessage, setFormMessage] = useState('');
+  const [productUnits, setProductUnits] = useState([]);
 
   // Trigger to refresh stocks
   const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
@@ -43,6 +45,27 @@ const InventoryRequestList = () => {
   useEffect(() => {
     fetchBarmanStocks();
   }, [refreshStockTrigger]);
+
+  // Fetch units for selected product
+  useEffect(() => {
+    const fetchUnits = async () => {
+      if (formData.product) {
+        try {
+          const measurements = await fetchProductMeasurements(formData.product);
+          setProductUnits(measurements.map(m => m.from_unit));
+          // Auto-select if only one unit
+          if (measurements.length === 1) {
+            setFormData(prev => ({ ...prev, unit_type: measurements[0].from_unit.id }));
+          }
+        } catch (err) {
+          setProductUnits([]);
+        }
+      } else {
+        setProductUnits([]);
+      }
+    };
+    fetchUnits();
+  }, [formData.product]);
 
   const fetchBarmanStocks = async () => {
     try {
@@ -147,6 +170,7 @@ const InventoryRequestList = () => {
         formMessage={formMessage}
         products={products}
         branches={branches}
+        productUnits={productUnits}
         handleFormChange={(e) => {
           const { name, value } = e.target;
           setFormData((prev) => ({ ...prev, [name]: value }));
@@ -161,7 +185,7 @@ const InventoryRequestList = () => {
             await api.post('/inventory/requests/', {
               product_id: parseInt(formData.product),
               quantity: parseFloat(formData.quantity),
-              unit_type: formData.unit_type,
+              request_unit_id: parseInt(formData.unit_type),
               status: 'pending',
               branch_id: parseInt(formData.branch),
             });
@@ -226,7 +250,7 @@ const InventoryRequestList = () => {
                     <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.quantity}</td>
                     <td className="border px-4 py-2">{req.quantity_basic_unit ?? 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.unit_type}</td>
+                    <td className="border px-4 py-2">{req.request_unit?.unit_name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
                     <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
                     <td className="border px-4 py-2">

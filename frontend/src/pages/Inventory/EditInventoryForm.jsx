@@ -136,7 +136,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
     try {
       await axios.put(
-        `http://localhost:8000/api/inventory/inventory/${product.id}/`,
+        `http://localhost:8000/api/inventory/products/${product.id}/`,
         updatedProduct,
         {
           withCredentials: true,

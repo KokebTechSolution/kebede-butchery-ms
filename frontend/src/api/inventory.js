@@ -38,25 +38,25 @@ const modifyConfig = {
 
 // Fetch all inventory items
 export const fetchInventory = async () => {
-  const response = await axios.get(`${BASE_URL}inventory/`, getConfig);
+  const response = await axios.get(`${BASE_URL}products/`, getConfig);
   return response.data;
 };
 
 // Fetch single inventory item by ID
 export const fetchInventoryById = async (id) => {
-  const response = await axios.get(`${BASE_URL}inventory/${id}/`, getConfig);
+  const response = await axios.get(`${BASE_URL}products/${id}/`, getConfig);
   return response.data;
 };
 
 // Restock an inventory item
 export const restockInventory = async (id, restockData) => {
-  const response = await axios.post(`${BASE_URL}inventory/${id}/restock/`, restockData, modifyConfig);
+  const response = await axios.post(`${BASE_URL}products/${id}/restock/`, restockData, modifyConfig);
   return response.data;
 };
 
 // Record a sale for an inventory item
 export const sellInventory = async (id, saleData) => {
-  const response = await axios.post(`${BASE_URL}inventory/${id}/sale/`, saleData, modifyConfig);
+  const response = await axios.post(`${BASE_URL}products/${id}/sale/`, saleData, modifyConfig);
   return response.data;
 };
 
@@ -136,4 +136,9 @@ const addNewCategory = async (categoryName, itemTypeId) => {
     console.error('❌ Error creating category:', error.response?.data || error.message);
     throw error;
   }
+};
+
+export const fetchProductMeasurements = async (productId) => {
+  const response = await axios.get(`${BASE_URL}productmeasurements/?product=${productId}`, getConfig);
+  return response.data;
 };

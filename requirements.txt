@@ -6,4 +6,5 @@ django_extensions
 django-cors-headers
 Pillow
 channels
+django-filter
 

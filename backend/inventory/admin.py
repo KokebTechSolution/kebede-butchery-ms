@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import ItemType, Category, Product, Stock, InventoryTransaction, InventoryRequest, AuditLog, BarmanStock
 
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'product', 'action_type', 'quantity', 'action_by', 'branch', 'timestamp', 'note')
+    list_display = ('id', 'user', 'action', 'object_id', 'content_type', 'timestamp', 'notes')
 
 admin.site.register(ItemType)
 admin.site.register(Category)

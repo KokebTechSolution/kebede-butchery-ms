@@ -9,13 +9,15 @@ from rest_framework import status
 from rest_framework.decorators import action
 from .models import (
     ItemType, Category, Product, InventoryTransaction, 
-    InventoryRequest, Stock, Branch, BarmanStock, ProductUnit
+    InventoryRequest, Stock, Branch, BarmanStock, ProductUnit, ProductMeasurement
 )
 from .serializers import (
     ItemTypeSerializer, CategorySerializer, ProductSerializer,
     InventoryTransactionSerializer, InventoryRequestSerializer,
-    StockSerializer, BranchSerializer, BarmanStockSerializer, ProductUnitSerializer
+    StockSerializer, BranchSerializer, BarmanStockSerializer, ProductUnitSerializer, ProductMeasurementSerializer
 )
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 # Branch
 class BranchViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Branch.objects.all()
@@ -24,14 +26,14 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # Item Type
-class ItemTypeViewSet(viewsets.ReadOnlyModelViewSet):
+class ItemTypeViewSet(viewsets.ModelViewSet):
     queryset = ItemType.objects.all()
     serializer_class = ItemTypeSerializer
     permission_classes = [AllowAny]
 
 
 # Category
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
@@ -108,5 +110,19 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return qs
         return qs.filter(bartender=user)
+
+
+class ProductUnitViewSet(viewsets.ModelViewSet):
+    queryset = ProductUnit.objects.all()
+    serializer_class = ProductUnitSerializer
+    permission_classes = [AllowAny]
+
+
+class ProductMeasurementViewSet(viewsets.ModelViewSet):
+    queryset = ProductMeasurement.objects.all()
+    serializer_class = ProductMeasurementSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['product']
 
 

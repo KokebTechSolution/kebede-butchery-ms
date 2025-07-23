@@ -48,7 +48,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/inventory/', {
+      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
         withCredentials: true,
       });
       setProducts(res.data);

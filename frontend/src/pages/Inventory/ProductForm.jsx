@@ -29,47 +29,46 @@ const AddProductForm = () => {
 
   const [itemTypes, setItemTypes] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [existingProducts, setExistingProducts] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [errors, setErrors] = useState({}); // ensure errors is always an object
   const [selectedItemType, setSelectedItemType] = useState('');
-  const [allowedToAdd, setAllowedToAdd] = useState(false);
   const [products, setProducts] = useState([]);
-  const [isNewName, setIsNewName] = useState(true);
-  const [errors, setErrors] = useState(null);
+  const [isNewProduct, setIsNewProduct] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const initialFormData = {
     name: '',
     category: '',
-    price_per_unit: '',
-    quantityType: '',
-    bottles_per_carton: '',
-    carton_quantity: '',
-    bottle_quantity: '',
-    unit_quantity: '',
-    minimum_threshold: '',
-    running_out: false,
+    base_unit_price: '',
+    base_unit: '',
+    input_unit: '',
+    input_quantity: '',
+    conversion_amount: '',
+    minimum_threshold_base_units: '',
+    description: '',
     receipt_image: null,
-    shot_per_bottle: '',
-    shot_per_liter: '',
   };
 
   const [formData, setFormData] = useState(initialFormData);
-
-  const [totalShotsPerBottle, setTotalShotsPerBottle] = useState('');
-  const [totalShotsPerLiter, setTotalShotsPerLiter] = useState('');
+  const [calculatedBaseUnits, setCalculatedBaseUnits] = useState('');
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [itemTypeData, categoryData, productRes] = await Promise.all([
+        const [itemTypeData, categoryData, unitRes, productRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('http://localhost:8000/api/inventory/inventory/', {
-            withCredentials: true,
-          }),
+          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
+          axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
-        setExistingProducts(productRes.data);
+        setUnits(unitRes.data);
+        setProducts(productRes.data);
+        console.log('Products loaded from /api/inventory/products/', productRes.data);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -78,491 +77,406 @@ const AddProductForm = () => {
   }, []);
 
   useEffect(() => {
-    const selectedItem = itemTypes.find((i) => i.id.toString() === selectedItemType);
-    setAllowedToAdd(
-      selectedItem && ['beverage', 'beverages'].includes(selectedItem.type_name.toLowerCase())
-    );
-    setFormData((prev) => ({ ...prev, category: '' }));
-  }, [selectedItemType, itemTypes]);
+    // Calculate total in base units
+    const qty = parseFloat(formData.input_quantity) || 0;
+    const conv = parseFloat(formData.conversion_amount) || 1;
+    setCalculatedBaseUnits(qty * conv);
+  }, [formData.input_quantity, formData.conversion_amount]);
 
+  // Prefill fields when an existing product is selected
   useEffect(() => {
-    if (formData.quantityType === 'carton') {
-      const bottles =
-        (Number(formData.bottles_per_carton) || 0) * (Number(formData.carton_quantity) || 0);
-      setFormData((prev) => ({ ...prev, bottle_quantity: bottles.toString() }));
+    if (!isNewProduct && formData.name) {
+      const selectedProduct = products.find((p) => p.name === formData.name);
+      if (selectedProduct) {
+        setFormData((prev) => ({
+          ...prev,
+          // Pre-fill fields from the selected product
+          category: selectedProduct.category?.id || '',
+          base_unit_price: selectedProduct.base_unit_price || '',
+          base_unit: selectedProduct.base_unit || '',
+          description: selectedProduct.description || '',
+          // Do not pre-fill stock fields (input_unit, input_quantity, conversion_amount, minimum_threshold_base_units)
+        }));
+        // Optionally, set selectedItemType to match the product's category's item_type
+        if (selectedProduct.category?.item_type?.id) {
+          setSelectedItemType(String(selectedProduct.category.item_type.id));
+        }
+      }
+    } else if (isNewProduct) {
+      setFormData((prev) => ({
+        ...initialFormData,
+        name: '',
+      }));
     }
-  }, [formData.bottles_per_carton, formData.carton_quantity, formData.quantityType]);
+    // eslint-disable-next-line
+  }, [isNewProduct, formData.name]);
 
-  useEffect(() => {
-    if (formData.quantityType === 'bottle') {
-      const totalShots =
-        (Number(formData.bottle_quantity) || 0) * (Number(formData.shot_per_bottle) || 0);
-      setTotalShotsPerBottle(totalShots ? totalShots.toString() : '');
-    } else {
-      setTotalShotsPerBottle('');
-    }
-    if (formData.quantityType === 'unit') {
-      const totalShots =
-        (Number(formData.unit_quantity) || 0) * (Number(formData.shot_per_liter) || 0);
-      setTotalShotsPerLiter(totalShots ? totalShots.toString() : '');
-    } else {
-      setTotalShotsPerLiter('');
-    }
-  }, [formData.quantityType, formData.bottle_quantity, formData.shot_per_bottle, formData.unit_quantity, formData.shot_per_liter]);
+  // Prevent duplicate product names
+  const isDuplicateName = (name) => {
+    return products.some((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+  };
 
   const validateForm = () => {
     let err = {};
-
     if (!formData.name.trim()) err.name = t('product_name_required');
+    if (isNewProduct && isDuplicateName(formData.name)) err.name = t('duplicate_product_name');
     if (!formData.category) err.category = t('category_required');
-    if (!formData.price_per_unit) err.price_per_unit = t('price_required');
-    else if (isNaN(Number(formData.price_per_unit)) || Number(formData.price_per_unit) < 0)
-      err.price_per_unit = t('price_must_be_positive');
-    if (!formData.quantityType) err.quantityType = t('quantity_type_required');
-
-    if (formData.quantityType === 'carton') {
-      if (!formData.bottles_per_carton || Number(formData.bottles_per_carton) <= 0)
-        err.bottles_per_carton = t('bottles_per_carton_positive');
-      if (!formData.carton_quantity || Number(formData.carton_quantity) < 0)
-        err.carton_quantity = t('carton_quantity_non_negative');
-    } else if (formData.quantityType === 'bottle') {
-      if (formData.bottle_quantity === '' || Number(formData.bottle_quantity) < 0)
-        err.bottle_quantity = t('bottle_quantity_non_negative');
-      if (!formData.shot_per_bottle || Number(formData.shot_per_bottle) < 0)
-        err.shot_per_bottle = t('shots_per_bottle_non_negative');
-    } else if (formData.quantityType === 'unit') {
-      if (formData.unit_quantity === '' || Number(formData.unit_quantity) < 0)
-        err.unit_quantity = t('unit_quantity_non_negative');
-      if (!formData.shot_per_liter || Number(formData.shot_per_liter) < 0)
-        err.shot_per_liter = t('shots_per_liter_non_negative');
-    }
-
-    if (formData.minimum_threshold === '' || Number(formData.minimum_threshold) < 0)
-      err.minimum_threshold = t('minimum_threshold_non_negative');
-
+    if (!formData.base_unit_price) err.base_unit_price = t('price_required');
+    else if (isNaN(Number(formData.base_unit_price)) || Number(formData.base_unit_price) < 0)
+      err.base_unit_price = t('price_must_be_positive');
+    if (!formData.base_unit) err.base_unit = t('unit_required');
+    if (!formData.input_unit) err.input_unit = t('input_unit_required');
+    if (!formData.input_quantity) err.input_quantity = t('input_quantity_required');
+    if (!formData.conversion_amount) err.conversion_amount = t('conversion_amount_required');
+    if (!formData.minimum_threshold_base_units) err.minimum_threshold_base_units = t('minimum_threshold_required');
     setErrors(err);
-
+    console.log('Validation errors:', err, 'Form data:', formData); // <-- Debug log
     return Object.keys(err).length === 0;
   };
 
-  const handleAddToList = () => {
-    setErrors(null);
-
-    if (!validateForm()) {
-      return;
-    }
-
-    if (!branchId) {
-      alert(t('branch_info_missing'));
-      return;
-    }
-
-    const trimmedName = formData.name.trim();
-    const isDuplicate = products.some(
-      (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
-    );
-
-    if (isDuplicate) {
-      alert(t('duplicate_product_name'));
-      return;
-    }
-
-    const newProduct = {
-      id: Date.now(),
-      name: trimmedName,
-      category: Number(formData.category),
-      price_per_unit: parseFloat(formData.price_per_unit).toFixed(2),
-      quantityType: formData.quantityType,
-      uses_carton: formData.quantityType === 'carton',
-      bottles_per_carton:
-        formData.quantityType === 'carton' ? Number(formData.bottles_per_carton) : 0,
-      carton_quantity: Number(formData.carton_quantity) || 0,
-      bottle_quantity: Number(formData.bottle_quantity) || 0,
-      unit_quantity: parseFloat(formData.unit_quantity) || 0,
-      minimum_threshold: parseFloat(formData.minimum_threshold) || 0,
-      running_out: Boolean(formData.running_out),
-      branch_id: branchId,
-      receipt_image: formData.receipt_image,
-      shot_per_bottle: formData.shot_per_bottle || '',
-      shot_per_liter: formData.shot_per_liter || '',
-    };
-
-    setProducts((prev) => [...prev, newProduct]);
-    setFormData(initialFormData);
-    setIsNewName(true);
-    setTotalShotsPerBottle('');
-    setTotalShotsPerLiter('');
-  };
-
-  const handleSubmitAll = async () => {
-    if (products.length === 0) {
-      alert(t('add_at_least_one_product'));
-      return;
-    }
-
-    const csrfToken = getCookie('csrftoken');
-
+  // Helper to reload products after adding
+  const reloadProducts = async () => {
     try {
-      for (const product of products) {
-        const productFormData = new FormData();
-        productFormData.append('name', product.name);
-        productFormData.append('category_id', product.category);
-        productFormData.append('price_per_unit', product.price_per_unit);
-        productFormData.append('uses_carton', product.uses_carton ? 'true' : 'false');
-        productFormData.append('bottles_per_carton', product.bottles_per_carton);
-        if (product.receipt_image) {
-          productFormData.append('receipt_image', product.receipt_image);
-        }
-        productFormData.append('shot_per_bottle', product.shot_per_bottle);
-        productFormData.append('shot_per_liter', product.shot_per_liter);
-
-        const productResponse = await axios.post(
-          'http://localhost:8000/api/inventory/inventory/',
-          productFormData,
-          {
-            withCredentials: true,
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              'X-CSRFToken': csrfToken,
-            },
-          }
-        );
-
-        const createdProduct = productResponse.data;
-
-        await axios.post(
-          'http://localhost:8000/api/inventory/stocks/',
-          {
-            carton_quantity: product.carton_quantity,
-            bottle_quantity: product.bottle_quantity,
-            unit_quantity: product.unit_quantity,
-            branch_id: product.branch_id,
-            product_id: createdProduct.id,
-            minimum_threshold: product.minimum_threshold,
-            running_out: product.running_out,
-          },
-          {
-            withCredentials: true,
-            headers: {
-              'X-CSRFToken': csrfToken,
-            },
-          }
-        );
-      }
-
-      alert(t('submit_success'));
-      setProducts([]);
-      setSelectedItemType('');
-      setAllowedToAdd(false);
-      navigate('/branch-manager/inventory');
-    } catch (err) {
-      console.error('Submit error:', err.response?.data || err.message);
-      alert(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
+      const productRes = await axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true });
+      setProducts(productRes.data);
+      console.log('Products reloaded from /api/inventory/products/', productRes.data);
+    } catch (error) {
+      console.error('Error reloading products:', error);
     }
   };
 
-  const handleNameSelect = (e) => {
-    const selectedName = e.target.value;
-    if (selectedName === '__new') {
-      setIsNewName(true);
-      setFormData((prev) => ({ ...prev, name: '' }));
-    } else {
-      setIsNewName(false);
-      setFormData((prev) => ({ ...prev, name: selectedName }));
+  const handleSubmit = async (e) => {
+    console.log('Submit button clicked');
+    e.preventDefault();
+    setErrors({});
+    setSubmitMessage('');
+    setSubmitError('');
+    const valid = validateForm();
+    console.log('Validation result:', valid, errors, formData);
+    if (!valid) return;
+    console.log('Validation passed, showing modal');
+    setShowConfirmModal(true);
+  };
+
+  // Actual API submission logic, extracted from handleSubmit
+  const handleConfirmedSubmit = async () => {
+    setIsSubmitting(true);
+    const csrfToken = getCookie('csrftoken');
+    try {
+      // Create Product
+      const productFormData = new FormData();
+      productFormData.append('name', formData.name);
+      productFormData.append('category_id', formData.category);
+      productFormData.append('base_unit_price', formData.base_unit_price);
+      productFormData.append('base_unit', formData.base_unit);
+      productFormData.append('description', formData.description);
+      if (formData.receipt_image) {
+        productFormData.append('receipt_image', formData.receipt_image);
+      }
+      const productResponse = await axios.post(
+        'http://localhost:8000/api/inventory/products/',
+        productFormData,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'X-CSRFToken': csrfToken,
+          },
+        }
+      );
+      const createdProduct = productResponse.data;
+      // Create ProductMeasurement (conversion)
+      await axios.post(
+        'http://localhost:8000/api/inventory/productmeasurements/',
+        {
+          product_id: createdProduct.id,
+          from_unit_id: formData.input_unit,
+          to_unit_id: formData.base_unit,
+          amount_per: formData.conversion_amount,
+          is_default_sales_unit: true,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            'X-CSRFToken': csrfToken,
+          },
+        }
+      );
+      // Create Stock
+      await axios.post(
+        'http://localhost:8000/api/inventory/stocks/',
+        {
+          product_id: createdProduct.id,
+          branch_id: branchId,
+          quantity_in_base_units: calculatedBaseUnits,
+          minimum_threshold_base_units: formData.minimum_threshold_base_units,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            'X-CSRFToken': csrfToken,
+          },
+        }
+      );
+      alert(t('submit_success'));
+      setSubmitMessage(t('submit_success'));
+      setFormData(initialFormData);
+      setCalculatedBaseUnits('');
+      setIsNewProduct(true);
+      await reloadProducts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        setSubmitMessage('');
+        navigate('/branch-manager/inventory');
+      }, 2000);
+    } catch (err) {
+      console.error('Submit error', err.response?.data || err.message);
+      setSubmitError(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+      setShowConfirmModal(false);
     }
   };
 
   return (
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
-      <h1 className="text-2xl font-bold mb-4">{t('add_new_products')}</h1>
-
-      <div className="mb-4">
-        <label className="block font-semibold mb-1">{t('branch_id')}</label>
-        <input
-          type="text"
-          value={branchId || ''}
-          readOnly
-          className="border p-2 w-full bg-gray-100"
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="block font-semibold">{t('receipt_image')}</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, receipt_image: e.target.files[0] }))
-          }
-          className="border p-2 w-full"
-        />
-      </div>
-
-      <select
-        value={selectedItemType}
-        onChange={(e) => setSelectedItemType(e.target.value)}
-        className="border p-2 w-full mb-4"
-      >
-        <option value="">{t('select_item_type')}</option>
-        {itemTypes.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.type_name}
-          </option>
-        ))}
-      </select>
-
-      {allowedToAdd ? (
-        <div className="space-y-4">
-          <label className="block font-semibold">{t('product_name')}</label>
+      {console.log('Rendering modal?', showConfirmModal)}
+      <h1 className="text-2xl font-bold mb-4">{t('add_new_product')}</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {submitMessage && (
+          <div className="bg-green-100 text-green-800 p-2 rounded text-center font-semibold">{submitMessage}</div>
+        )}
+        {submitError && (
+          <div className="bg-red-100 text-red-800 p-2 rounded text-center font-semibold">{submitError}</div>
+        )}
+        {Object.keys(errors).length > 0 && (
+          <div className="bg-red-200 text-red-800 p-2 rounded text-center font-semibold mb-2">
+            {t('please_fix_errors')}
+            <ul className="text-left mt-1">
+              {Object.entries(errors).map(([key, val]) => (
+                <li key={key}>{val}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div>
+          <label className="block font-semibold mb-1">{t('item_type')}</label>
           <select
-            value={isNewName ? '__new' : formData.name}
-            onChange={handleNameSelect}
+            value={selectedItemType}
+            onChange={(e) => {
+              setSelectedItemType(e.target.value);
+              setFormData({ ...formData, category: '' });
+            }}
             className="border p-2 w-full"
           >
-            <option value="__new">+ {t('add_new_product_name')}</option>
-            {existingProducts.map((p) => (
-              <option key={p.id} value={p.name}>
-                {p.name}
+            <option value="">{t('select_item_type')}</option>
+            {itemTypes.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.type_name}
               </option>
             ))}
           </select>
-
-          {isNewName && (
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('product_name')}</label>
+          <select
+            value={isNewProduct ? '__new' : formData.name}
+            onChange={(e) => {
+              if (e.target.value === '__new') {
+                setIsNewProduct(true);
+                setFormData((prev) => ({ ...prev, name: '' }));
+              } else {
+                setIsNewProduct(false);
+                setFormData((prev) => ({ ...prev, name: e.target.value }));
+              }
+            }}
+            className="border p-2 w-full"
+          >
+            <option value="__new">+ {t('add_new_product')}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+          {/* Show the input always when adding new, and make sure it's enabled */}
+          {isNewProduct && (
             <input
               type="text"
               placeholder={t('enter_new_product_name')}
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className={`border p-2 w-full ${errors?.name ? 'border-red-500' : ''}`}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              className={`border p-2 w-full mt-2 ${errors?.name ? 'border-red-500' : ''}`}
+              autoFocus
+              disabled={false}
             />
           )}
           {errors?.name && <p className="text-red-500 text-sm">{errors.name}</p>}
-
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('category')}</label>
           <select
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             className={`border p-2 w-full ${errors?.category ? 'border-red-500' : ''}`}
           >
             <option value="">{t('select_category')}</option>
-            {categories
-              .filter((cat) => cat.item_type.id === parseInt(selectedItemType))
-              .map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.category_name}
-                </option>
-              ))}
-          </select>
-          {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
-
-          <input
-            type="number"
-            placeholder={t('unit_price')}
-            value={formData.price_per_unit}
-            onChange={(e) => setFormData({ ...formData, price_per_unit: e.target.value })}
-            className={`border p-2 w-full ${errors?.price_per_unit ? 'border-red-500' : ''}`}
-          />
-          {errors?.price_per_unit && (
-            <p className="text-red-500 text-sm">{errors.price_per_unit}</p>
-          )}
-
-          <div>
-            <label className="block font-semibold">{t('quantity_type')}</label>
-            {['carton', 'bottle', 'unit'].map((type) => (
-              <label key={type} className="inline-flex items-center mr-4">
-                <input
-                  type="radio"
-                  name="quantityType"
-                  value={type}
-                  checked={formData.quantityType === type}
-                  onChange={(e) => setFormData({ ...formData, quantityType: e.target.value })}
-                />
-                <span className="ml-2 capitalize">{t(type)}</span>
-              </label>
-            ))}
-            {errors?.quantityType && (
-              <p className="text-red-500 text-sm">{errors.quantityType}</p>
+            {categories && categories.length > 0 ? (
+              categories
+                .filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType))
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.category_name}
+                  </option>
+                ))
+            ) : (
+              <option value="" disabled>{t('no_categories_available')}</option>
             )}
-          </div>
-
-          {/* Carton fields */}
-          {formData.quantityType === 'carton' && (
-            <>
-              <input
-                type="number"
-                placeholder={t('bottles_per_carton')}
-                value={formData.bottles_per_carton}
-                onChange={(e) =>
-                  setFormData({ ...formData, bottles_per_carton: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.bottles_per_carton ? 'border-red-500' : ''}`}
-              />
-              {errors?.bottles_per_carton && (
-                <p className="text-red-500 text-sm">{errors.bottles_per_carton}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('carton_quantity')}
-                value={formData.carton_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, carton_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.carton_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.carton_quantity && (
-                <p className="text-red-500 text-sm">{errors.carton_quantity}</p>
-              )}
-              <input
-                type="number"
-                value={formData.bottle_quantity}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_bottle_quantity')}
-                placeholder={t('total_bottles')}
-              />
-            </>
+          </select>
+          {categories.filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType)).length === 0 && (
+            <p className="text-gray-500 text-sm mt-1">{t('no_categories_for_item_type')}</p>
           )}
-
-          {/* Bottle fields */}
-          {formData.quantityType === 'bottle' && (
-            <>
-              <input
-                type="number"
-                placeholder={t('bottle_quantity')}
-                value={formData.bottle_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, bottle_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.bottle_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.bottle_quantity && (
-                <p className="text-red-500 text-sm">{errors.bottle_quantity}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('shots_per_bottle')}
-                value={formData.shot_per_bottle}
-                onChange={(e) =>
-                  setFormData({ ...formData, shot_per_bottle: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.shot_per_bottle ? 'border-red-500' : ''}`}
-              />
-              {errors?.shot_per_bottle && (
-                <p className="text-red-500 text-sm">{errors.shot_per_bottle}</p>
-              )}
-              <input
-                type="number"
-                value={totalShotsPerBottle}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_shots_per_bottle')}
-                placeholder={t('total_shots')}
-              />
-            </>
-          )}
-
-          {/* Unit fields */}
-          {formData.quantityType === 'unit' && (
-            <>
-              <input
-                type="number"
-                step="0.01"
-                placeholder={t('liter_quantity')}
-                value={formData.unit_quantity}
-                onChange={(e) =>
-                  setFormData({ ...formData, unit_quantity: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.unit_quantity ? 'border-red-500' : ''}`}
-              />
-              {errors?.unit_quantity && (
-                <p className="text-red-500 text-sm">{errors.unit_quantity}</p>
-              )}
-              <input
-                type="number"
-                placeholder={t('shots_per_liter')}
-                value={formData.shot_per_liter}
-                onChange={(e) =>
-                  setFormData({ ...formData, shot_per_liter: e.target.value })
-                }
-                className={`border p-2 w-full ${errors?.shot_per_liter ? 'border-red-500' : ''}`}
-              />
-              {errors?.shot_per_liter && (
-                <p className="text-red-500 text-sm">{errors.shot_per_liter}</p>
-              )}
-              <input
-                type="number"
-                value={totalShotsPerLiter}
-                readOnly
-                className="border p-2 w-full bg-gray-100"
-                aria-label={t('calculated_shots_per_liter')}
-                placeholder={t('total_shots')}
-              />
-            </>
-          )}
-
+          {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('base_unit')}</label>
+          <select
+            value={formData.base_unit}
+            onChange={(e) => setFormData({ ...formData, base_unit: e.target.value })}
+            className={`border p-2 w-full ${errors?.base_unit ? 'border-red-500' : ''}`}
+          >
+            <option value="">{t('select_unit')}</option>
+            {units && units.length > 0 ? (
+              units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.unit_name}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>{t('no_units_available')}</option>
+            )}
+          </select>
+          {errors?.base_unit && <p className="text-red-500 text-sm">{errors.base_unit}</p>}
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('input_unit')}</label>
+          <select
+            value={formData.input_unit}
+            onChange={(e) => setFormData({ ...formData, input_unit: e.target.value })}
+            className={`border p-2 w-full ${errors?.input_unit ? 'border-red-500' : ''}`}
+          >
+            <option value="">{t('select_unit')}</option>
+            {units && units.length > 0 ? (
+              units.map((unit) => (
+                <option key={unit.id} value={unit.id}>
+                  {unit.unit_name}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>{t('no_units_available')}</option>
+            )}
+          </select>
+          {errors?.input_unit && <p className="text-red-500 text-sm">{errors.input_unit}</p>}
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('input_quantity')}</label>
           <input
             type="number"
-            step="0.01"
-            placeholder={t('minimum_threshold')}
-            value={formData.minimum_threshold}
-            onChange={(e) =>
-              setFormData({ ...formData, minimum_threshold: e.target.value })
-            }
-            className={`border p-2 w-full ${errors?.minimum_threshold ? 'border-red-500' : ''}`}
+            value={formData.input_quantity}
+            onChange={(e) => setFormData({ ...formData, input_quantity: e.target.value })}
+            className={`border p-2 w-full ${errors?.input_quantity ? 'border-red-500' : ''}`}
           />
-          {errors?.minimum_threshold && (
-            <p className="text-red-500 text-sm">{errors.minimum_threshold}</p>
-          )}
-
-          <label className="inline-flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={formData.running_out}
-              onChange={(e) => setFormData({ ...formData, running_out: e.target.checked })}
-            />
-            <span>{t('running_out')}</span>
-          </label>
-
-          <button
-            type="button"
-            onClick={handleAddToList}
-            className="bg-green-600 text-white px-4 py-2 rounded mt-4"
-          >
-            + {t('add_product_to_list')}
-          </button>
+          {errors?.input_quantity && <p className="text-red-500 text-sm">{errors.input_quantity}</p>}
         </div>
-      ) : (
-        <div className="text-red-600">{t('only_beverages_allowed')}</div>
-      )}
-
-      {products.length > 0 && (
-        <div className="mt-6">
-          <h2 className="font-bold text-lg mb-2">{t('products_in_queue')}</h2>
-          <ul className="space-y-2 border p-2 max-h-64 overflow-auto">
-            {products.map((p, idx) => (
-              <li key={p.id} className="bg-gray-100 rounded p-2 flex justify-between items-center">
-                <span>
-                  {idx + 1}. {p.name} – {t('price')}: ${p.price_per_unit}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setProducts((prev) => prev.filter((prod) => prod.id !== p.id))
-                  }
-                  className="text-red-600 hover:underline"
-                  aria-label={`${t('remove_product')} ${p.name}`}
-                >
-                  {t('remove')}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            onClick={handleSubmitAll}
-            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded"
-            disabled={products.length === 0}
-          >
-            {t('submit_all')}
-          </button>
+        <div>
+          <label className="block font-semibold mb-1">{t('conversion_amount')}</label>
+          <input
+            type="number"
+            value={formData.conversion_amount}
+            onChange={(e) => setFormData({ ...formData, conversion_amount: e.target.value })}
+            className={`border p-2 w-full ${errors?.conversion_amount ? 'border-red-500' : ''}`}
+          />
+          {errors?.conversion_amount && <p className="text-red-500 text-sm">{errors.conversion_amount}</p>}
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('calculated_base_units')}</label>
+          <input
+            type="number"
+            value={calculatedBaseUnits}
+            readOnly
+            className="border p-2 w-full bg-gray-100"
+          />
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('minimum_threshold_base_units')}</label>
+          <input
+            type="number"
+            value={formData.minimum_threshold_base_units}
+            onChange={(e) => setFormData({ ...formData, minimum_threshold_base_units: e.target.value })}
+            className={`border p-2 w-full ${errors?.minimum_threshold_base_units ? 'border-red-500' : ''}`}
+          />
+          {errors?.minimum_threshold_base_units && <p className="text-red-500 text-sm">{errors.minimum_threshold_base_units}</p>}
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('description')}</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="border p-2 w-full"
+          />
+        </div>
+        <div>
+          <label className="block font-semibold mb-1">{t('receipt_image')}</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFormData({ ...formData, receipt_image: e.target.files[0] })}
+            className="border p-2 w-full"
+          />
+        </div>
+        <button
+          type="submit"
+          className={`bg-green-600 text-white px-4 py-2 rounded mt-4 w-full`}
+          // disabled={isSubmitting}
+        >
+          {isSubmitting ? t('submitting') : t('submit')}
+        </button>
+      </form>
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full">
+            <h2 className="text-xl font-bold mb-4">{t('confirm_product_details')}</h2>
+            <div className="mb-4 space-y-2">
+              <div><strong>{t('product_name')}:</strong> {formData.name}</div>
+              <div><strong>{t('item_type')}:</strong> {itemTypes.find(i => String(i.id) === String(selectedItemType))?.type_name || ''}</div>
+              <div><strong>{t('category')}:</strong> {categories.find(c => String(c.id) === String(formData.category))?.category_name || ''}</div>
+              <div><strong>{t('base_unit')}:</strong> {units.find(u => String(u.id) === String(formData.base_unit))?.unit_name || ''}</div>
+              <div><strong>{t('input_unit')}:</strong> {units.find(u => String(u.id) === String(formData.input_unit))?.unit_name || ''}</div>
+              <div><strong>{t('input_quantity')}:</strong> {formData.input_quantity}</div>
+              <div><strong>{t('conversion_amount')}:</strong> {formData.conversion_amount}</div>
+              <div><strong>{t('calculated_base_units')}:</strong> {calculatedBaseUnits}</div>
+              <div><strong>{t('minimum_threshold_base_units')}:</strong> {formData.minimum_threshold_base_units}</div>
+              <div><strong>{t('price')}:</strong> {formData.base_unit_price}</div>
+              <div><strong>{t('description')}:</strong> {formData.description}</div>
+              {formData.receipt_image && <div><strong>{t('receipt_image')}:</strong> {formData.receipt_image.name}</div>}
+            </div>
+            <div className="flex justify-end space-x-4">
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded"
+                onClick={handleConfirmedSubmit}
+                disabled={isSubmitting}
+              >
+                {t('confirm')}
+              </button>
+              <button
+                className="bg-gray-400 text-white px-4 py-2 rounded"
+                onClick={() => setShowConfirmModal(false)}
+                disabled={isSubmitting}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
