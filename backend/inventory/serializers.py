@@ -30,10 +30,19 @@ class BarmanStockSerializer(serializers.ModelSerializer):
         read_only_fields = ['running_out']
 
     def get_quantity_basic_unit(self, obj):
-        # Try to get product.measurement, fallback to 1 if not present
+        # Try to convert to the default sales unit for this product
         product = obj.stock.product
-        measurement = getattr(product, 'measurement', 1)
-        return obj.unit_quantity * measurement
+        # Find the default sales unit measurement
+        measurement = product.measurements.filter(is_default_sales_unit=True).first()
+        if measurement:
+            # Convert from base units to the default sales unit
+            try:
+                conversion_factor = product.get_conversion_factor(product.base_unit, measurement.from_unit)
+                return float(obj.quantity_in_base_units) / float(conversion_factor)
+            except Exception:
+                pass
+        # Fallback: just return the base units
+        return obj.quantity_in_base_units
 
 # Branch
 class BranchSerializer(serializers.ModelSerializer):
@@ -65,17 +74,17 @@ class CategorySerializer(serializers.ModelSerializer):
 
 # Product
 class ProductSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(), source='category', write_only=True
-    )
+    category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
+    base_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='base_unit', write_only=True)
 
     class Meta:
         model = Product
         fields = [
             'id',
             'name',
-            'category',
+            'description',
+            'base_unit_price',
+            'base_unit_id',
             'category_id',
             'created_at',
             'updated_at',
@@ -184,6 +193,8 @@ class ProductMeasurementSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source='product', write_only=True)
     from_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='from_unit', write_only=True)
     to_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='to_unit', write_only=True)
+    from_unit_name = serializers.CharField(source='from_unit.unit_name', read_only=True)
+    from_unit_id_read = serializers.IntegerField(source='from_unit.id', read_only=True)
 
     class Meta:
         model = ProductMeasurement
@@ -196,6 +207,8 @@ class ProductMeasurementSerializer(serializers.ModelSerializer):
             'is_default_sales_unit',
             'created_at',
             'updated_at',
+            'from_unit_name',
+            'from_unit_id_read',
         ]
         extra_kwargs = {
             'product': {'read_only': True},

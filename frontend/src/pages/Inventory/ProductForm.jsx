@@ -220,7 +220,7 @@ const AddProductForm = () => {
         setIsSubmitting(false);
         setShowConfirmModal(false);
         return;
-      }
+    }
       // Defensive check for required measurement fields
       const measurementPayload = {
         product_id: createdProduct.id,
@@ -302,7 +302,7 @@ const AddProductForm = () => {
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
       {console.log('Rendering modal?', showConfirmModal)}
       <h1 className="text-2xl font-bold mb-4">{t('add_new_product')}</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
         {submitMessage && (
           <div className="bg-green-100 text-green-800 p-2 rounded text-center font-semibold">{submitMessage}</div>
         )}
@@ -367,11 +367,11 @@ const AddProductForm = () => {
             )}
           </select>
           {isNewProduct && (
-            <input
-              type="text"
-              name="name"
+        <input
+          type="text"
+          name="name"
               placeholder={t('enter_new_product_name')}
-              value={formData.name}
+          value={formData.name}
               onChange={handleInputChange}
               className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm mt-2 ${errors?.name ? 'border-red-500' : ''}`}
               autoFocus
@@ -379,12 +379,12 @@ const AddProductForm = () => {
             />
           )}
           {errors?.name && <p className="text-red-500 text-sm">{errors.name}</p>}
-        </div>
-        <div>
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('category')}</label>
-          <select
-            name="category"
-            value={formData.category}
+        <select
+          name="category"
+          value={formData.category}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.category ? 'border-red-500' : ''}`}
             disabled={!formData.item_type}
@@ -401,10 +401,10 @@ const AddProductForm = () => {
                 .map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.category_name}
-                  </option>
+            </option>
                 ))
             ) : null}
-          </select>
+        </select>
           {formData.item_type && categories.filter((cat) => {
             if (cat.item_type && typeof cat.item_type === 'object') {
               return String(cat.item_type.id) === String(formData.item_type);
@@ -414,10 +414,10 @@ const AddProductForm = () => {
             <p className="text-gray-500 text-sm mt-1">{t('no_categories_for_item_type')}</p>
           )}
           {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
-        </div>
-        <div>
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('base_unit')}</label>
-          <select
+        <select
             name="base_unit"
             value={formData.base_unit}
             onChange={handleInputChange}
@@ -427,8 +427,8 @@ const AddProductForm = () => {
             <option value="">{units.length === 0 ? t('loading_units') : t('select_unit')}</option>
             {units.length > 0 && units.map((unit) => (
               <option key={unit.id} value={unit.id}>{unit.unit_name}</option>
-            ))}
-          </select>
+          ))}
+        </select>
           {errors?.base_unit && <p className="text-red-500 text-sm">{errors.base_unit}</p>}
         </div>
         {/* Add Price per unit input here */}
@@ -445,10 +445,10 @@ const AddProductForm = () => {
             placeholder={t('enter_price_per_unit') || 'Enter price per unit'}
           />
           {errors?.base_unit_price && <p className="text-red-500 text-sm">{errors.base_unit_price}</p>}
-        </div>
-        <div>
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('input_unit')}</label>
-          <select
+        <select
             name="input_unit"
             value={formData.input_unit}
             onChange={handleInputChange}
@@ -459,7 +459,7 @@ const AddProductForm = () => {
             {units.length > 0 && units.map((unit) => (
               <option key={unit.id} value={unit.id}>{unit.unit_name}</option>
             ))}
-          </select>
+        </select>
           {errors?.input_unit && <p className="text-red-500 text-sm">{errors.input_unit}</p>}
         </div>
         <div>
@@ -472,8 +472,8 @@ const AddProductForm = () => {
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.input_quantity ? 'border-red-500' : ''}`}
           />
           {errors?.input_quantity && <p className="text-red-500 text-sm">{errors.input_quantity}</p>}
-        </div>
-        <div>
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('conversion_amount')}</label>
           <input
             type="number"
@@ -483,20 +483,20 @@ const AddProductForm = () => {
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.conversion_amount ? 'border-red-500' : ''}`}
           />
           {errors?.conversion_amount && <p className="text-red-500 text-sm">{errors.conversion_amount}</p>}
-        </div>
-        <div>
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('calculated_base_units')}</label>
-          <input
-            type="number"
+        <input
+          type="number"
             value={calculatedBaseUnits}
             readOnly
             className="border p-2 w-full bg-gray-100 rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
-          />
-        </div>
-        <div>
+        />
+      </div>
+      <div>
           <label className="block font-semibold mb-1">{t('minimum_threshold_base_units')}</label>
-          <input
-            type="number"
+        <input
+          type="number"
             name="minimum_threshold_base_units"
             value={formData.minimum_threshold_base_units}
             onChange={handleInputChange}
@@ -521,16 +521,16 @@ const AddProductForm = () => {
             accept="image/*"
             onChange={(e) => setFormData({ ...formData, receipt_image: e.target.files[0] })}
             className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
-          />
-        </div>
-        <button
-          type="submit"
+        />
+      </div>
+      <button
+        type="submit"
           className={`bg-green-600 text-white px-4 py-2 rounded mt-4 w-full rounded-md ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={isSubmitting}
-        >
+        disabled={isSubmitting}
+      >
           {isSubmitting ? t('submitting') : t('submit')}
-        </button>
-      </form>
+      </button>
+    </form>
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">

@@ -8,11 +8,20 @@ const NewRequest = ({
   formMessage,
   products,
   branches,
-  productUnits = [],
+  // productUnits = [], // Remove this prop
   handleFormChange,
   handleFormSubmit,
+  defaultMeasurement // <-- Add this prop
 }) => {
   if (!showModal) return null;
+
+  // Find the selected product's default sales unit name
+  let defaultUnitName = '';
+  if (defaultMeasurement && (defaultMeasurement.from_unit && defaultMeasurement.from_unit.unit_name)) {
+    defaultUnitName = defaultMeasurement.from_unit.unit_name;
+  } else if (defaultMeasurement && defaultMeasurement.from_unit_id && defaultMeasurement.from_unit_name) {
+    defaultUnitName = defaultMeasurement.from_unit_name;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -46,7 +55,9 @@ const NewRequest = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Quantity</label>
+            <label className="block text-sm font-medium">
+              Quantity{defaultUnitName ? ` (${defaultUnitName})` : ''}
+            </label>
             <input
               type="number"
               name="quantity"
@@ -58,29 +69,7 @@ const NewRequest = ({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium">Unit Type</label>
-            <select
-              name="unit_type"
-              value={formData.unit_type}
-              onChange={handleFormChange}
-              className="w-full border p-2 rounded"
-              required
-            >
-              <option value="">-- Select Unit --</option>
-              {productUnits.length > 0
-                ? productUnits.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.unit_name}
-                    </option>
-                  ))
-                : products.length > 0 && products.find(p => p.id == formData.product)?.base_unit && (
-                    <option value={products.find(p => p.id == formData.product).base_unit.id}>
-                      {products.find(p => p.id == formData.product).base_unit.unit_name}
-                    </option>
-                  )}
-            </select>
-          </div>
+          {/* Remove the unit type dropdown */}
 
           <div>
             <label className="block text-sm font-medium">Branch</label>

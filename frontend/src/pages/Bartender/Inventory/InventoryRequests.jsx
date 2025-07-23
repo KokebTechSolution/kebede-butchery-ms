@@ -22,12 +22,12 @@ const InventoryRequestList = () => {
   const [formData, setFormData] = useState({
     product: '',
     quantity: '',
-    unit_type: 'unit',
     status: 'pending',
     branch: '',
   });
   const [formMessage, setFormMessage] = useState('');
-  const [productUnits, setProductUnits] = useState([]);
+  // Fetch default measurement for selected product
+  const [defaultMeasurement, setDefaultMeasurement] = useState(null);
 
   // Trigger to refresh stocks
   const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
@@ -46,25 +46,25 @@ const InventoryRequestList = () => {
     fetchBarmanStocks();
   }, [refreshStockTrigger]);
 
-  // Fetch units for selected product
+  // Fetch default measurement for selected product
   useEffect(() => {
-    const fetchUnits = async () => {
+    const fetchDefaultMeasurement = async () => {
       if (formData.product) {
         try {
           const measurements = await fetchProductMeasurements(formData.product);
-          setProductUnits(measurements.map(m => m.from_unit));
-          // Auto-select if only one unit
-          if (measurements.length === 1) {
-            setFormData(prev => ({ ...prev, unit_type: measurements[0].from_unit.id }));
-          }
+          console.log('Fetched measurements:', measurements);
+          const def = measurements.find(m => m.is_default_sales_unit);
+          console.log('Default measurement:', def);
+          const defMeasurement = def || null;
+          setDefaultMeasurement(defMeasurement);
         } catch (err) {
-          setProductUnits([]);
+          setDefaultMeasurement(null);
         }
       } else {
-        setProductUnits([]);
+        setDefaultMeasurement(null);
       }
     };
-    fetchUnits();
+    fetchDefaultMeasurement();
   }, [formData.product]);
 
   const fetchBarmanStocks = async () => {
@@ -107,29 +107,28 @@ const InventoryRequestList = () => {
     }
   };
 
-  const handleReach = async (id) => {
+  // Accept and Reach handlers
+  const handleAccept = async (id) => {
     setProcessingId(id);
     try {
-      await ReachRequest(id); // ensure ReachRequest uses api with credentials
+      await api.post(`/inventory/requests/${id}/accept/`);
       await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1);
+      setFormMessage('Request accepted!');
     } catch (err) {
-      console.error('Failed to mark as reached:', err.response?.data || err.message);
-      alert('Failed to mark as Reached: ' + (err.response?.data?.detail || err.message));
+      setFormMessage('Failed to accept request.');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleNotReach = async (id) => {
+  const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      await NotReachRequest(id); // ensure NotReachRequest uses api with credentials
+      await api.post(`/inventory/requests/${id}/reach/`);
       await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1);
+      setFormMessage('Marked as reached!');
     } catch (err) {
-      console.error('Failed to mark as not reached:', err);
-      alert('Failed to mark as Not Reached');
+      setFormMessage('Failed to mark as reached.');
     } finally {
       setProcessingId(null);
     }
@@ -170,7 +169,7 @@ const InventoryRequestList = () => {
         formMessage={formMessage}
         products={products}
         branches={branches}
-        productUnits={productUnits}
+        // Remove productUnits and unit_type from props
         handleFormChange={(e) => {
           const { name, value } = e.target;
           setFormData((prev) => ({ ...prev, [name]: value }));
@@ -181,25 +180,41 @@ const InventoryRequestList = () => {
             setFormMessage('Please select a product, branch, and enter a valid quantity.');
             return;
           }
+          // Always use from_unit_id from the default measurement
+          const unitId = defaultMeasurement && (defaultMeasurement.from_unit_id || defaultMeasurement.from_unit_id_read);
+
+          if (!defaultMeasurement || typeof unitId !== 'number' || unitId <= 0) {
+            setFormMessage('No default sales unit defined for this product.');
+            return;
+          }
+          const conversionFactor = parseFloat(defaultMeasurement.amount_per);
+          const quantityInBaseUnits = parseFloat(formData.quantity) * conversionFactor;
           try {
+            console.log('Submitting request payload:', {
+              product_id: parseInt(formData.product),
+              quantity: quantityInBaseUnits,
+              branch_id: parseInt(formData.branch),
+              status: 'pending',
+              request_unit_id: unitId
+            });
             await api.post('/inventory/requests/', {
               product_id: parseInt(formData.product),
-              quantity: parseFloat(formData.quantity),
-              request_unit_id: parseInt(formData.unit_type),
-              status: 'pending',
+              quantity: quantityInBaseUnits,
               branch_id: parseInt(formData.branch),
+              status: 'pending',
+              request_unit_id: unitId // Always use from_unit_id
             });
             setFormMessage('Request submitted successfully!');
             setFormData({
               product: '',
               quantity: '',
-              unit_type: 'unit',
               status: 'pending',
               branch: formData.branch,
             });
             setShowModal(false);
             await loadRequests();
           } catch (err) {
+            console.error('Request submission error:', err.response?.data || err.message);
             const errors = err.response?.data || {};
             const messages = [];
             for (const key in errors) {
@@ -211,9 +226,13 @@ const InventoryRequestList = () => {
                 messages.push(`${key}: ${errors[key]}`);
               }
             }
+            if (messages.length === 0 && err.message) {
+              messages.push(err.message);
+            }
             setFormMessage(messages.join(' | ') || 'Submission failed.');
           }
         }}
+        defaultMeasurement={defaultMeasurement}
       />
 
       {loading ? (
@@ -267,29 +286,26 @@ const InventoryRequestList = () => {
                       </span>
                     </td>
                     <td className="border px-4 py-2">
-                      {req.status === 'accepted' ? (
-                        !reached ? (
-                          <>
-                            <button
-                              onClick={() => handleReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                            >
-                              Reached
-                            </button>
-                            <button
-                              onClick={() => handleNotReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50 ml-2"
-                            >
-                              Not Reached
-                            </button>
-                          </>
-                        ) : (
-                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                            Reach mark
-                          </span>
-                        )
+                      {req.status === 'pending' ? (
+                        <button
+                          onClick={() => handleAccept(req.id)}
+                          disabled={processingId === req.id}
+                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
+                        >
+                          Accept
+                        </button>
+                      ) : req.status === 'accepted' && !req.reached_status ? (
+                        <button
+                          onClick={() => handleReach(req.id)}
+                          disabled={processingId === req.id}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
+                        >
+                          Reached
+                        </button>
+                      ) : req.status === 'accepted' && req.reached_status ? (
+                        <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
+                          Reach mark
+                        </span>
                       ) : (
                         <span className="text-gray-500 italic">No action available</span>
                       )}

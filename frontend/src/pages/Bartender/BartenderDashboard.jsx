@@ -37,7 +37,7 @@ export default function BartenderDashboard() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await axios.get("http://localhost:8000/api/inventory/inventoryrequests/", {
+        const res = await axios.get("http://localhost:8000/api/inventory/requests/", {
           withCredentials: true,  // send session cookies
         });
         setInventoryRequests(

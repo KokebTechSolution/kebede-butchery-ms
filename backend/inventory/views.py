@@ -3,7 +3,7 @@ from django.db import transaction, models
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -44,39 +44,71 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
     serializer_class = InventoryRequestSerializer
     permission_classes = [AllowAny]
 
+    def perform_create(self, serializer):
+        # Set requested_by to the current user if not already set
+        if not serializer.validated_data.get('requested_by'):
+            serializer.save(requested_by=self.request.user)
+        else:
+            serializer.save()
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
+    def accept(self, request, pk=None):
+        req = self.get_object()
+        if req.status != 'pending':
+            return Response({'detail': 'Request is not pending.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Reduce stock from main store (in base units)
+        try:
+            stock = Stock.objects.get(product=req.product, branch=req.branch)
+            if stock.quantity_in_base_units < req.quantity:
+                return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
+            stock.quantity_in_base_units -= req.quantity
+            stock.save()
+        except Stock.DoesNotExist:
+            return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
+        req.status = 'accepted'
+        req.save()
+        return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def reject(self, request, pk=None):
+        req = self.get_object()
+        if req.status != 'pending':
+            return Response({'detail': 'Request is not pending.'}, status=status.HTTP_400_BAD_REQUEST)
+        req.status = 'rejected'
+        req.save()
+        return Response({'status': 'rejected'}, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def reach(self, request, pk=None):
-        request_obj = self.get_object()
-        request_obj.reached_status = True
-        request_obj.save()
+        req = self.get_object()
+        if req.status != 'accepted':
+            return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+        req.reached_status = True
+        req.save()
 
-        # Add quantity to BarmanStock for this bartender, product, and branch
-        bartender = request.user
-        product = request_obj.product
-        branch = request_obj.branch
-        quantity = request_obj.quantity
-
-        # Find the Stock object for this product and branch
+        # Find the main store stock for this product and branch
         try:
-            stock = Stock.objects.get(product=product, branch=branch)
+            stock = Stock.objects.get(product=req.product, branch=req.branch)
         except Stock.DoesNotExist:
-            return Response({'detail': 'Stock record not found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'No main store stock found.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Find or create the BarmanStock for this stock and bartender
-        barman_stock, created = BarmanStock.objects.get_or_create(stock=stock, bartender=bartender)
-        barman_stock.unit_quantity += quantity
+        # Find or create the barman stock for this bartender, product, and branch
+        barman = req.requested_by  # Make sure this is set when the request is created
+        if not barman:
+            return Response({'detail': 'No bartender associated with this request.'}, status=status.HTTP_400_BAD_REQUEST)
+        barman_stock, created = BarmanStock.objects.get_or_create(
+            stock=stock,
+            bartender=barman,
+            defaults={'quantity_in_base_units': 0, 'branch': req.branch}
+        )
+        # If branch is not set, set it
+        if not barman_stock.branch:
+            barman_stock.branch = req.branch
+        barman_stock.quantity_in_base_units += req.quantity
         barman_stock.save()
 
-        serializer = self.get_serializer(request_obj)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['post'])
-    def not_reach(self, request, pk=None):
-        request_obj = self.get_object()
-        request_obj.reached_status = False
-        request_obj.save()
-        serializer = self.get_serializer(request_obj)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
 class ProductViewSet(viewsets.ModelViewSet):

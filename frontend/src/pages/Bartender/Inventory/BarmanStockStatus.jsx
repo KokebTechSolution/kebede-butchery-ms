@@ -31,18 +31,19 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
         <table className="w-full border table-auto text-center">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border px-2 py-1">Number</th>
-              <th className="border px-2 py-1">Name Of Beverage</th>
-              <th className="border px-2 py-1">Cartons</th>
-              <th className="border px-2 py-1">Bottles</th>
-              <th className="border px-2 py-1">Units</th>
+              <th className="border px-2 py-1">#</th>
+              <th className="border px-2 py-1">Product Name</th>
+              <th className="border px-2 py-1">Branch</th>
+              <th className="border px-2 py-1">Quantity (Base Unit)</th>
+              <th className="border px-2 py-1">Quantity (Sales Unit)</th>
+              <th className="border px-2 py-1">Minimum Threshold</th>
               <th className="border px-2 py-1">Status</th>
             </tr>
           </thead>
           <tbody>
             {filteredStocks.length === 0 ? (
               <tr>
-                <td colSpan="6" className="text-center p-4 text-gray-500">
+                <td colSpan="7" className="text-center p-4 text-gray-500">
                   No stock found.
                 </td>
               </tr>
@@ -51,16 +52,11 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
                 <tr key={stock.id} className="hover:bg-gray-50">
                   <td className="border px-2 py-1">{idx + 1}</td>
                   <td className="border px-2 py-1">{stock.product_name}</td>
-                  <td className="border px-2 py-1">{stock.carton_quantity}</td>
-                  <td className="border px-2 py-1">{stock.bottle_quantity}</td>
-                  <td className="border px-2 py-1">{stock.unit_quantity}</td>
-                  <td
-                    className={`border px-2 py-1 font-bold ${
-                      stock.running_out ? 'text-red-600' : 'text-green-600'
-                    }`}
-                  >
-                    {stock.running_out ? 'Running Out' : 'Available'}
-                  </td>
+                  <td className="border px-2 py-1">{stock.branch_name}</td>
+                  <td className="border px-2 py-1">{stock.quantity_in_base_units}</td>
+                  <td className="border px-2 py-1">{stock.quantity_basic_unit}</td>
+                  <td className="border px-2 py-1">{stock.minimum_threshold_base_units}</td>
+                  <td className={`border px-2 py-1 font-bold ${stock.running_out ? 'text-red-600' : 'text-green-600'}`}>{stock.running_out ? 'Running Out' : 'Available'}</td>
                 </tr>
               ))
             )}
