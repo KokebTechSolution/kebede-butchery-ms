@@ -158,6 +158,54 @@ const AddProductForm = () => {
     setShowConfirmModal(true);
   };
 
+  // 1. Add live validation on input change
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    let newValue = files ? files[0] : value;
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
+    // Validate this field only
+    let err = { ...errors };
+    switch (name) {
+      case 'name':
+        if (!value.trim()) err.name = t('product_name_required');
+        else if (isNewProduct && isDuplicateName(value)) err.name = t('duplicate_product_name');
+        else delete err.name;
+        break;
+      case 'category':
+        if (!value) err.category = t('category_required');
+        else delete err.category;
+        break;
+      case 'base_unit_price':
+        if (!value) err.base_unit_price = t('price_required');
+        else if (isNaN(Number(value)) || Number(value) < 0) err.base_unit_price = t('price_must_be_positive');
+        else delete err.base_unit_price;
+        break;
+      case 'base_unit':
+        if (!value) err.base_unit = t('unit_required');
+        else delete err.base_unit;
+        break;
+      case 'input_unit':
+        if (!value) err.input_unit = t('input_unit_required');
+        else delete err.input_unit;
+        break;
+      case 'input_quantity':
+        if (!value) err.input_quantity = t('input_quantity_required');
+        else delete err.input_quantity;
+        break;
+      case 'conversion_amount':
+        if (!value) err.conversion_amount = t('conversion_amount_required');
+        else delete err.conversion_amount;
+        break;
+      case 'minimum_threshold_base_units':
+        if (!value) err.minimum_threshold_base_units = t('minimum_threshold_required');
+        else delete err.minimum_threshold_base_units;
+        break;
+      default:
+        break;
+    }
+    setErrors(err);
+  };
+
   // Actual API submission logic, extracted from handleSubmit
   const handleConfirmedSubmit = async () => {
     setIsSubmitting(true);
@@ -266,16 +314,20 @@ const AddProductForm = () => {
             value={selectedItemType}
             onChange={(e) => {
               setSelectedItemType(e.target.value);
-              setFormData({ ...formData, category: '' });
+              setFormData({ ...formData, category: '', base_unit: '', input_unit: '' }); // Reset dependent fields
             }}
-            className="border p-2 w-full"
+            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           >
             <option value="">{t('select_item_type')}</option>
-            {itemTypes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.type_name}
-              </option>
-            ))}
+            {itemTypes.length > 0 ? (
+              itemTypes.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.type_name}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>{t('no_item_types_available') || 'No item types available'}</option>
+            )}
           </select>
         </div>
         <div>
@@ -291,21 +343,24 @@ const AddProductForm = () => {
                 setFormData((prev) => ({ ...prev, name: e.target.value }));
               }
             }}
-            className="border p-2 w-full"
+            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           >
             <option value="__new">+ {t('add_new_product')}</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.name}>{p.name}</option>
-            ))}
+            {products.length > 0 ? (
+              products.map((p) => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))
+            ) : (
+              <option value="" disabled>{t('no_products_available') || 'No products available'}</option>
+            )}
           </select>
-          {/* Show the input always when adding new, and make sure it's enabled */}
           {isNewProduct && (
             <input
               type="text"
               placeholder={t('enter_new_product_name')}
               value={formData.name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              className={`border p-2 w-full mt-2 ${errors?.name ? 'border-red-500' : ''}`}
+              onChange={handleInputChange}
+              className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm mt-2 ${errors?.name ? 'border-red-500' : ''}`}
               autoFocus
               disabled={false}
             />
@@ -316,11 +371,12 @@ const AddProductForm = () => {
           <label className="block font-semibold mb-1">{t('category')}</label>
           <select
             value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className={`border p-2 w-full ${errors?.category ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.category ? 'border-red-500' : ''}`}
+            disabled={!selectedItemType}
           >
             <option value="">{t('select_category')}</option>
-            {categories && categories.length > 0 ? (
+            {selectedItemType && categories.length > 0 ? (
               categories
                 .filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType))
                 .map((category) => (
@@ -329,10 +385,10 @@ const AddProductForm = () => {
                   </option>
                 ))
             ) : (
-              <option value="" disabled>{t('no_categories_available')}</option>
+              <option value="" disabled>{t('no_categories_available') || 'No categories available'}</option>
             )}
           </select>
-          {categories.filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType)).length === 0 && (
+          {selectedItemType && categories.filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType)).length === 0 && (
             <p className="text-gray-500 text-sm mt-1">{t('no_categories_for_item_type')}</p>
           )}
           {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
@@ -341,38 +397,55 @@ const AddProductForm = () => {
           <label className="block font-semibold mb-1">{t('base_unit')}</label>
           <select
             value={formData.base_unit}
-            onChange={(e) => setFormData({ ...formData, base_unit: e.target.value })}
-            className={`border p-2 w-full ${errors?.base_unit ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.base_unit ? 'border-red-500' : ''}`}
+            disabled={!selectedItemType}
           >
             <option value="">{t('select_unit')}</option>
-            {units && units.length > 0 ? (
+            {selectedItemType && units.length > 0 ? (
               units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
                   {unit.unit_name}
                 </option>
               ))
             ) : (
-              <option value="" disabled>{t('no_units_available')}</option>
+              <option value="" disabled>{t('no_units_available') || 'No units available'}</option>
             )}
           </select>
           {errors?.base_unit && <p className="text-red-500 text-sm">{errors.base_unit}</p>}
+        </div>
+        {/* Add Price per unit input here */}
+        <div>
+          <label className="block font-semibold mb-1">{t('base_unit_price') || 'Price per unit'}</label>
+          <input
+            type="number"
+            name="base_unit_price"
+            value={formData.base_unit_price}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.base_unit_price ? 'border-red-500' : ''}`}
+            min="0"
+            step="0.01"
+            placeholder={t('enter_price_per_unit') || 'Enter price per unit'}
+          />
+          {errors?.base_unit_price && <p className="text-red-500 text-sm">{errors.base_unit_price}</p>}
         </div>
         <div>
           <label className="block font-semibold mb-1">{t('input_unit')}</label>
           <select
             value={formData.input_unit}
-            onChange={(e) => setFormData({ ...formData, input_unit: e.target.value })}
-            className={`border p-2 w-full ${errors?.input_unit ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.input_unit ? 'border-red-500' : ''}`}
+            disabled={!selectedItemType}
           >
             <option value="">{t('select_unit')}</option>
-            {units && units.length > 0 ? (
+            {selectedItemType && units.length > 0 ? (
               units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
                   {unit.unit_name}
                 </option>
               ))
             ) : (
-              <option value="" disabled>{t('no_units_available')}</option>
+              <option value="" disabled>{t('no_units_available') || 'No units available'}</option>
             )}
           </select>
           {errors?.input_unit && <p className="text-red-500 text-sm">{errors.input_unit}</p>}
@@ -381,9 +454,10 @@ const AddProductForm = () => {
           <label className="block font-semibold mb-1">{t('input_quantity')}</label>
           <input
             type="number"
+            name="input_quantity"
             value={formData.input_quantity}
-            onChange={(e) => setFormData({ ...formData, input_quantity: e.target.value })}
-            className={`border p-2 w-full ${errors?.input_quantity ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.input_quantity ? 'border-red-500' : ''}`}
           />
           {errors?.input_quantity && <p className="text-red-500 text-sm">{errors.input_quantity}</p>}
         </div>
@@ -391,9 +465,10 @@ const AddProductForm = () => {
           <label className="block font-semibold mb-1">{t('conversion_amount')}</label>
           <input
             type="number"
+            name="conversion_amount"
             value={formData.conversion_amount}
-            onChange={(e) => setFormData({ ...formData, conversion_amount: e.target.value })}
-            className={`border p-2 w-full ${errors?.conversion_amount ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.conversion_amount ? 'border-red-500' : ''}`}
           />
           {errors?.conversion_amount && <p className="text-red-500 text-sm">{errors.conversion_amount}</p>}
         </div>
@@ -403,40 +478,43 @@ const AddProductForm = () => {
             type="number"
             value={calculatedBaseUnits}
             readOnly
-            className="border p-2 w-full bg-gray-100"
+            className="border p-2 w-full bg-gray-100 rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           />
         </div>
         <div>
           <label className="block font-semibold mb-1">{t('minimum_threshold_base_units')}</label>
           <input
             type="number"
+            name="minimum_threshold_base_units"
             value={formData.minimum_threshold_base_units}
-            onChange={(e) => setFormData({ ...formData, minimum_threshold_base_units: e.target.value })}
-            className={`border p-2 w-full ${errors?.minimum_threshold_base_units ? 'border-red-500' : ''}`}
+            onChange={handleInputChange}
+            className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.minimum_threshold_base_units ? 'border-red-500' : ''}`}
           />
           {errors?.minimum_threshold_base_units && <p className="text-red-500 text-sm">{errors.minimum_threshold_base_units}</p>}
         </div>
         <div>
           <label className="block font-semibold mb-1">{t('description')}</label>
           <textarea
+            name="description"
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="border p-2 w-full"
+            onChange={handleInputChange}
+            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           />
         </div>
         <div>
           <label className="block font-semibold mb-1">{t('receipt_image')}</label>
           <input
             type="file"
+            name="receipt_image"
             accept="image/*"
             onChange={(e) => setFormData({ ...formData, receipt_image: e.target.files[0] })}
-            className="border p-2 w-full"
+            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           />
         </div>
         <button
           type="submit"
-          className={`bg-green-600 text-white px-4 py-2 rounded mt-4 w-full`}
-          // disabled={isSubmitting}
+          className={`bg-green-600 text-white px-4 py-2 rounded mt-4 w-full rounded-md ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isSubmitting}
         >
           {isSubmitting ? t('submitting') : t('submit')}
         </button>
@@ -444,9 +522,16 @@ const AddProductForm = () => {
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              className="absolute top-2 right-2 text-2xl text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Close modal"
+              onClick={() => setShowConfirmModal(false)}
+            >
+              &times;
+            </button>
             <h2 className="text-xl font-bold mb-4">{t('confirm_product_details')}</h2>
-            <div className="mb-4 space-y-2">
+            <div className="mb-4 space-y-2 text-sm">
               <div><strong>{t('product_name')}:</strong> {formData.name}</div>
               <div><strong>{t('item_type')}:</strong> {itemTypes.find(i => String(i.id) === String(selectedItemType))?.type_name || ''}</div>
               <div><strong>{t('category')}:</strong> {categories.find(c => String(c.id) === String(formData.category))?.category_name || ''}</div>
@@ -460,16 +545,16 @@ const AddProductForm = () => {
               <div><strong>{t('description')}:</strong> {formData.description}</div>
               {formData.receipt_image && <div><strong>{t('receipt_image')}:</strong> {formData.receipt_image.name}</div>}
             </div>
-            <div className="flex justify-end space-x-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
               <button
-                className="bg-green-600 text-white px-4 py-2 rounded"
+                className="bg-green-600 text-white px-4 py-2 rounded w-full sm:w-auto"
                 onClick={handleConfirmedSubmit}
                 disabled={isSubmitting}
               >
-                {t('confirm')}
+                {isSubmitting ? t('submitting') : t('confirm')}
               </button>
               <button
-                className="bg-gray-400 text-white px-4 py-2 rounded"
+                className="bg-gray-400 text-white px-4 py-2 rounded w-full sm:w-auto"
                 onClick={() => setShowConfirmModal(false)}
                 disabled={isSubmitting}
               >
