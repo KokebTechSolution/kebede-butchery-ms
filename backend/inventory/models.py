@@ -1,31 +1,39 @@
 from django.db import models
 from django.utils import timezone
-from branches.models import Branch  # Adjust import path as needed
+from branches.models import Branch
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Sum, F
 from decimal import Decimal, ROUND_DOWN
-
-User = get_user_model()
-
-# --- Core Definitions ---
 
 class ItemType(models.Model):
     """
     Defines broad categories like 'Beverage', 'Food', 'Merchandise'.
     """
     type_name = models.CharField(max_length=50, unique=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Item Type"
+        verbose_name_plural = "Item Types"
+        ordering = ['type_name']
 
     def __str__(self):
         return self.type_name
 
-
 class Category(models.Model):
-    """
-    Defines sub-categories within an ItemType, e.g., 'Soft Drinks', 'Spirits', 'Juices'.
-    """
     item_type = models.ForeignKey(ItemType, on_delete=models.CASCADE)
     category_name = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Product Category"
+        verbose_name_plural = "Product Categories"
+        unique_together = ('item_type', 'category_name')
+        ordering = ['item_type__type_name', 'category_name']
 
     class Meta:
         unique_together = ('item_type', 'category_name') # Ensure unique category names per item type
@@ -33,267 +41,227 @@ class Category(models.Model):
     def __str__(self):
         return f"{self.category_name} ({self.item_type.type_name})"
 
-# --- Product Definitions ---
-
 class Product(models.Model):
-    """
-    Represents a sellable item, defining its name, category, and crucially,
-    how it's purchased/stocked and how it breaks down into sellable units.
-
-    This is where the "Grandpa" and "Father" concepts are defined.
-    """
-    class StockingUnit(models.TextChoices):
-        CARTON = 'carton', 'Carton'
-        BOTTLE = 'bottle', 'Bottle'
-        LITER = 'liter', 'Liter'
-        KILOGRAM = 'kilogram', 'Kilogram' # Example for food/other items
-        PIECE = 'piece', 'Piece' # For items always stocked and sold as single pieces
-
-    class SellableUnit(models.TextChoices):
-        PIECE = 'piece', 'Piece' # e.g., a can of soda, a single cookie
-        SHOT = 'shot', 'Shot'   # e.g., a shot of liquor
-        GLASS = 'glass', 'Glass' # e.g., a glass of tej, juice
-        UNIT = 'unit', 'Unit' # Generic smallest unit (if not piece, shot, glass)
-
     name = models.CharField(max_length=100)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    # The price of the smallest sellable unit
-    price_per_sellable_unit = models.DecimalField(max_digits=10, decimal_places=2)
-
-    # Grandpa Unit: How the product is primarily purchased or stocked (e.g., carton, bottle, liter)
-    primary_stocking_unit = models.CharField(
-        max_length=20,
-        choices=StockingUnit.choices,
-        default=StockingUnit.PIECE
-    )
-
-    # Father Unit: The smallest unit this product can be broken down into from its stocking unit.
-    # This is the unit we'll convert all stock into for internal tracking.
-    sellable_unit_type = models.CharField(
-        max_length=20,
-        choices=SellableUnit.choices,
-        default=SellableUnit.PIECE
-    )
-
-    # Conversion rate: How many 'sellable_unit_type' are in one 'primary_stocking_unit'
-    # E.g., for soda: 24 pieces in 1 carton. For Red Label: 20 shots in 1 bottle. For Tej: 4 glasses in 1 liter.
-    conversion_rate = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=1.0,
-        help_text="Number of sellable units per primary stocking unit."
-    )
-
+    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
+    uses_carton = models.BooleanField(default=False)
+    bottles_per_carton = models.IntegerField(default=0, null=True, blank=True)
     receipt_image = models.ImageField(upload_to='receipts/', null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = "Product"
+        verbose_name_plural = "Products"
+        ordering = ['name']
+
     def __str__(self):
         return self.name
-
-    def clean(self):
-        """
-        Custom validation for Product model.
-        Ensures conversion_rate is > 0 and makes sense with unit types.
-        """
-        if self.conversion_rate <= 0:
-            raise ValidationError({'conversion_rate': 'Conversion rate must be positive.'})
-
-        # Example: if primary stocking unit is 'piece', conversion rate should likely be 1
-        if self.primary_stocking_unit == self.SellableUnit.PIECE and self.conversion_rate != 1:
-            # You might allow this for special cases, or enforce it strictly.
-            # For simplicity, let's just make sure it's not zero.
-            pass
-
-    def get_price_per_stocking_unit(self):
-        """
-        Calculates the effective price if purchased by its primary stocking unit.
-        Assumes price_per_sellable_unit is the base.
-        """
-        return self.price_per_sellable_unit * self.conversion_rate
-
-
-# --- Stock Management ---
-
+from django.db import models
+from django.core.exceptions import ValidationError
+from django.db.models import Sum
 class Stock(models.Model):
-    """
-    Tracks the total available 'sellable units' of a product at a specific branch.
-    All quantities are stored in the smallest sellable unit.
-    """
     product = models.ForeignKey('Product', on_delete=models.CASCADE)
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
+    branch = models.ForeignKey('branches.Branch', on_delete=models.CASCADE)
 
-    # Store total quantity in the smallest sellable unit (the "Single Piece")
-    # e.g., total cans, total shots, total glasses
-    total_sellable_units = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    carton_quantity = models.PositiveIntegerField(default=0)
+    bottle_quantity = models.PositiveIntegerField(default=0)
+    unit_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
-    # Thresholds are also in sellable units
     minimum_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    running_out = models.BooleanField(default=False) # Indicates if below threshold
+    running_out = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('product', 'branch')
-        verbose_name = "Branch Stock"
-        verbose_name_plural = "Branch Stocks"
+        verbose_name = "Stock"
+        verbose_name_plural = "Stocks"
 
     def __str__(self):
-        return f"{self.branch.name} — {self.product.name} ({self.total_sellable_units} {self.product.sellable_unit_type.lower()})"
+        return f"{self.branch.name} — {self.product.name}"
 
     def clean(self):
-        """Ensure no negative values are saved for total_sellable_units or minimum_threshold."""
+        """Ensure no negative values are saved."""
         errors = {}
-        if self.total_sellable_units < 0:
-            errors['total_sellable_units'] = 'Total sellable units cannot be negative.'
+        if self.carton_quantity < 0:
+            errors['carton_quantity'] = 'Carton quantity cannot be negative.'
+        if self.bottle_quantity < 0:
+            errors['bottle_quantity'] = 'Bottle quantity cannot be negative.'
+        if self.unit_quantity < 0:
+            errors['unit_quantity'] = 'Unit quantity cannot be negative.'
         if self.minimum_threshold < 0:
             errors['minimum_threshold'] = 'Minimum threshold cannot be negative.'
 
         if errors:
             raise ValidationError(errors)
 
-    def get_total_stock_display(self):
-        """
-        Returns total stock for display, might convert to larger units if appropriate
-        (e.g., how many full cartons/bottles are left plus remaining units).
-        This is for display only, internal logic uses total_sellable_units.
-        """
-        if self.product.primary_stocking_unit == self.product.StockingUnit.CARTON and self.product.conversion_rate > 0:
-            remaining_sellable_units = self.total_sellable_units
-            full_cartons = Decimal(remaining_sellable_units / self.product.conversion_rate).quantize(Decimal('1.'), rounding=ROUND_DOWN)
-            remaining_bottles = remaining_sellable_units % self.product.conversion_rate
-            return f"{full_cartons} cartons, {remaining_bottles} {self.product.sellable_unit_type.lower()}(s)"
-        elif self.product.primary_stocking_unit == self.product.StockingUnit.BOTTLE and self.product.conversion_rate > 0:
-            remaining_sellable_units = self.total_sellable_units
-            full_bottles = Decimal(remaining_sellable_units / self.product.conversion_rate).quantize(Decimal('1.'), rounding=ROUND_DOWN)
-            remaining_shots = remaining_sellable_units % self.product.conversion_rate
-            return f"{full_bottles} bottles, {remaining_shots} {self.product.sellable_unit_type.lower()}(s)"
-        else:
-            return f"{self.total_sellable_units} {self.product.sellable_unit_type.lower()}(s)"
+    def get_total_stock(self):
+        """Returns total stock in standard units (bottles or units)."""
+        if self.product.uses_carton:
+            bottles_from_cartons = self.carton_quantity * self.product.bottles_per_carton
+            return bottles_from_cartons + self.bottle_quantity
+        return float(self.unit_quantity)
 
+    @classmethod
+    def get_aggregated_stock(cls, product):
+        """Aggregate total stock across all branches for the product."""
+        stocks = cls.objects.filter(product=product)
+        if product.uses_carton:
+            result = stocks.aggregate(
+                total_cartons=Sum('carton_quantity'),
+                total_bottles=Sum('bottle_quantity')
+            )
+            total_cartons = result['total_cartons'] or 0
+            total_bottles = result['total_bottles'] or 0
+            return (total_cartons * product.bottles_per_carton) + total_bottles
+        else:
+            return float(stocks.aggregate(total=Sum('unit_quantity'))['total'] or 0.0)
 
     def check_running_out(self):
         """
-        Checks if the current stock for this specific branch is below its threshold.
-        Updates `running_out` status.
+        Checks if the aggregated stock is below 25% of threshold.
+        Only activates if minimum_threshold > 0.
+        Updates only if the `running_out` value changes.
         """
+        total = self.get_aggregated_stock(self.product)
         threshold = float(self.minimum_threshold)
-        new_status = threshold > 0 and self.total_sellable_units <= threshold
+
+        if threshold == 0:
+            new_status = False
+        else:
+            new_status = total <= (threshold / 4)
 
         if self.running_out != new_status:
+            BarmanStock.objects.filter(id=self.id).update(running_out=new_status)
             self.running_out = new_status
-            # Avoid recursion: update only this field without calling check again
-            super(Stock, self).save(update_fields=['running_out'])
-
-        return self.running_out
-
-    def should_alert(self):
-        """Return True if alert should be triggered (used in dashboards/notifications)."""
-        return self.running_out
 
     def save(self, *args, **kwargs):
-        """Validate, save and update running_out status without recursion."""
         self.full_clean()
+        is_new = self._state.adding
         super().save(*args, **kwargs)
 
         # Only check running_out if not already updating just that
         if not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', []):
             self.check_running_out()
 
-    @classmethod
-    def add_stock(cls, product, branch, quantity, unit_type):
-        """
-        Adds stock to a specific branch. Handles conversion from various 'Grandpa' units
-        to the internal 'single piece' unit.
-        `unit_type` should be one of Product.StockingUnit or Product.SellableUnit.
-        """
-        stock, created = cls.objects.get_or_create(product=product, branch=branch)
-        quantity_decimal = Decimal(quantity)
 
-        if unit_type == product.primary_stocking_unit:
-            # Adding Grandpa unit (e.g., a carton, a bottle, a liter)
-            converted_quantity = quantity_decimal * product.conversion_rate
-        elif unit_type == product.sellable_unit_type:
-            # Adding Father/Single Piece unit directly
-            converted_quantity = quantity_decimal
-        else:
-            raise ValidationError(f"Invalid unit type '{unit_type}' for product '{product.name}'. "
-                                  f"Expected '{product.primary_stocking_unit}' or '{product.sellable_unit_type}'.")
+class InventoryTransaction(models.Model):
+    TRANSACTION_TYPES = (
+        ('restock', 'Restock'),
+        ('sale', 'Sale'),
+        ('wastage', 'Wastage'),
+    )
 
-        stock.total_sellable_units += converted_quantity
-        stock.save() # This will trigger check_running_out via the save method
+    UNIT_TYPES = (
+        ('carton', 'Carton'),
+        ('bottle', 'Bottle'),
+        ('unit', 'Unit'),
+    )
 
-        return stock
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
+    transaction_date = models.DateTimeField(default=timezone.now)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # <-- Added field
 
-    @classmethod
-    def deduct_stock(cls, product, branch, quantity):
-        """
-        Deducts stock from a specific branch. Always deducts in the 'single piece' unit.
-        """
-        stock = cls.objects.get(product=product, branch=branch)
-        quantity_decimal = Decimal(quantity)
-
-        if stock.total_sellable_units < quantity_decimal:
-            raise ValidationError(f"Insufficient stock for {product.name} at {branch.name}. "
-                                  f"Available: {stock.total_sellable_units} {product.sellable_unit_type.lower()}, "
-                                  f"Requested: {quantity_decimal} {product.sellable_unit_type.lower()}.")
-
-        stock.total_sellable_units -= quantity_decimal
-        stock.save() # This will trigger check_running_out via the save method
-
-        return stock
-
-    @classmethod
-    def get_aggregated_stock(cls, product):
-        """
-        Aggregates total stock across all branches for the product,
-        always returning the sum in the smallest sellable unit.
-        """
-        total = cls.objects.filter(product=product).aggregate(
-            total_sum=Sum('total_sellable_units')
-        )['total_sum'] or Decimal(0)
-        return total
+    def __str__(self):
+        return f"{self.transaction_type.title()} - {self.product.name} ({self.quantity} {self.unit_type}) at {self.branch.name}"
 
 
+class InventoryRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    )
+
+    UNIT_TYPES = (
+        ('carton', 'Carton'),
+        ('bottle', 'Bottle'),
+        ('unit', 'Unit'),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reached_status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.product.name} request at {self.branch.name} - {self.status}"
+
+
+
+
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = (
+        ('create', 'Create'),
+        ('update', 'Update'),
+        ('restock', 'Restock'),
+        ('sale', 'Sale'),
+        ('wastage', 'Wastage'),
+        ('request', 'Inventory Request'),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    unit_type = models.CharField(max_length=10, null=True, blank=True)
+    action_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    branch = models.ForeignKey(Branch, null=True, blank=True, on_delete=models.SET_NULL)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"[{self.timestamp}] {self.action_type} - {self.product.name} by {self.action_by}"
 class BarmanStock(models.Model):
-    """
-    Tracks the 'sellable units' of a product allocated to a specific bartender.
-    All quantities are stored in the smallest sellable unit.
-    """
-    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='barman_stocks')
+    stock = models.ForeignKey('Stock', on_delete=models.CASCADE, related_name='barman_stocks')
     bartender = models.ForeignKey(User, on_delete=models.CASCADE)
+    carton_quantity = models.PositiveIntegerField(default=0)
+    bottle_quantity = models.PositiveIntegerField(default=0)
+    unit_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
-    # Store total quantity in the smallest sellable unit (the "Single Piece")
-    total_sellable_units = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-
-    # Thresholds are also in sellable units
-    minimum_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    minimum_threshold = models.DecimalField(max_digits=10, decimal_places=5, default=0.00)
     running_out = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('stock', 'bartender')
-        verbose_name = "Barman Stock"
-        verbose_name_plural = "Barman Stocks"
+        verbose_name = "Inventory Request"
+        verbose_name_plural = "Inventory Requests"
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.bartender.username} — {self.stock.product.name} ({self.total_sellable_units} {self.stock.product.sellable_unit_type.lower()})"
+        return f"{self.bartender.username} — {self.stock.branch.name} — {self.stock.product.name}"
 
     def clean(self):
-        """Ensure no negative values are saved for total_sellable_units or minimum_threshold."""
         errors = {}
-        if self.total_sellable_units < 0:
-            errors['total_sellable_units'] = 'Total sellable units cannot be negative.'
+        if self.carton_quantity < 0:
+            errors['carton_quantity'] = 'Carton quantity cannot be negative.'
+        if self.bottle_quantity < 0:
+            errors['bottle_quantity'] = 'Bottle quantity cannot be negative.'
+        if self.unit_quantity < 0:
+            errors['unit_quantity'] = 'Unit quantity cannot be negative.'
         if self.minimum_threshold < 0:
             errors['minimum_threshold'] = 'Minimum threshold cannot be negative.'
         if errors:
             raise ValidationError(errors)
 
-    def check_running_out(self):
-        """
-        Checks if the current stock for this specific barman is below their threshold.
-        Updates `running_out` status.
-        """
-        threshold = float(self.minimum_threshold)
-        new_status = threshold > 0 and self.total_sellable_units <= threshold
+    def get_total_stock(self):
+        product = self.stock.product
+        if product.uses_carton:
+            bottles_from_cartons = self.carton_quantity * product.bottles_per_carton
+            return bottles_from_cartons + self.bottle_quantity
+        return float(self.unit_quantity)
 
+    def check_running_out(self):
+        total = self.get_total_stock()
+        threshold = float(self.minimum_threshold)
+
+        new_status = threshold > 0 and total <= threshold
         if self.running_out != new_status:
             self.running_out = new_status
             super().save(update_fields=['running_out'])
@@ -304,22 +272,97 @@ class BarmanStock(models.Model):
         return self.running_out
 
     def save(self, *args, **kwargs):
+        original_status = None
+        if self.pk:
+            original_status = InventoryRequest.objects.get(pk=self.pk).status
+
         self.full_clean()
 
-        # Auto-set minimum threshold if not already set and stock is available
-        # It's usually better to have this set manually or via business logic in views/forms
-        # But if you want to keep it, consider what 'self.stock.bottle_quantity' maps to now.
-        # It should be a percentage of 'self.total_sellable_units'
-        if self.minimum_threshold == 0 and self.total_sellable_units > 0:
-            # Example: 20% of current barman's stock if threshold not set
-            raw_threshold = self.total_sellable_units * Decimal("0.2")
-            self.minimum_threshold = raw_threshold.quantize(Decimal("0.00"), rounding=ROUND_DOWN) # Use 2 decimal places consistent with others
-
+        # Auto-set minimum threshold to 20% of stock's bottle quantity if not already set
+        if self.minimum_threshold == 0 and self.stock and self.stock.bottle_quantity:
+            raw_threshold = Decimal(self.stock.bottle_quantity) * Decimal("0.2")
+            self.minimum_threshold = raw_threshold.quantize(Decimal("0.00001"), rounding=ROUND_DOWN)
         super().save(*args, **kwargs)
 
-        # Ensure running_out gets evaluated/updated
-        if not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', []):
-            self.check_running_out()
+        if original_status != 'fulfilled' and self.status == 'fulfilled':
+            try:
+                store_stock = Stock.objects.get(product=self.product, branch=self.branch)
+                barman_stock, created = BarmanStock.objects.get_or_create(
+                    stock=store_stock, # Changed from product to stock
+                    bartender=self.requested_by,
+                    branch=self.branch
+                )
+
+                InventoryTransaction.objects.create(
+                    product=self.product,
+                    transaction_type='store_to_barman',
+                    quantity=self.quantity,
+                    transaction_unit=self.request_unit,
+                    from_stock_main=store_stock,
+                    to_stock_barman=barman_stock,
+                    initiated_by=self.responded_by,
+                    notes=f"Fulfilled request #{self.pk} by {self.requested_by.username}."
+                )
+                self.responded_at = timezone.now()
+                super().save(update_fields=['responded_at'])
+
+            except Stock.DoesNotExist:
+                print(f"Error: Main store stock not found for product {self.product.name} at branch {self.branch.name} during request fulfillment.")
+            except Exception as e:
+                print(f"Error fulfilling request {self.pk}: {e}")
+# inventory/models.py
+
+from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
+from django.utils import timezone
+from django.contrib import admin # Import admin module for admin.display
+
+# ... (Your other models like ItemType, Category, Product, etc. go here) ...
+
+class AuditLog(models.Model):
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=50, help_text="Type of action (e.g., 'restock', 'sale', 'create', 'update')")
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    details = models.JSONField(default=dict, blank=True, null=True, help_text="JSON payload with detailed changes or transaction data.")
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "Audit Log Entry"
+        verbose_name_plural = "Audit Log Entries"
+
+    def __str__(self):
+        obj_str = f"'{self.content_object}'" if self.content_object else f"ID: {self.object_id}"
+        user_str = self.user.username if self.user else 'System'
+        return f"{self.timestamp.strftime('%Y-%m-%d %H:%M:%S')} - {user_str} - {self.action} on {obj_str}"
+
+    # Use admin.display decorator for properties to set short_description
+    @admin.display(description="Logged Object")
+    def logged_object_display(self):
+        if self.content_object:
+            return str(self.content_object)
+        if self.object_id and self.content_type:
+            return f"{self.content_type.model.capitalize()} (ID: {self.object_id})"
+        return "N/A"
+
+    @admin.display(description="Details Summary")
+    def action_details_summary(self):
+        # Customize this based on the common actions and details you'll store
+        if self.action in ['restock', 'sale', 'wastage', 'transfer_out', 'transfer_in']:
+            product_name = self.details.get('product_name', 'N/A')
+            quantity = self.details.get('quantity', 'N/A')
+            transaction_unit_name = self.details.get('transaction_unit_name', 'N/A')
+            return f"{product_name} - Qty: {quantity} {transaction_unit_name}"
+        elif self.action == 'product_updated':
+            old_name = self.details.get('old_name', 'N/A')
+            new_name = self.details.get('new_name', 'N/A')
+            return f"Name changed from '{old_name}' to '{new_name}'"
+        return "See details"
 
     @classmethod
     def transfer_to_barman(cls, branch_stock: 'Stock', bartender: User, quantity: Decimal):
