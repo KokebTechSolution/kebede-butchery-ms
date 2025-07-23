@@ -295,17 +295,17 @@ const InventoryRequestList = () => {
                           Accept
                         </button>
                       ) : req.status === 'accepted' && !req.reached_status ? (
-                        <button
-                          onClick={() => handleReach(req.id)}
-                          disabled={processingId === req.id}
-                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                        >
-                          Reached
-                        </button>
+                            <button
+                              onClick={() => handleReach(req.id)}
+                              disabled={processingId === req.id}
+                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
+                            >
+                              Reached
+                            </button>
                       ) : req.status === 'accepted' && req.reached_status ? (
-                        <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                          Reach mark
-                        </span>
+                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
+                            Reach mark
+                          </span>
                       ) : (
                         <span className="text-gray-500 italic">No action available</span>
                       )}

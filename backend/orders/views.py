@@ -276,6 +276,7 @@ from orders.serializers import OrderItemSerializer
 from rest_framework.permissions import AllowAny
 from inventory.models import BarmanStock
 from django.db import transaction
+from decimal import Decimal
 
 class OrderItemStatusUpdateView(APIView):
     permission_classes = [AllowAny]
@@ -291,11 +292,10 @@ class OrderItemStatusUpdateView(APIView):
         if status_value not in ['pending', 'accepted', 'rejected']:
             return Response({'error': 'Invalid status value'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Beverage stock logic
+        # Handle beverage stock deduction
         if status_value == 'accepted' and item.item_type == 'beverage':
             bartender = request.user
             try:
-                # Match by item name and branch
                 barman_stock = BarmanStock.objects.select_related('stock__product').get(
                     bartender=bartender,
                     stock__product__name__iexact=item.name,
@@ -307,39 +307,44 @@ class OrderItemStatusUpdateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if barman_stock.bottle_quantity < item.quantity:
+            if barman_stock.quantity_in_base_units < item.quantity:
                 return Response(
-                    {'error': f"Not enough bottles. Available: {barman_stock.bottle_quantity}, Required: {item.quantity}"},
+                    {
+                        'error': (
+                            f"Not enough bottles. Available: {barman_stock.quantity_in_base_units}, "
+                            f"Required: {item.quantity}"
+                        )
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Deduct quantity
-            barman_stock.bottle_quantity -= item.quantity
+            # Deduct quantity from stock
+            barman_stock.quantity_in_base_units -= item.quantity
 
-            # Get original bottle capacity from inventory_stock
-            original_bottle_capacity = barman_stock.stock.bottle_quantity
-            twenty_percent = original_bottle_capacity * 0.2
+            # Calculate 20% of the original bottle capacity
+            original_bottle_capacity = barman_stock.stock.quantity_in_base_units
+            twenty_percent = original_bottle_capacity * Decimal("0.2")
 
-            # Check if running low
-            if barman_stock.bottle_quantity < twenty_percent:
-                barman_stock.running_out = True
-            else:
-                barman_stock.running_out = False
-
+            # Mark as running out if below threshold
+            barman_stock.running_out = barman_stock.quantity_in_base_units < twenty_percent
             barman_stock.save()
 
+        # Update item status
         item.status = status_value
         item.save()
 
-        # Update order total
+        # Update order total money based on accepted items
         order = item.order
-        order.total_money = sum(i.price * i.quantity for i in order.items.filter(status='accepted'))
+        accepted_items = order.items.filter(status='accepted')
+        order.total_money = sum(i.price * i.quantity for i in accepted_items)
 
-        all_statuses = order.items.values_list('status', flat=True)
+        # Update order cashier status
+        all_statuses = list(order.items.values_list('status', flat=True))
         if all(s in ['accepted', 'rejected'] for s in all_statuses):
             order.cashier_status = 'ready_for_payment'
         else:
             order.cashier_status = 'pending'
+
         order.save()
 
         return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)

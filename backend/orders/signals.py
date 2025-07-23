@@ -33,8 +33,8 @@ def handle_order_stock_and_logs(sender, instance, created, **kwargs):
                     stock.carton_quantity -= quantity
                     unit_type = 'carton'
                     deducted = True
-                elif stock.bottle_quantity >= quantity * product.bottles_per_carton:
-                    stock.bottle_quantity -= quantity * product.bottles_per_carton
+                elif stock.quantity_in_base_units >= quantity * product.bottles_per_carton:
+                    stock.quantity_in_base_units -= quantity * product.bottles_per_carton
                     unit_type = 'bottle'
                     deducted = True
             else:

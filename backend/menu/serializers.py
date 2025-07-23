@@ -44,7 +44,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
         return {
             'cartons': stock.carton_quantity,
-            'bottles': stock.bottle_quantity,
+            'bottles': stock.quantity_in_base_units,
             'units': stock.unit_quantity,
         }
 

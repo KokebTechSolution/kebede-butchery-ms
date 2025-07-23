@@ -26,21 +26,20 @@ const MenuForm = ({
   const [categories, setCategories] = useState([]);
   const [availableProducts, setAvailableProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const loadCategories = async () => {
       try {
         await syncMenuCategoriesWithInventory();
         const categories = await fetchMenuCategories();
-        console.log('📦 Loaded categories:', categories);
         setCategories(categories);
       } catch (error) {
-        console.error('❌ Failed to load categories:', error);
+        setError('Failed to load categories.');
       }
     };
-
     loadCategories();
-    fetchAvailableProducts().then(setAvailableProducts);
+    fetchAvailableProducts().then(setAvailableProducts).catch(() => setError('Failed to load products.'));
   }, []);
 
   useEffect(() => {
@@ -63,40 +62,53 @@ const MenuForm = ({
         item_type: '',
       });
     }
+    setError('');
   }, [selectedItem]);
 
   const isBeverage =
     forcebeverageOnly || formData.item_type?.toLowerCase() === 'beverage';
-  const isFood = formData.item_type?.toLowerCase() === 'food';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+    setError('');
     try {
       let productName = '';
       let productId = null;
-
       if (isBeverage) {
         const selectedProduct = availableProducts.find(
-          (p) => p.id == formData.product
+          (p) => String(p.id) === String(formData.product)
         );
         if (!selectedProduct) {
-          alert('Please select a valid beverage product.');
+          setError('Please select a valid beverage product.');
           setLoading(false);
           return;
         }
-        productName = selectedProduct.name;
+        productName = selectedProduct.name || selectedProduct.product_name;
         productId = selectedProduct.id;
       } else {
         if (!formData.product) {
-          alert('Please enter a product name for food item.');
+          setError('Please enter a product name for food item.');
           setLoading(false);
           return;
         }
         productName = formData.product;
       }
-
+      if (!formData.category) {
+        setError('Please select a category.');
+        setLoading(false);
+        return;
+      }
+      if (!formData.price || isNaN(formData.price) || Number(formData.price) <= 0) {
+        setError('Please enter a valid price.');
+        setLoading(false);
+        return;
+      }
+      if (!formData.item_type) {
+        setError('Please select an item type.');
+        setLoading(false);
+        return;
+      }
       const payload = {
         name: productName,
         product: isBeverage ? productId : null,
@@ -106,7 +118,6 @@ const MenuForm = ({
         category: formData.category,
         item_type: formData.item_type,
       };
-
       if (selectedItem) {
         await updateMenuItem(selectedItem.id, payload);
         alert('✅ Menu item updated successfully!');
@@ -114,13 +125,19 @@ const MenuForm = ({
         await createMenuItem(payload);
         alert('✅ Menu item created successfully!');
       }
-
       refreshMenu();
       closeModal();
       clearSelection();
+      setFormData({
+        product: '',
+        description: '',
+        price: '',
+        is_available: true,
+        category: '',
+        item_type: '',
+      });
     } catch (error) {
-      console.error('❌ Error saving menu item:', error);
-      alert('❌ Error saving menu item. Please try again.');
+      setError('❌ Error saving menu item. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -133,6 +150,7 @@ const MenuForm = ({
       [name]: type === 'checkbox' ? checked : value,
       ...(name === 'item_type' ? { category: '' } : {}),
     }));
+    setError('');
   };
 
   return (
@@ -140,6 +158,7 @@ const MenuForm = ({
       onSubmit={handleSubmit}
       className="space-y-4 p-4 max-h-[80vh] overflow-y-auto touch-manipulation"
     >
+      {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
       {/* Item Type */}
       {!forcebeverageOnly && (
         <div>
@@ -157,7 +176,6 @@ const MenuForm = ({
           </select>
         </div>
       )}
-
       {/* Category */}
       <div>
         <label className="block mb-1">Category</label>
@@ -174,13 +192,12 @@ const MenuForm = ({
           ) : (
             categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name}
+                {cat.name || cat.category_name}
               </option>
             ))
           )}
         </select>
       </div>
-
       {/* Product */}
       <div>
         <label className="block mb-1">Product</label>
@@ -211,7 +228,6 @@ const MenuForm = ({
           />
         )}
       </div>
-
       {/* Description */}
       <div>
         <label className="block mb-1">Description</label>
@@ -222,7 +238,6 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         />
       </div>
-
       {/* Price */}
       <div>
         <label className="block mb-1">Price</label>
@@ -235,7 +250,6 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         />
       </div>
-
       {/* Availability */}
       <div className="flex items-center gap-2">
         <input
@@ -246,7 +260,6 @@ const MenuForm = ({
         />
         <label>Available</label>
       </div>
-
       {/* Buttons */}
       <div className="flex justify-between gap-4">
         <button
@@ -261,6 +274,15 @@ const MenuForm = ({
           onClick={() => {
             clearSelection();
             closeModal();
+            setFormData({
+              product: '',
+              description: '',
+              price: '',
+              is_available: true,
+              category: '',
+              item_type: '',
+            });
+            setError('');
           }}
           className="flex-1 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400 cursor-pointer"
         >

@@ -116,6 +116,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
 
+    @action(detail=False, methods=['get'], url_path='available')
+    def available(self, request):
+        products = Product.objects.filter(is_active=True)
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
 
 # Inventory Transaction
 class InventoryTransactionViewSet(viewsets.ModelViewSet):
