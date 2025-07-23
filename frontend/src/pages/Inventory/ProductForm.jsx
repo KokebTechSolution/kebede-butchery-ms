@@ -195,9 +195,9 @@ const AddProductForm = () => {
       // Create Product
       const productFormData = new FormData();
       productFormData.append('name', formData.name);
-      productFormData.append('category_id', formData.category);
+      productFormData.append('category_id', parseInt(formData.category)); // use 'category_id' and ensure integer
+      productFormData.append('base_unit_id', parseInt(formData.base_unit)); // use 'base_unit_id' and ensure integer
       productFormData.append('base_unit_price', formData.base_unit_price);
-      productFormData.append('base_unit', formData.base_unit);
       productFormData.append('description', formData.description);
       if (formData.receipt_image) {
         productFormData.append('receipt_image', formData.receipt_image);
@@ -214,16 +214,39 @@ const AddProductForm = () => {
         }
       );
       const createdProduct = productResponse.data;
+      console.log('Created product:', createdProduct);
+      if (!createdProduct.id) {
+        setSubmitError('Product creation failed: No product ID returned.');
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        return;
+      }
+      // Defensive check for required measurement fields
+      const measurementPayload = {
+        product_id: createdProduct.id,
+        from_unit_id: formData.input_unit,
+        to_unit_id: formData.base_unit,
+        amount_per: formData.conversion_amount,
+        is_default_sales_unit: true,
+      };
+      console.log('Created product:', createdProduct);
+      console.log('About to create ProductMeasurement with:', measurementPayload);
+      if (!measurementPayload.product_id || isNaN(Number(measurementPayload.product_id)) || Number(measurementPayload.product_id) <= 0) {
+        setSubmitError('Invalid or missing product_id for product measurement.');
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        return;
+      }
+      if (!measurementPayload.from_unit_id || !measurementPayload.to_unit_id || !measurementPayload.amount_per) {
+        setSubmitError('Missing required fields for product measurement (check product_id, from_unit_id, to_unit_id, amount_per).');
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        return;
+      }
       // Create ProductMeasurement (conversion)
       await axios.post(
         'http://localhost:8000/api/inventory/productmeasurements/',
-        {
-          product_id: createdProduct.id,
-          from_unit_id: formData.input_unit,
-          to_unit_id: formData.base_unit,
-          amount_per: formData.conversion_amount,
-          is_default_sales_unit: true,
-        },
+        measurementPayload,
         {
           withCredentials: true,
           headers: {
@@ -268,6 +291,13 @@ const AddProductForm = () => {
     }
   };
 
+  // After loading categories, itemTypes, and units, add debug logs
+  useEffect(() => {
+    console.log('Loaded itemTypes:', itemTypes);
+    console.log('Loaded categories:', categories);
+    console.log('Loaded units:', units);
+  }, [itemTypes, categories, units]);
+
   return (
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
       {console.log('Rendering modal?', showConfirmModal)}
@@ -292,10 +322,11 @@ const AddProductForm = () => {
         <div>
           <label className="block font-semibold mb-1">{t('item_type')}</label>
           <select
-            value={selectedItemType}
-            onChange={(e) => {
+            name="item_type"
+            value={formData.item_type}
+            onChange={e => {
               setSelectedItemType(e.target.value);
-              setFormData({ ...formData, category: '', base_unit: '', input_unit: '' }); // Reset dependent fields
+              setFormData(prev => ({ ...prev, item_type: e.target.value, category: '' })); // Only reset category
             }}
             className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm"
           >
@@ -352,25 +383,34 @@ const AddProductForm = () => {
         <div>
           <label className="block font-semibold mb-1">{t('category')}</label>
           <select
+            name="category"
             value={formData.category}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.category ? 'border-red-500' : ''}`}
-            disabled={!selectedItemType}
+            disabled={!formData.item_type}
           >
-            <option value="">{t('select_category')}</option>
-            {selectedItemType && categories.length > 0 ? (
+            <option value="">{formData.item_type ? t('select_category') : t('select_item_type_first')}</option>
+            {formData.item_type && categories.length > 0 ? (
               categories
-                .filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType))
+                .filter((cat) => {
+                  if (cat.item_type && typeof cat.item_type === 'object') {
+                    return String(cat.item_type.id) === String(formData.item_type);
+                  }
+                  return String(cat.item_type) === String(formData.item_type);
+                })
                 .map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.category_name}
                   </option>
                 ))
-            ) : (
-              <option value="" disabled>{t('no_categories_available') || 'No categories available'}</option>
-            )}
+            ) : null}
           </select>
-          {selectedItemType && categories.filter((cat) => cat.item_type && String(cat.item_type.id) === String(selectedItemType)).length === 0 && (
+          {formData.item_type && categories.filter((cat) => {
+            if (cat.item_type && typeof cat.item_type === 'object') {
+              return String(cat.item_type.id) === String(formData.item_type);
+            }
+            return String(cat.item_type) === String(formData.item_type);
+          }).length === 0 && (
             <p className="text-gray-500 text-sm mt-1">{t('no_categories_for_item_type')}</p>
           )}
           {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
@@ -378,21 +418,16 @@ const AddProductForm = () => {
         <div>
           <label className="block font-semibold mb-1">{t('base_unit')}</label>
           <select
+            name="base_unit"
             value={formData.base_unit}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.base_unit ? 'border-red-500' : ''}`}
-            // disabled={!Boolean(selectedItemType)} // Always enabled for debugging
+            disabled={units.length === 0}
           >
-            <option value="">{t('select_unit')}</option>
-            {units.length > 0 ? (
-              units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.unit_name}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>{t('no_units_available') || 'No units available'}</option>
-            )}
+            <option value="">{units.length === 0 ? t('loading_units') : t('select_unit')}</option>
+            {units.length > 0 && units.map((unit) => (
+              <option key={unit.id} value={unit.id}>{unit.unit_name}</option>
+            ))}
           </select>
           {errors?.base_unit && <p className="text-red-500 text-sm">{errors.base_unit}</p>}
         </div>
@@ -414,21 +449,16 @@ const AddProductForm = () => {
         <div>
           <label className="block font-semibold mb-1">{t('input_unit')}</label>
           <select
+            name="input_unit"
             value={formData.input_unit}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.input_unit ? 'border-red-500' : ''}`}
-            // disabled={!Boolean(selectedItemType)} // Always enabled for debugging
+            disabled={units.length === 0}
           >
-            <option value="">{t('select_unit')}</option>
-            {units.length > 0 ? (
-              units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.unit_name}
-                </option>
-              ))
-            ) : (
-              <option value="" disabled>{t('no_units_available') || 'No units available'}</option>
-            )}
+            <option value="">{units.length === 0 ? t('loading_units') : t('select_unit')}</option>
+            {units.length > 0 && units.map((unit) => (
+              <option key={unit.id} value={unit.id}>{unit.unit_name}</option>
+            ))}
           </select>
           {errors?.input_unit && <p className="text-red-500 text-sm">{errors.input_unit}</p>}
         </div>
@@ -515,7 +545,7 @@ const AddProductForm = () => {
             <h2 className="text-xl font-bold mb-4">{t('confirm_product_details')}</h2>
             <div className="mb-4 space-y-2 text-sm">
               <div><strong>{t('product_name')}:</strong> {formData.name}</div>
-              <div><strong>{t('item_type')}:</strong> {itemTypes.find(i => String(i.id) === String(selectedItemType))?.type_name || ''}</div>
+              <div><strong>{t('item_type')}:</strong> {itemTypes.find(i => String(i.id) === String(formData.item_type))?.type_name || ''}</div>
               <div><strong>{t('category')}:</strong> {categories.find(c => String(c.id) === String(formData.category))?.category_name || ''}</div>
               <div><strong>{t('base_unit')}:</strong> {units.find(u => String(u.id) === String(formData.base_unit))?.unit_name || ''}</div>
               <div><strong>{t('input_unit')}:</strong> {units.find(u => String(u.id) === String(formData.input_unit))?.unit_name || ''}</div>

@@ -181,15 +181,16 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
         return obj.quantity  # fallback if no measurement found
 
 class ProductMeasurementSerializer(serializers.ModelSerializer):
+    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), source='product', write_only=True)
+    from_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='from_unit', write_only=True)
+    to_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='to_unit', write_only=True)
+
     class Meta:
         model = ProductMeasurement
         fields = [
             'id',
-            'product',
             'product_id',
-            'from_unit',
             'from_unit_id',
-            'to_unit',
             'to_unit_id',
             'amount_per',
             'is_default_sales_unit',
