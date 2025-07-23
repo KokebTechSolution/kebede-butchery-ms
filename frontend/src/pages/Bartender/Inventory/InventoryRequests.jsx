@@ -1,276 +1,264 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   fetchRequests,
-  ReachRequest,
-  NotReachRequest,
+  fetchProducts,
+  fetchBranches,
+  getBarmanStock, // Corrected import name: 'fetchBarmanStocks' is now 'getBarmanStock'
+  // Removed: ReachRequest, NotReachRequest
 } from '../../../api/inventory';
-import api from '../../../api/axiosInstance';
+
 import NewRequest from './NewRequest';
 import BarmanStockStatus from './BarmanStockStatus';
 import { useAuth } from '../../../context/AuthContext';
 
 const InventoryRequestList = () => {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState(null);
-  const [stocks, setStocks] = useState([]);
-  const [tab, setTab] = useState('available');
-  const [showModal, setShowModal] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [formData, setFormData] = useState({
-    product: '',
-    quantity: '',
-    unit_type: 'unit',
-    status: 'pending',
-    branch: '',
-  });
-  const [formMessage, setFormMessage] = useState('');
-
-  // Trigger to refresh stocks
-  const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
-
+  const { t } = useTranslation();
   const { user } = useAuth();
   const branchId = user?.branch;
   const bartenderId = user?.id;
 
-  useEffect(() => {
-    loadRequests();
-    loadProducts();
-    loadBranches();
-  }, []);
+  // --- State Management ---
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  useEffect(() => {
-    fetchBarmanStocks();
-  }, [refreshStockTrigger]);
+  // No longer needed since NewRequest handles its own submission state and messages
+  // const [processingId, setProcessingId] = useState(null);
 
-  const fetchBarmanStocks = async () => {
-    try {
-      const res = await api.get('/inventory/barman-stock/');
-      setStocks(res.data);
-    } catch (err) {
-      console.error('Error fetching barman stocks:', err);
-    }
-  };
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
 
-  const loadRequests = async () => {
+  // Data for the New Request form (passed to NewRequest component)
+  const [productsForNewRequest, setProductsForNewRequest] = useState([]);
+  const [branchesForNewRequest, setBranchesForNewRequest] = useState([]);
+  // Removed: newRequestFormMessage and setNewRequestFormMessage
+
+
+  // Barman Stock status
+  const [barmanStocks, setBarmanStocks] = useState([]);
+  const [barmanStockLoading, setBarmanStockLoading] = useState(true);
+  const [barmanStockError, setBarmanStockError] = useState(null);
+  const [barmanStockTab, setBarmanStockTab] = useState('available');
+
+  // --- Data Loading Callbacks ---
+
+  const loadRequests = useCallback(async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      const data = await fetchRequests(); // should internally use api with session
-      setRequests(data);
+      const data = await fetchRequests();
+      if (Array.isArray(data)) {
+        setRequests(data);
+      } else if (data && Array.isArray(data.results)) {
+        setRequests(data.results);
+      } else {
+        console.warn("API returned unexpected format for requests:", data);
+        setRequests([]);
+      }
     } catch (err) {
       console.error('Failed to fetch requests:', err);
-      alert('Error loading requests');
+      setErrorMessage(t('error_loading_requests') + ": " + (err.response?.data?.detail || err.message || t('network_error')));
+      setRequests([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadProducts = async () => {
+  const loadProductsAndBranches = useCallback(async () => {
     try {
-      const res = await api.get('/inventory/inventory/');
-      setProducts(res.data);
+      const productsData = await fetchProducts();
+      const branchesData = await fetchBranches();
+      setProductsForNewRequest(Array.isArray(productsData) ? productsData : productsData.results || []);
+      setBranchesForNewRequest(Array.isArray(branchesData) ? branchesData : branchesData.results || []);
     } catch (err) {
-      console.error('Failed to fetch products:', err);
+      console.error(t('error_loading_form_data'), err);
     }
-  };
+  }, [t]);
 
-  const loadBranches = async () => {
+  const loadBarmanStocks = useCallback(async () => {
+    setBarmanStockLoading(true);
+    setBarmanStockError(null);
     try {
-      const res = await api.get('/inventory/branches/');
-      setBranches(res.data);
+      // getBarmanStock now takes no arguments, as it filters by authenticated user on backend
+      const data = await getBarmanStock();
+      if (Array.isArray(data)) {
+        setBarmanStocks(data);
+      } else if (data && Array.isArray(data.results)) {
+        setBarmanStocks(data.results);
+      } else {
+        console.warn("API returned unexpected format for barman stocks:", data);
+        setBarmanStocks([]);
+      }
     } catch (err) {
-      console.error('Failed to fetch branches:', err);
-    }
-  };
-
-  const handleReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await ReachRequest(id); // ensure ReachRequest uses api with credentials
-      await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1);
-    } catch (err) {
-      console.error('Failed to mark as reached:', err.response?.data || err.message);
-      alert('Failed to mark as Reached: ' + (err.response?.data?.detail || err.message));
+      console.error('Error fetching barman stocks:', err);
+      setBarmanStockError(t('error_loading_barman_stocks') + ": " + (err.response?.data?.detail || err.message || t('network_error')));
+      setBarmanStocks([]);
     } finally {
-      setProcessingId(null);
+      setBarmanStockLoading(false);
     }
-  };
+  }, [t]);
 
-  const handleNotReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await NotReachRequest(id); // ensure NotReachRequest uses api with credentials
-      await loadRequests();
-      setRefreshStockTrigger((prev) => prev + 1);
-    } catch (err) {
-      console.error('Failed to mark as not reached:', err);
-      alert('Failed to mark as Not Reached');
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
-  // Filter by branch id (branch_id or nested branch.id)
+  // --- Effects ---
+  useEffect(() => {
+    loadRequests();
+    loadProductsAndBranches();
+  }, [loadRequests, loadProductsAndBranches]);
+
+  useEffect(() => {
+    loadBarmanStocks();
+  }, [loadBarmanStocks]);
+
+
+  // --- Handlers for New Request component ---
+
+  const handleNewRequestSuccess = useCallback(async () => {
+    // NewRequest handles its own success message internally.
+    setShowNewRequestModal(false); // Close the modal
+    await loadRequests(); // Reload the list of requests
+    // No need to reload barman stocks directly on request submission unless
+    // a successful request immediately impacts current stock (unlikely for 'pending' status)
+    alert(t('request_submitted_successfully_alert')); // Optional: show a quick alert
+  }, [t, loadRequests]);
+
+  const handleNewRequestError = useCallback((message) => {
+    // NewRequest already displays the message internally.
+    // This callback can be used for global notifications or further logging if needed.
+    console.error("Error from NewRequest form:", message);
+  }, []);
+
   const filteredRequests = requests.filter(
     (req) =>
-      String(req.branch_id || req.branch?.id) === String(branchId)
+      (user && String(req.requesting_branch?.id || req.branch) === String(branchId)) // Note: 'branch_id' might just be 'branch'
   );
 
   return (
     <div className="p-4">
-      <BarmanStockStatus
-        stocks={stocks}
-        tab={tab}
-        setTab={setTab}
-        bartenderId={bartenderId}
-      />
+      <h2 className="text-xl font-bold mb-4">{t('my_bar_stock')}</h2>
+      {barmanStockLoading ? (
+        <p className="text-center py-4">{t('loading_barman_stocks')}...</p>
+      ) : barmanStockError ? (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong className="font-bold">{t('error')}:</strong>
+          <span className="block sm:inline"> {barmanStockError}</span>
+          <button onClick={loadBarmanStocks} className="ml-4 text-sm font-semibold underline">{t('retry')}</button>
+        </div>
+      ) : (
+        <BarmanStockStatus
+          stocks={barmanStocks}
+          tab={barmanStockTab}
+          setTab={setBarmanStockTab}
+          bartenderId={bartenderId}
+        />
+      )}
 
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Inventory Request History</h1>
+      <div className="flex items-center justify-between mb-4 mt-8">
+        <h1 className="text-2xl font-bold">{t('inventory_request_history')}</h1>
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           onClick={() => {
-            setFormMessage('');
-            setShowModal(true);
+            setShowNewRequestModal(true);
           }}
         >
-          + New Request
+          {t('new_request_button')}
         </button>
       </div>
 
-      <NewRequest
-        showModal={showModal}
-        setShowModal={setShowModal}
-        formData={formData}
-        formMessage={formMessage}
-        products={products}
-        branches={branches}
-        handleFormChange={(e) => {
-          const { name, value } = e.target;
-          setFormData((prev) => ({ ...prev, [name]: value }));
-        }}
-        handleFormSubmit={async (e) => {
-          e.preventDefault();
-          if (!formData.product || !formData.branch || !formData.quantity || Number(formData.quantity) <= 0) {
-            setFormMessage('Please select a product, branch, and enter a valid quantity.');
-            return;
-          }
-          try {
-            await api.post('/inventory/requests/', {
-              product_id: parseInt(formData.product),
-              quantity: parseFloat(formData.quantity),
-              unit_type: formData.unit_type,
-              status: 'pending',
-              branch_id: parseInt(formData.branch),
-            });
-            setFormMessage('Request submitted successfully!');
-            setFormData({
-              product: '',
-              quantity: '',
-              unit_type: 'unit',
-              status: 'pending',
-              branch: formData.branch,
-            });
-            setShowModal(false);
-            await loadRequests();
-          } catch (err) {
-            const errors = err.response?.data || {};
-            const messages = [];
-            for (const key in errors) {
-              if (Array.isArray(errors[key])) {
-                messages.push(`${key}: ${errors[key].join(', ')}`);
-              } else if (typeof errors[key] === 'object') {
-                messages.push(`${key}: ${Object.values(errors[key]).flat().join(', ')}`);
-              } else {
-                messages.push(`${key}: ${errors[key]}`);
-              }
-            }
-            setFormMessage(messages.join(' | ') || 'Submission failed.');
-          }
-        }}
-      />
+      {showNewRequestModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">{t('create_new_inventory_request')}</h2>
+              <button onClick={() => setShowNewRequestModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            {/* NewRequest component handles its own messages internally */}
+            <NewRequest
+              products={productsForNewRequest}
+              branches={branchesForNewRequest}
+              onSuccess={handleNewRequestSuccess}
+              onError={handleNewRequestError}
+              initialBranchId={branchId}
+              show={true} // Explicitly tell NewRequest it's being shown
+              onClose={() => setShowNewRequestModal(false)} // Pass the close handler
+            />
+          </div>
+        </div>
+      )}
+
 
       {loading ? (
-        <p>Loading requests...</p>
+        <p className="text-center py-4">{t('loading_requests')}...</p>
+      ) : errorMessage ? (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">{t('error')}:</strong>
+          <span className="block sm:inline"> {errorMessage}</span>
+          <button onClick={loadRequests} className="ml-4 text-sm font-semibold underline">{t('retry')}</button>
+        </div>
       ) : filteredRequests.length === 0 ? (
-        <p className="text-gray-600 italic">No requests found for your branch.</p>
+        <p className="text-gray-600 italic text-center py-4">{t('no_requests_found_for_branch')}</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border text-sm">
-            <thead className="bg-gray-100">
-              <tr className="text-center">
-                <th className="border px-4 py-2">Product</th>
-                <th className="border px-4 py-2">Category</th>
-                <th className="border px-4 py-2">Item Type</th>
-                <th className="border px-4 py-2">Quantity</th>
-                <th className="border px-4 py-2">Unit Type</th>
-                <th className="border px-4 py-2">Branch</th>
-                <th className="border px-4 py-2">Requested At</th>
-                <th className="border px-4 py-2">Status</th>
-                <th className="border px-4 py-2">Actions</th>
+        <div className="overflow-x-auto shadow-md rounded-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('product')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('category')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('item_type')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('quantity')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('unit_type')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('requested_by')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('requested_at')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions')}</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredRequests.map((req) => {
-                const reached = Boolean(req.reached_status);
-                return (
-                  <tr
-                    key={`${req.id}-${reached ? 'r' : 'nr'}`}
-                    className="text-center hover:bg-gray-50 transition"
-                  >
-                    <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.quantity}</td>
-                    <td className="border px-4 py-2">{req.unit_type}</td>
-                    <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
-                    <td className="border px-4 py-2">
-                      <span
-                        className={`px-2 py-1 rounded text-sm font-medium ${
-                          req.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : req.status === 'accepted'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {req.status}
-                      </span>
-                    </td>
-                    <td className="border px-4 py-2">
-                      {req.status === 'accepted' ? (
-                        !reached ? (
-                          <>
-                            <button
-                              onClick={() => handleReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                            >
-                              Reached
-                            </button>
-                            <button
-                              onClick={() => handleNotReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50 ml-2"
-                            >
-                              Not Reached
-                            </button>
-                          </>
-                        ) : (
-                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                            Reach mark
-                          </span>
-                        )
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredRequests.map((req) => (
+                <tr key={req.id} className="hover:bg-gray-100 transition duration-150 ease-in-out">
+                  <td className="px-6 py-4 whitespace-nowrap">{req.product?.name || t('na')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{req.product?.category?.category_name || t('na')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{req.product?.category?.item_type?.type_name || t('na')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{req.quantity}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{req.unit_type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{req.requested_by?.username || t('na')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{new Date(req.created_at).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        req.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : req.status === 'accepted'
+                          ? 'bg-green-100 text-green-800'
+                          : req.status === 'rejected' // Explicitly handle 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800' // Default if status is unknown
+                      }`}
+                    >
+                      {t(req.status)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {/* Actions are now simplified: a request is either accepted/rejected by HQ.
+                        If a "mark as delivered/reached" action is needed by the barman,
+                        it must be a separate API call defined on the backend.
+                        For now, display status. */}
+                    {req.status === 'accepted' ? (
+                      req.reached_status ? ( // Assuming `reached_status` is a boolean field
+                        <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">
+                          {t('marked_as_delivered')}
+                        </span>
                       ) : (
-                        <span className="text-gray-500 italic">No action available</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                        <span className="text-gray-500 italic">
+                            {t('pending_delivery_confirmation')} {/* Or "Awaiting delivery" */}
+                        </span>
+                        // If you need a button here to update `reached_status`, you'll need a new API endpoint.
+                      )
+                    ) : (
+                      <span className="text-gray-500 italic">{t('no_actions_available')}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
