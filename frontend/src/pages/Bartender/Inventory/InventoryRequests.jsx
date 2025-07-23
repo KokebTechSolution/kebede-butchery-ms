@@ -68,7 +68,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await api.get('/inventory/inventory/');
+      const res = await api.get('/inventory/products/');
       setProducts(res.data);
     } catch (err) {
       console.error('Failed to fetch products:', err);
@@ -205,6 +205,7 @@ const InventoryRequestList = () => {
                 <th className="border px-4 py-2">Category</th>
                 <th className="border px-4 py-2">Item Type</th>
                 <th className="border px-4 py-2">Quantity</th>
+                <th className="border px-4 py-2">Quantity (Basic Unit)</th>
                 <th className="border px-4 py-2">Unit Type</th>
                 <th className="border px-4 py-2">Branch</th>
                 <th className="border px-4 py-2">Requested At</th>
@@ -224,6 +225,7 @@ const InventoryRequestList = () => {
                     <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
                     <td className="border px-4 py-2">{req.quantity}</td>
+                    <td className="border px-4 py-2">{req.quantity_basic_unit ?? 'N/A'}</td>
                     <td className="border px-4 py-2">{req.unit_type}</td>
                     <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
                     <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>

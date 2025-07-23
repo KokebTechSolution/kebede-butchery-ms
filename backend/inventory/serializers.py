@@ -3,19 +3,20 @@ from .models import ItemType, Category, Product, Stock, InventoryTransaction, In
 from branches.models import Branch
 from decimal import Decimal
 from django.db import transaction as db_transaction
-from .models import BarmanStock, Stock
+from .models import BarmanStock, Stock, ProductMeasurement, ProductUnit
 
 
 class BarmanStockSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='stock.product.name', read_only=True)
     branch_name = serializers.CharField(source='stock.branch.name', read_only=True)
     stock_id = serializers.IntegerField(source='stock.id', read_only=True)
+    quantity_basic_unit = serializers.SerializerMethodField()
 
     class Meta:
         model = BarmanStock
         fields = [
             'id',
-            'stock_id',         # helpful for debugging or tracking
+            'stock_id',
             'product_name',
             'branch_name',
             'bartender',
@@ -25,12 +26,16 @@ class BarmanStockSerializer(serializers.ModelSerializer):
             'unit_quantity',
             'minimum_threshold',
             'running_out',
+            'quantity_basic_unit',
         ]
         read_only_fields = ['running_out']
-    def save(self, *args, **kwargs):
 
-        self.running_out = self.bottle_quantity < self.minimum_threshold
-        super().save(*args, **kwargs)
+    def get_quantity_basic_unit(self, obj):
+        # Try to get product.measurement, fallback to 1 if not present
+        product = obj.stock.product
+        measurement = getattr(product, 'measurement', 1)
+        return obj.unit_quantity * measurement
+
 # Branch
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,13 +51,12 @@ class ItemTypeSerializer(serializers.ModelSerializer):
             'id': {'read_only': True},
         }
 
-
 # Category
 class CategorySerializer(serializers.ModelSerializer):
     item_type = ItemTypeSerializer(read_only=True)
     item_type_id = serializers.PrimaryKeyRelatedField(
         queryset=ItemType.objects.all(),
-        source='item_type',  # maps to item_type field in model
+        source='item_type',
         write_only=True
     )
 
@@ -74,10 +78,6 @@ class ProductSerializer(serializers.ModelSerializer):
             'name',
             'category',
             'category_id',
-            'price_per_unit',
-            'uses_carton',
-            'bottles_per_carton',
-            'receipt_image',
             'created_at',
             'updated_at',
         ]
@@ -92,15 +92,6 @@ class StockSerializer(serializers.ModelSerializer):
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(), source='branch', write_only=True
     )
-    total_carton_price = serializers.SerializerMethodField()
-
-    def get_total_carton_price(self, obj):
-        product = obj.product
-        if product.uses_carton and product.bottles_per_carton and product.price_per_unit:
-            return float(obj.carton_quantity * product.bottles_per_carton * product.price_per_unit)
-        elif not product.uses_carton and product.price_per_unit:
-            return float(obj.bottle_quantity * product.price_per_unit)
-        return 0.0
 
     class Meta:
         model = Stock
@@ -115,10 +106,9 @@ class StockSerializer(serializers.ModelSerializer):
             'unit_quantity',
             'minimum_threshold',
             'running_out',
-            'total_carton_price',
         ]
 
-# Inventory Transaction (✔️ Enhanced with carton-to-bottle logic)
+# Inventory Transaction
 class InventoryTransactionSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(
@@ -137,63 +127,15 @@ class InventoryTransactionSerializer(serializers.ModelSerializer):
             'product_id',
             'transaction_type',
             'quantity',
-            'unit_type',
             'transaction_date',
             'branch',
             'branch_id',
         ]
 
-    def create(self, validated_data):
-        user = self.context['request'].user if self.context.get('request') else None
-
-        with db_transaction.atomic():
-            inventory_transaction = InventoryTransaction.objects.create(**validated_data)
-
-            product = validated_data['product']
-            branch = validated_data['branch']
-            qty = Decimal(validated_data['quantity'])
-            unit_type = validated_data['unit_type']
-            txn_type = validated_data['transaction_type']
-
-            bottles_per_carton = product.bottles_per_carton or 0
-            bottle_equivalent = qty * bottles_per_carton
-
-            stock, created = Stock.objects.select_for_update().get_or_create(
-                product=product,
-                branch=branch,
-                defaults={
-                    'carton_quantity': Decimal('0.00'),
-                    'bottle_quantity': Decimal('0.00'),
-                    'unit_quantity': Decimal('0.00'),
-                    'minimum_threshold': Decimal('0.00'),
-                }
-            )
-
-            # Determine + or - based on transaction type
-            if txn_type == 'restock':
-                sign = Decimal('1.00')
-            elif txn_type in ['sale', 'wastage']:
-                sign = Decimal('-1.00')
-            else:
-                sign = Decimal('0.00')
-
-            # Apply update
-            if unit_type == 'carton':
-                stock.carton_quantity += sign * qty
-                stock.bottle_quantity += sign * bottle_equivalent
-            elif unit_type == 'bottle':
-                stock.bottle_quantity += sign * qty
-            elif unit_type == 'unit':
-                stock.unit_quantity += sign * qty
-
-            # Ensure non-negative values
-            stock.carton_quantity = max(stock.carton_quantity, Decimal('0.00'))
-            stock.bottle_quantity = max(stock.bottle_quantity, Decimal('0.00'))
-            stock.unit_quantity = max(stock.unit_quantity, Decimal('0.00'))
-
-            stock.save()
-
-        return inventory_transaction
+class ProductUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductUnit
+        fields = ['id', 'unit_name', 'abbreviation', 'is_liquid_unit']
 
 # Inventory Request
 class InventoryRequestSerializer(serializers.ModelSerializer):
@@ -205,6 +147,11 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(), source='branch', write_only=True
     )
+    request_unit = ProductUnitSerializer(read_only=True)
+    request_unit_id = serializers.PrimaryKeyRelatedField(
+        queryset=ProductUnit.objects.all(), source='request_unit', write_only=True
+    )
+    quantity_basic_unit = serializers.SerializerMethodField()
 
     class Meta:
         model = InventoryRequest
@@ -213,10 +160,22 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
             'product',
             'product_id',
             'quantity',
-            'unit_type',
             'status',
             'created_at',
             'branch',
             'branch_id',
             'reached_status',
+            'request_unit',
+            'request_unit_id',
+            'quantity_basic_unit',
         ]
+
+    def get_quantity_basic_unit(self, obj):
+        # Find the measurement for this product and request_unit
+        measurement = ProductMeasurement.objects.filter(
+            product=obj.product,
+            from_unit=obj.request_unit
+        ).first()
+        if measurement:
+            return obj.quantity * measurement.amount_per
+        return obj.quantity  # fallback if no measurement found

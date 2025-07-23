@@ -24,21 +24,33 @@ class Category(models.Model):
     def __str__(self):
         return f"{self.category_name} ({self.item_type.type_name})"
 
+class ProductUnit(models.Model):
+    unit_name = models.CharField(max_length=50)
+    abbreviation = models.CharField(max_length=10)
+    is_liquid_unit = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.unit_name
+
+class ProductMeasurement(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    from_unit = models.ForeignKey(ProductUnit, on_delete=models.CASCADE, related_name='from_measurements')
+    to_unit = models.ForeignKey(ProductUnit, on_delete=models.CASCADE, related_name='to_measurements')
+    amount_per = models.DecimalField(max_digits=10, decimal_places=4)
+    is_default_sales_unit = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.product.name}: {self.amount_per} {self.to_unit} per {self.from_unit}"
+
 class Product(models.Model):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
-    uses_carton = models.BooleanField(default=False)
-    bottles_per_carton = models.IntegerField(default=0, null=True, blank=True)
-    receipt_image = models.ImageField(upload_to='receipts/', null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.db.models import Sum
+
 class Stock(models.Model):
     product = models.ForeignKey('Product', on_delete=models.CASCADE)
     branch = models.ForeignKey('branches.Branch', on_delete=models.CASCADE)
@@ -75,25 +87,13 @@ class Stock(models.Model):
 
     def get_total_stock(self):
         """Returns total stock in standard units (bottles or units)."""
-        if self.product.uses_carton:
-            bottles_from_cartons = self.carton_quantity * self.product.bottles_per_carton
-            return bottles_from_cartons + self.bottle_quantity
         return float(self.unit_quantity)
 
     @classmethod
     def get_aggregated_stock(cls, product):
         """Aggregate total stock across all branches for the product."""
         stocks = cls.objects.filter(product=product)
-        if product.uses_carton:
-            result = stocks.aggregate(
-                total_cartons=Sum('carton_quantity'),
-                total_bottles=Sum('bottle_quantity')
-            )
-            total_cartons = result['total_cartons'] or 0
-            total_bottles = result['total_bottles'] or 0
-            return (total_cartons * product.bottles_per_carton) + total_bottles
-        else:
-            return float(stocks.aggregate(total=Sum('unit_quantity'))['total'] or 0.0)
+        return float(stocks.aggregate(total=Sum('unit_quantity'))['total'] or 0.0)
 
     def check_running_out(self):
         """
@@ -137,22 +137,14 @@ class InventoryTransaction(models.Model):
         ('wastage', 'Wastage'),
     )
 
-    UNIT_TYPES = (
-        ('carton', 'Carton'),
-        ('bottle', 'Bottle'),
-        ('unit', 'Unit'),
-    )
-
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
     transaction_date = models.DateTimeField(default=timezone.now)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
-    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # <-- Added field
 
     def __str__(self):
-        return f"{self.transaction_type.title()} - {self.product.name} ({self.quantity} {self.unit_type}) at {self.branch.name}"
+        return f"{self.transaction_type.title()} - {self.product.name} ({self.quantity}) at {self.branch.name}"
 
 
 class InventoryRequest(models.Model):
@@ -162,19 +154,13 @@ class InventoryRequest(models.Model):
         ('rejected', 'Rejected'),
     )
 
-    UNIT_TYPES = (
-        ('carton', 'Carton'),
-        ('bottle', 'Bottle'),
-        ('unit', 'Unit'),
-    )
-
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    unit_type = models.CharField(max_length=10, choices=UNIT_TYPES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     reached_status = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
+    request_unit = models.ForeignKey(ProductUnit, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.product.name} request at {self.branch.name} - {self.status}"
@@ -196,7 +182,6 @@ class AuditLog(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     action_type = models.CharField(max_length=20, choices=ACTION_CHOICES)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    unit_type = models.CharField(max_length=10, null=True, blank=True)
     action_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     branch = models.ForeignKey(Branch, null=True, blank=True, on_delete=models.SET_NULL)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -204,6 +189,7 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.action_type} - {self.product.name} by {self.action_by}"
+
 class BarmanStock(models.Model):
     stock = models.ForeignKey('Stock', on_delete=models.CASCADE, related_name='barman_stocks')
     bartender = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -236,10 +222,6 @@ class BarmanStock(models.Model):
             raise ValidationError(errors)
 
     def get_total_stock(self):
-        product = self.stock.product
-        if product.uses_carton:
-            bottles_from_cartons = self.carton_quantity * product.bottles_per_carton
-            return bottles_from_cartons + self.bottle_quantity
         return float(self.unit_quantity)
 
     def check_running_out(self):
@@ -260,9 +242,6 @@ class BarmanStock(models.Model):
         self.full_clean()
 
         # Auto-set minimum threshold to 20% of stock's bottle quantity if not already set
-        if self.minimum_threshold == 0 and self.stock and self.stock.bottle_quantity:
-            raw_threshold = Decimal(self.stock.bottle_quantity) * Decimal("0.2")
-            self.minimum_threshold = raw_threshold.quantize(Decimal("0.00001"), rounding=ROUND_DOWN)
         super().save(*args, **kwargs)
 
         # Ensure running_out gets evaluated/updated

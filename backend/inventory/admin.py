@@ -1,13 +1,14 @@
 from django.contrib import admin
-from .models import AuditLog  
+from .models import ItemType, Category, Product, Stock, InventoryTransaction, InventoryRequest, AuditLog, BarmanStock
 
-
-
-@admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = (
-        'product', 'action_type', 'quantity', 'unit_type',
-        'action_by', 'branch', 'timestamp'
-    )
-    search_fields = ('product__name', 'action_by__username')
-    list_filter = ('action_type', 'timestamp', 'branch')
+    list_display = ('id', 'product', 'action_type', 'quantity', 'action_by', 'branch', 'timestamp', 'note')
+
+admin.site.register(ItemType)
+admin.site.register(Category)
+admin.site.register(Product)
+admin.site.register(Stock)
+admin.site.register(InventoryTransaction)
+admin.site.register(InventoryRequest)
+admin.site.register(AuditLog, AuditLogAdmin)
+admin.site.register(BarmanStock)
