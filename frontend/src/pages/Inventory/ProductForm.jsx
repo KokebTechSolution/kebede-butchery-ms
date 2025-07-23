@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 import axios from 'axios';
@@ -21,6 +21,19 @@ function getCookie(name) {
   return cookieValue;
 }
 
+const initialFormData = {
+  name: '',
+  category: '',
+  base_unit_price: '',
+  base_unit: '',
+  input_unit: '',
+  input_quantity: '',
+  conversion_amount: '',
+  minimum_threshold_base_units: '',
+  description: '',
+  receipt_image: null,
+};
+
 const AddProductForm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -39,21 +52,9 @@ const AddProductForm = () => {
   const [submitError, setSubmitError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const initialFormData = {
-    name: '',
-    category: '',
-    base_unit_price: '',
-    base_unit: '',
-    input_unit: '',
-    input_quantity: '',
-    conversion_amount: '',
-    minimum_threshold_base_units: '',
-    description: '',
-    receipt_image: null,
-  };
-
   const [formData, setFormData] = useState(initialFormData);
   const [calculatedBaseUnits, setCalculatedBaseUnits] = useState('');
+  const prevIsNewProduct = useRef(isNewProduct);
 
   useEffect(() => {
     async function loadData() {
@@ -83,33 +84,12 @@ const AddProductForm = () => {
     setCalculatedBaseUnits(qty * conv);
   }, [formData.input_quantity, formData.conversion_amount]);
 
-  // Prefill fields when an existing product is selected
   useEffect(() => {
-    if (!isNewProduct && formData.name) {
-      const selectedProduct = products.find((p) => p.name === formData.name);
-      if (selectedProduct) {
-        setFormData((prev) => ({
-          ...prev,
-          // Pre-fill fields from the selected product
-          category: selectedProduct.category?.id || '',
-          base_unit_price: selectedProduct.base_unit_price || '',
-          base_unit: selectedProduct.base_unit || '',
-          description: selectedProduct.description || '',
-          // Do not pre-fill stock fields (input_unit, input_quantity, conversion_amount, minimum_threshold_base_units)
-        }));
-        // Optionally, set selectedItemType to match the product's category's item_type
-        if (selectedProduct.category?.item_type?.id) {
-          setSelectedItemType(String(selectedProduct.category.item_type.id));
-        }
-      }
-    } else if (isNewProduct) {
-      setFormData((prev) => ({
-        ...initialFormData,
-        name: '',
-      }));
+    if (isNewProduct && !prevIsNewProduct.current) {
+      setFormData({ ...initialFormData, name: '' });
     }
-    // eslint-disable-next-line
-  }, [isNewProduct, formData.name]);
+    prevIsNewProduct.current = isNewProduct;
+  }, [isNewProduct]);
 
   // Prevent duplicate product names
   const isDuplicateName = (name) => {
@@ -162,6 +142,7 @@ const AddProductForm = () => {
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     let newValue = files ? files[0] : value;
+    console.log('handleInputChange:', name, newValue); // Debug log
     setFormData((prev) => ({ ...prev, [name]: newValue }));
     // Validate this field only
     let err = { ...errors };
@@ -357,6 +338,7 @@ const AddProductForm = () => {
           {isNewProduct && (
             <input
               type="text"
+              name="name"
               placeholder={t('enter_new_product_name')}
               value={formData.name}
               onChange={handleInputChange}
@@ -399,10 +381,10 @@ const AddProductForm = () => {
             value={formData.base_unit}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.base_unit ? 'border-red-500' : ''}`}
-            disabled={!selectedItemType}
+            // disabled={!Boolean(selectedItemType)} // Always enabled for debugging
           >
             <option value="">{t('select_unit')}</option>
-            {selectedItemType && units.length > 0 ? (
+            {units.length > 0 ? (
               units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
                   {unit.unit_name}
@@ -435,10 +417,10 @@ const AddProductForm = () => {
             value={formData.input_unit}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.input_unit ? 'border-red-500' : ''}`}
-            disabled={!selectedItemType}
+            // disabled={!Boolean(selectedItemType)} // Always enabled for debugging
           >
             <option value="">{t('select_unit')}</option>
-            {selectedItemType && units.length > 0 ? (
+            {units.length > 0 ? (
               units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
                   {unit.unit_name}
