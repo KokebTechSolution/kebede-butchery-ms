@@ -72,9 +72,17 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'category_name', 'item_type', 'item_type_id']
 
+# ProductUnitSerializer must be defined before ProductSerializer
+class ProductUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductUnit
+        fields = ['id', 'unit_name', 'abbreviation', 'is_liquid_unit']
+
 # Product
 class ProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)  # nested category for reading
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
+    base_unit = ProductUnitSerializer(read_only=True)  # nested base unit for reading
     base_unit_id = serializers.PrimaryKeyRelatedField(queryset=ProductUnit.objects.all(), source='base_unit', write_only=True)
 
     class Meta:
@@ -85,7 +93,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'description',
             'base_unit_price',
             'base_unit_id',
+            'base_unit',  # add for reading
             'category_id',
+            'category',    # add for reading
             'created_at',
             'updated_at',
         ]
@@ -141,11 +151,6 @@ class InventoryTransactionSerializer(serializers.ModelSerializer):
             'branch_id',
         ]
 
-class ProductUnitSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductUnit
-        fields = ['id', 'unit_name', 'abbreviation', 'is_liquid_unit']
-
 # Inventory Request
 class InventoryRequestSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
@@ -186,7 +191,7 @@ class InventoryRequestSerializer(serializers.ModelSerializer):
             from_unit=obj.request_unit
         ).first()
         if measurement:
-            return obj.quantity * measurement.amount_per
+            return obj.quantity 
         return obj.quantity  # fallback if no measurement found
 
 class ProductMeasurementSerializer(serializers.ModelSerializer):
