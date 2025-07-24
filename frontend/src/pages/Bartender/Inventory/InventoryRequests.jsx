@@ -4,6 +4,8 @@ import {
   ReachRequest,
   NotReachRequest,
   fetchProductMeasurements,
+  cancelRequest,
+  updateRequest,
 } from '../../../api/inventory';
 import api from '../../../api/axiosInstance';
 import NewRequest from './NewRequest';
@@ -26,15 +28,16 @@ const InventoryRequestList = () => {
     branch: '',
   });
   const [formMessage, setFormMessage] = useState('');
-  // Fetch default measurement for selected product
   const [defaultMeasurement, setDefaultMeasurement] = useState(null);
-
-  // Trigger to refresh stocks
-  const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
 
   const { user } = useAuth();
   const branchId = user?.branch;
   const bartenderId = user?.id;
+  const isManager = user?.role === 'manager'; // adjust role key as per your auth system
+  const isBartender = user?.role === 'bartender';
+
+  // Refresh stocks trigger
+  const [refreshStockTrigger, setRefreshStockTrigger] = useState(0);
 
   useEffect(() => {
     loadRequests();
@@ -46,25 +49,17 @@ const InventoryRequestList = () => {
     fetchBarmanStocks();
   }, [refreshStockTrigger]);
 
-  // Fetch default measurement for selected product
   useEffect(() => {
-    const fetchDefaultMeasurement = async () => {
-      if (formData.product) {
-        try {
-          const measurements = await fetchProductMeasurements(formData.product);
-          console.log('Fetched measurements:', measurements);
-          const def = measurements.find(m => m.is_default_sales_unit);
-          console.log('Default measurement:', def);
-          const defMeasurement = def || null;
-          setDefaultMeasurement(defMeasurement);
-        } catch (err) {
-          setDefaultMeasurement(null);
-        }
-      } else {
-        setDefaultMeasurement(null);
-      }
-    };
-    fetchDefaultMeasurement();
+    if (formData.product) {
+      fetchProductMeasurements(formData.product)
+        .then((measurements) => {
+          const def = measurements.find(m => m.is_default_sales_unit) || null;
+          setDefaultMeasurement(def);
+        })
+        .catch(() => setDefaultMeasurement(null));
+    } else {
+      setDefaultMeasurement(null);
+    }
   }, [formData.product]);
 
   const fetchBarmanStocks = async () => {
@@ -79,7 +74,7 @@ const InventoryRequestList = () => {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const data = await fetchRequests(); // should internally use api with session
+      const data = await fetchRequests();
       setRequests(data);
     } catch (err) {
       console.error('Failed to fetch requests:', err);
@@ -107,7 +102,6 @@ const InventoryRequestList = () => {
     }
   };
 
-  // Accept and Reach handlers
   const handleAccept = async (id) => {
     setProcessingId(id);
     try {
@@ -134,32 +128,69 @@ const InventoryRequestList = () => {
     }
   };
 
-  // Filter by branch id (branch_id or nested branch.id)
+  const handleNotReach = async (id) => {
+    setProcessingId(id);
+    try {
+      await api.post(`/inventory/requests/${id}/not-reach/`);
+      await loadRequests();
+      setFormMessage('Marked as not reached!');
+    } catch (err) {
+      setFormMessage('Failed to mark as not reached.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleCancelRequest = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel this request?')) return;
+
+    setProcessingId(id);
+    try {
+      await cancelRequest(id);
+      await loadRequests();
+      setFormMessage('Request canceled!');
+    } catch (err) {
+      setFormMessage('Failed to cancel request.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleEditRequest = async (id, updatedData) => {
+    setProcessingId(id);
+    try {
+      await updateRequest(id, updatedData);
+      await loadRequests();
+      setFormMessage('Request updated!');
+    } catch (err) {
+      setFormMessage('Failed to update request.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Filter requests by branch
   const filteredRequests = requests.filter(
-    (req) =>
-      String(req.branch_id || req.branch?.id) === String(branchId)
+    req => String(req.branch_id || req.branch?.id) === String(branchId)
   );
 
   return (
     <div className="p-4">
-      <BarmanStockStatus
-        stocks={stocks}
-        tab={tab}
-        setTab={setTab}
-        bartenderId={bartenderId}
-      />
+      <BarmanStockStatus stocks={stocks} tab={tab} setTab={setTab} bartenderId={bartenderId} />
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Inventory Request History</h1>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={() => {
-            setFormMessage('');
-            setShowModal(true);
-          }}
-        >
-          + New Request
-        </button>
+        {isBartender && (
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            onClick={() => {
+              setFormMessage('');
+              setShowModal(true);
+            }}
+          >
+            + New Request
+          </button>
+        )}
       </div>
 
       <NewRequest
@@ -169,10 +200,9 @@ const InventoryRequestList = () => {
         formMessage={formMessage}
         products={products}
         branches={branches}
-        // Remove productUnits and unit_type from props
         handleFormChange={(e) => {
           const { name, value } = e.target;
-          setFormData((prev) => ({ ...prev, [name]: value }));
+          setFormData(prev => ({ ...prev, [name]: value }));
         }}
         handleFormSubmit={async (e) => {
           e.preventDefault();
@@ -180,29 +210,19 @@ const InventoryRequestList = () => {
             setFormMessage('Please select a product, branch, and enter a valid quantity.');
             return;
           }
-          // Always use from_unit_id from the default measurement
-          const unitId = defaultMeasurement && (defaultMeasurement.from_unit_id || defaultMeasurement.from_unit_id_read);
-
+          const unitId = defaultMeasurement?.from_unit_id || defaultMeasurement?.from_unit_id_read;
           if (!defaultMeasurement || typeof unitId !== 'number' || unitId <= 0) {
             setFormMessage('No default sales unit defined for this product.');
             return;
           }
-          const conversionFactor = parseFloat(defaultMeasurement.amount_per);
-          const quantityInBaseUnits = parseFloat(formData.quantity) * conversionFactor;
+          // Do NOT multiply by conversion factor. Send only the user-entered value and selected unit.
           try {
-            console.log('Submitting request payload:', {
-              product_id: parseInt(formData.product),
-              quantity: quantityInBaseUnits,
-              branch_id: parseInt(formData.branch),
-              status: 'pending',
-              request_unit_id: unitId
-            });
             await api.post('/inventory/requests/', {
               product_id: parseInt(formData.product),
-              quantity: quantityInBaseUnits,
+              quantity: formData.quantity, // user-entered value
               branch_id: parseInt(formData.branch),
               status: 'pending',
-              request_unit_id: unitId // Always use from_unit_id
+              request_unit_id: unitId, // selected unit
             });
             setFormMessage('Request submitted successfully!');
             setFormData({
@@ -214,7 +234,6 @@ const InventoryRequestList = () => {
             setShowModal(false);
             await loadRequests();
           } catch (err) {
-            console.error('Request submission error:', err.response?.data || err.message);
             const errors = err.response?.data || {};
             const messages = [];
             for (const key in errors) {
@@ -226,9 +245,7 @@ const InventoryRequestList = () => {
                 messages.push(`${key}: ${errors[key]}`);
               }
             }
-            if (messages.length === 0 && err.message) {
-              messages.push(err.message);
-            }
+            if (messages.length === 0 && err.message) messages.push(err.message);
             setFormMessage(messages.join(' | ') || 'Submission failed.');
           }
         }}
@@ -257,8 +274,9 @@ const InventoryRequestList = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.map((req) => {
+              {filteredRequests.map(req => {
                 const reached = Boolean(req.reached_status);
+                const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
                 return (
                   <tr
                     key={`${req.id}-${reached ? 'r' : 'nr'}`}
@@ -285,8 +303,35 @@ const InventoryRequestList = () => {
                         {req.status}
                       </span>
                     </td>
-                    <td className="border px-4 py-2">
-                      {req.status === 'pending' ? (
+                    <td className="border px-4 py-2 space-x-2">
+                      {/* Bartender: can edit or cancel only pending requests they made */}
+                      {canEditOrCancel && (
+                        <>
+                          <button
+                            onClick={() => {
+                              // Open edit modal or inline edit - implement as you want
+                              const updatedQty = prompt('Enter new quantity:', req.quantity);
+                              if (updatedQty && !isNaN(updatedQty) && Number(updatedQty) > 0) {
+                                handleEditRequest(req.id, { quantity: Number(updatedQty) });
+                              }
+                            }}
+                            disabled={processingId === req.id}
+                            className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:opacity-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleCancelRequest(req.id)}
+                            disabled={processingId === req.id}
+                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+
+                      {/* Manager: Accept pending requests */}
+                      {isManager && req.status === 'pending' && (
                         <button
                           onClick={() => handleAccept(req.id)}
                           disabled={processingId === req.id}
@@ -294,21 +339,30 @@ const InventoryRequestList = () => {
                         >
                           Accept
                         </button>
-                      ) : req.status === 'accepted' && !req.reached_status ? (
-                            <button
-                              onClick={() => handleReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                            >
-                              Reached
-                            </button>
-                      ) : req.status === 'accepted' && req.reached_status ? (
-                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                            Reach mark
-                          </span>
-                      ) : (
-                        <span className="text-gray-500 italic">No action available</span>
                       )}
+
+                      {/* Reach/Not Reach buttons - only if accepted */}
+                      {req.status === 'accepted' && isBartender && !reached && (
+                        <button
+                          onClick={() => handleReach(req.id)}
+                          disabled={processingId === req.id}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
+                        >
+                          Mark Reached
+                        </button>
+                      )}
+                      {req.status === 'accepted' && isBartender && reached && (
+                        <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
+                          Reached
+                        </span>
+                      )}
+
+                      {/* No actions available */}
+                      {!canEditOrCancel &&
+                        !(isManager && req.status === 'pending') &&
+                        !(req.status === 'accepted' && isBartender) && (
+                          <span className="text-gray-500 italic">No action available</span>
+                        )}
                     </td>
                   </tr>
                 );

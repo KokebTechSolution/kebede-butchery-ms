@@ -11,6 +11,8 @@ class BarmanStockSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source='stock.branch.name', read_only=True)
     stock_id = serializers.IntegerField(source='stock.id', read_only=True)
     quantity_basic_unit = serializers.SerializerMethodField()
+    original_quantity = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    original_unit = serializers.SerializerMethodField()
 
     class Meta:
         model = BarmanStock
@@ -26,6 +28,8 @@ class BarmanStockSerializer(serializers.ModelSerializer):
             'running_out',
             'last_stock_update',
             'quantity_basic_unit',
+            'original_quantity',
+            'original_unit',
         ]
         read_only_fields = ['running_out']
 
@@ -43,6 +47,11 @@ class BarmanStockSerializer(serializers.ModelSerializer):
                 pass
         # Fallback: just return the base units
         return obj.quantity_in_base_units
+
+    def get_original_unit(self, obj):
+        if obj.original_unit:
+            return obj.original_unit.unit_name
+        return None
 
 # Branch
 class BranchSerializer(serializers.ModelSerializer):

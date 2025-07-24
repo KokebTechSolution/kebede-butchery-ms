@@ -39,6 +39,13 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
   const [stockId, setStockId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockData, setRestockData] = useState({
+    restock_quantity: '',
+    restock_type: 'carton',
+  });
+  const [restockError, setRestockError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchStock = async () => {
@@ -81,6 +88,11 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  const handleRestockChange = (e) => {
+    const { name, value } = e.target;
+    setRestockData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
@@ -170,6 +182,57 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     } catch (err) {
       console.error('Update failed:', err.response?.data || err.message);
       alert(`${t('error_updating_inventory')}: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleRestock = async () => {
+    setRestockError('');
+    if (!restockData.restock_quantity || Number(restockData.restock_quantity) <= 0) {
+      setRestockError('Enter a valid restock quantity.');
+      return;
+    }
+    // You may need to adjust the endpoint and payload to match your backend
+    try {
+      await axios.post(
+        `http://localhost:8000/api/inventory/stocks/${stockId}/restock/`,
+        {
+          quantity: restockData.restock_quantity,
+          type: restockData.restock_type,
+        },
+        {
+          withCredentials: true,
+          headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        }
+      );
+      alert('Restocked successfully!');
+      setShowRestockModal(false);
+      onSuccess();
+    } catch (err) {
+      setRestockError('Restock failed: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this product and its stock?')) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete(`http://localhost:8000/api/inventory/products/${product.id}/`, {
+        withCredentials: true,
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      });
+      if (stockId) {
+        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, {
+          withCredentials: true,
+          headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+      }
+      alert('Product and stock deleted.');
+      onSuccess();
+      onClose();
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -312,7 +375,61 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         <button onClick={onClose} className="bg-gray-400 text-white px-4 py-2 rounded">
           {t('cancel')}
         </button>
+        <button onClick={() => setShowRestockModal(true)} className="bg-green-600 text-white px-4 py-2 rounded">
+          Restock
+        </button>
+        <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded" disabled={isDeleting}>
+          {isDeleting ? 'Deleting...' : 'Delete'}
+        </button>
       </div>
+      {/* Restock Modal */}
+      {showRestockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl relative">
+            <h2 className="text-lg font-semibold mb-4">Restock Product</h2>
+            <button
+              onClick={() => setShowRestockModal(false)}
+              className="absolute top-3 right-4 text-2xl font-bold text-gray-500 hover:text-gray-700"
+              aria-label="Close modal"
+            >
+              &times;
+            </button>
+            <div className="mb-4">
+              <label className="block font-medium mb-1">Quantity</label>
+              <input
+                type="number"
+                name="restock_quantity"
+                value={restockData.restock_quantity}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+                min="0"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block font-medium mb-1">Type</label>
+              <select
+                name="restock_type"
+                value={restockData.restock_type}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+              >
+                <option value="carton">Carton</option>
+                <option value="bottle">Bottle</option>
+                <option value="unit">Unit</option>
+              </select>
+            </div>
+            {restockError && <p className="text-red-500 text-sm mb-2">{restockError}</p>}
+            <div className="flex justify-end space-x-2">
+              <button onClick={handleRestock} className="bg-green-600 text-white px-4 py-2 rounded">
+                Restock
+              </button>
+              <button onClick={() => setShowRestockModal(false)} className="bg-gray-400 text-white px-4 py-2 rounded">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

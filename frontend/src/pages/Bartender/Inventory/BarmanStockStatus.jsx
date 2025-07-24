@@ -35,7 +35,7 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
               <th className="border px-2 py-1">Product Name</th>
               <th className="border px-2 py-1">Branch</th>
               <th className="border px-2 py-1">Quantity (Base Unit)</th>
-              <th className="border px-2 py-1">Quantity (Sales Unit)</th>
+              <th className="border px-2 py-1">Quantity (with input unit)</th>
               <th className="border px-2 py-1">Minimum Threshold</th>
               <th className="border px-2 py-1">Status</th>
             </tr>
@@ -54,7 +54,11 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
                   <td className="border px-2 py-1">{stock.product_name}</td>
                   <td className="border px-2 py-1">{stock.branch_name}</td>
                   <td className="border px-2 py-1">{stock.quantity_in_base_units}</td>
-                  <td className="border px-2 py-1">{stock.quantity_basic_unit}</td>
+                  <td className="border px-2 py-1">{
+                    stock.original_quantity && stock.original_unit
+                      ? `${parseFloat(stock.original_quantity).toFixed(2)} ${stock.original_unit}`
+                      : stock.original_quantity || 'N/A'
+                  }</td>
                   <td className="border px-2 py-1">{stock.minimum_threshold_base_units}</td>
                   <td className={`border px-2 py-1 font-bold ${stock.running_out ? 'text-red-600' : 'text-green-600'}`}>{stock.running_out ? 'Running Out' : 'Available'}</td>
                 </tr>

@@ -101,6 +101,41 @@ export const rejectRequest = async (requestId) => {
   return response.data;
 };
 
+// Cancel inventory request
+export const cancelRequest = async (requestId) => {
+  // If you have a cancel endpoint, use it. Otherwise, fallback to PATCH status.
+  try {
+    // Try POST to /requests/<id>/cancel/
+    const response = await axios.post(
+      `${BASE_URL}requests/${requestId}/cancel/`,
+      {},
+      modifyConfig
+    );
+    return response.data;
+  } catch (err) {
+    // If 404, fallback to PATCH status: 'cancelled'
+    if (err.response && err.response.status === 404) {
+      const patchRes = await axios.patch(
+        `${BASE_URL}requests/${requestId}/`,
+        { status: 'cancelled' },
+        modifyConfig
+      );
+      return patchRes.data;
+    }
+    throw err;
+  }
+};
+
+// Update inventory request (e.g., change quantity, unit, etc.)
+export const updateRequest = async (requestId, updateData) => {
+  const response = await axios.patch(
+    `${BASE_URL}requests/${requestId}/`,
+    updateData,
+    modifyConfig
+  );
+  return response.data;
+};
+
 // Fetch stocks
 export const fetchStocks = async () => {
   const response = await axios.get(`${BASE_URL}stocks/`, getConfig);

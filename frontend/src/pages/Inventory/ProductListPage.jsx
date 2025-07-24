@@ -11,6 +11,7 @@ import {
 import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
+import axios from 'axios';
 
 const ProductListPage = () => {
   const { t } = useTranslation();
@@ -28,6 +29,10 @@ const ProductListPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [restockingStock, setRestockingStock] = useState(null);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockData, setRestockData] = useState({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+  const [restockError, setRestockError] = useState('');
 
   useEffect(() => {
     loadData();
@@ -104,10 +109,57 @@ const ProductListPage = () => {
     setEditingProduct(null);
   };
 
-  const handleDelete = (productId) => {
-    if (window.confirm(t('confirm_delete_product'))) {
-      alert(`${t('delete')} ID: ${productId}`);
-      // TODO: implement delete logic
+  const handleRestockClick = (stock) => {
+    setRestockingStock(stock);
+    setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+    setRestockError('');
+    setShowRestockModal(true);
+  };
+  const handleRestockChange = (e) => {
+    const { name, value } = e.target;
+    setRestockData((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleRestockSubmit = async () => {
+    setRestockError('');
+    if (!restockData.restock_quantity || Number(restockData.restock_quantity) <= 0) {
+      setRestockError('Enter a valid restock quantity.');
+      return;
+    }
+    if (!restockData.restock_price || Number(restockData.restock_price) <= 0) {
+      setRestockError('Enter a valid purchase price.');
+      return;
+    }
+    try {
+      await axios.post(
+        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        {
+          quantity: restockData.restock_quantity,
+          type: restockData.restock_type,
+          price_at_transaction: restockData.restock_price,
+        },
+        {
+          withCredentials: true,
+          headers: { 'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] },
+        }
+      );
+      setShowRestockModal(false);
+      setRestockingStock(null);
+      setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+      loadData();
+    } catch (err) {
+      setRestockError('Restock failed: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+  const handleDelete = async (productId, stockId) => {
+    if (!window.confirm(t('confirm_delete_product'))) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
+      if (stockId) {
+        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
+      }
+      loadData();
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -137,21 +189,26 @@ const ProductListPage = () => {
         <table className="min-w-full border">
           <thead className="bg-gray-100">
             <tr>
-              {[
-                'name', 'category', 'item_type', 'branch', 'quantity_in_base_units',
-                'minimum_threshold_base_units', 'running_out', 'last_stock_update', 'actions'
-              ].map((key) => (
-                <th key={key} className="border px-4 py-2">{t(key)}</th>
-              ))}
+              <th className="border px-4 py-2">{t('name')}</th>
+              <th className="border px-4 py-2">{t('category')}</th>
+              <th className="border px-4 py-2">{t('item_type')}</th>
+              <th className="border px-4 py-2">{t('unit_type')}</th>
+              <th className="border px-4 py-2">{t('branch')}</th>
+              <th className="border px-4 py-2">{t('quantity_in_base_units')}</th>
+              <th className="border px-4 py-2">{t('minimum_threshold_base_units')}</th>
+              <th className="border px-4 py-2">{t('running_out')}</th>
+              <th className="border px-4 py-2">{t('last_stock_update')}</th>
+              <th className="border px-4 py-2">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredStocksByBranch.length > 0 ? (
               filteredStocksByBranch.map((stock) => (
                 <tr key={stock.id} className="text-center">
-                  <td className="border px-4 py-2">{stock.product?.name}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.category_name}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name}</td>
+                  <td className="border px-4 py-2">{stock.product?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.category_name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.base_unit?.unit_name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.quantity_in_base_units}</td>
                   <td className="border px-4 py-2">{stock.minimum_threshold_base_units}</td>
@@ -165,7 +222,10 @@ const ProductListPage = () => {
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}
                     </button>
-                    <button onClick={() => handleDelete(stock.product?.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
+                    <button onClick={() => handleRestockClick(stock)} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">
+                      {t('restock')}
+                    </button>
+                    <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
                       {t('delete')}
                     </button>
                   </td>
@@ -173,7 +233,7 @@ const ProductListPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="border px-4 py-4 text-center text-gray-500">
+                <td colSpan="10" className="border px-4 py-4 text-center text-gray-500">
                   {t('no_products_found')}
                 </td>
               </tr>
@@ -211,6 +271,57 @@ const ProductListPage = () => {
             onClose={handleEditClose}
             onSuccess={loadData}
           />
+        </Modal>
+      )}
+      {showRestockModal && restockingStock && (
+        <Modal title={t('restock_product')} onClose={() => setShowRestockModal(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="block font-medium mb-1">Quantity</label>
+              <input
+                type="number"
+                name="restock_quantity"
+                value={restockData.restock_quantity}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Type</label>
+              <select
+                name="restock_type"
+                value={restockData.restock_type}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+              >
+                <option value="carton">Carton</option>
+                <option value="bottle">Bottle</option>
+                <option value="unit">Unit</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Purchase Price</label>
+              <input
+                type="number"
+                name="restock_price"
+                value={restockData.restock_price}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            {restockError && <p className="text-red-500 text-sm mb-2">{restockError}</p>}
+            <div className="flex justify-end space-x-2">
+              <button onClick={handleRestockSubmit} className="bg-green-600 text-white px-4 py-2 rounded">
+                {t('restock')}
+              </button>
+              <button onClick={() => setShowRestockModal(false)} className="bg-gray-400 text-white px-4 py-2 rounded">
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

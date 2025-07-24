@@ -75,11 +75,11 @@ const InventoryRequestList = () => {
   const handleAccept = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/accept/`, {}, { withCredentials: true });
+      await acceptRequest(id);
       await loadRequests();
-      setFormMessage('Request accepted!');
+      setFormMessage(t('request_accepted'));
     } catch (err) {
-      setFormMessage('Failed to accept request.');
+      setFormMessage(t('failed_to_accept_request'));
     } finally {
       setProcessingId(null);
     }
@@ -88,11 +88,11 @@ const InventoryRequestList = () => {
   const handleReject = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reject/`, {}, { withCredentials: true });
+      await rejectRequest(id);
       await loadRequests();
-      setFormMessage('Request rejected!');
+      setFormMessage(t('request_rejected'));
     } catch (err) {
-      setFormMessage('Failed to reject request.');
+      setFormMessage(t('failed_to_reject_request'));
     } finally {
       setProcessingId(null);
     }

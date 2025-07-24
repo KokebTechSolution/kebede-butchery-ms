@@ -226,13 +226,12 @@ class BarmanStock(models.Model):
     minimum_threshold_base_units = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     running_out = models.BooleanField(default=False)
     last_stock_update = models.DateTimeField(default=timezone.now)
-    # New fields for traceability
-    original_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # migration
-    original_unit = models.ForeignKey(ProductUnit, on_delete=models.SET_NULL, null=True, blank=True, related_name='barmanstock_original_unit')  # migration
+    original_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    original_unit = models.ForeignKey(ProductUnit, on_delete=models.SET_NULL, null=True, blank=True, related_name='barman_stock_original_unit')
     class Meta:
         verbose_name = "Barman Stock"
         verbose_name_plural = "Barman Stocks"
-        unique_together = (("stock", "bartender"),)
+        unique_together = (('stock', 'bartender'),)
         ordering = ['bartender__username', 'stock__product__name']
     def __str__(self):
         return f"{self.bartender.username} — {self.stock.product.name} ({self.quantity_in_base_units} {self.stock.product.base_unit.unit_name})"
@@ -241,7 +240,7 @@ class BarmanStock(models.Model):
             raise ValidationError({'quantity_in_base_units': 'Quantity cannot be negative.'})
         if self.minimum_threshold_base_units < 0:
             raise ValidationError({'minimum_threshold_base_units': 'Minimum threshold cannot be negative.'})
-    def adjust_quantity(self, quantity, unit, is_addition=True, original_quantity=None, original_unit=None):
+    def adjust_quantity(self, quantity, unit, is_addition=True):
         # quantity is already in base units
         if not isinstance(quantity, Decimal):
             quantity = Decimal(str(quantity))
@@ -259,11 +258,6 @@ class BarmanStock(models.Model):
             quantity_in_base_units=F('quantity_in_base_units') + quantity_in_base_units_to_adjust,
             last_stock_update=timezone.now()
         )
-        # Set original_quantity and original_unit if provided (for additions only)
-        if is_addition and original_quantity is not None and original_unit is not None:
-            self.original_quantity = original_quantity
-            self.original_unit = original_unit
-            self.save(update_fields=['original_quantity', 'original_unit'])
         self.refresh_from_db()
         if is_addition and self.minimum_threshold_base_units == 0 and self.quantity_in_base_units > 0:
             new_threshold = self.quantity_in_base_units * Decimal('0.20')
@@ -273,6 +267,11 @@ class BarmanStock(models.Model):
                 minimum_threshold_base_units=new_threshold.quantize(Decimal('0.01'), rounding=ROUND_DOWN)
             )
             self.refresh_from_db()
+        # --- NEW: update original_quantity and original_unit on addition ---
+        if is_addition:
+            self.original_quantity = quantity
+            self.original_unit = unit
+            self.save(update_fields=['original_quantity', 'original_unit'])
         self.update_running_out_status()
     def update_running_out_status(self):
         new_status = self.quantity_in_base_units <= self.minimum_threshold_base_units
@@ -286,25 +285,16 @@ class BarmanStock(models.Model):
         if is_new or (not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', [])):
             self.update_running_out_status()
     def get_quantity_in_unit(self, target_unit):
-        # Always convert from original_quantity and original_unit for accuracy
         if not isinstance(target_unit, ProductUnit):
             raise TypeError("target_unit must be an instance of ProductUnit.")
         if not self.stock or not self.stock.product:
             raise ValueError("BarmanStock is missing a valid stock/product reference.")
         product = self.stock.product
-        if self.original_quantity is not None and self.original_unit is not None:
-            try:
-                conversion_factor = product.get_conversion_factor(self.original_unit, target_unit)
-                return self.original_quantity * conversion_factor
-            except Exception as e:
-                print(f"Warning: No valid conversion path for Product '{product.name}' from original unit '{self.original_unit}' to target unit '{target_unit}': {e}")
-                return None
-        # Fallback: use base units if original not available
         try:
             conversion_factor = product.get_conversion_factor(product.base_unit, target_unit)
-            return self.quantity_in_base_units * conversion_factor
-        except Exception as e:
-            print(f"Warning: No valid conversion path for Product '{product.name}' from base unit '{product.base_unit}' to target unit '{target_unit}': {e}")
+            return self.quantity_in_base_units #* conversion_factor
+        except ValueError as e:
+            print(f"Warning: No valid conversion path for Product '{product.name}' from base unit '{product.base_unit.unit_name}' to target unit '{target_unit.unit_name}': {e}")
             return None
     @property
     def display_stock_summary(self):
@@ -418,7 +408,7 @@ class InventoryTransaction(models.Model):
             if self.to_stock_main:
                 self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
             elif self.to_stock_barman:
-                self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True, original_quantity=self.quantity, original_unit=self.transaction_unit)
+                self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
         elif self.transaction_type in ['sale', 'wastage', 'adjustment_out']:
             if self.from_stock_main:
                 self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
@@ -427,7 +417,7 @@ class InventoryTransaction(models.Model):
         elif self.transaction_type == 'store_to_barman':
             if self.from_stock_main and self.to_stock_barman:
                 self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
-                self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True, original_quantity=self.quantity, original_unit=self.transaction_unit)
+                self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
         elif self.transaction_type == 'barman_to_store':
             if self.from_stock_barman and self.to_stock_main:
                 self.from_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
@@ -472,11 +462,16 @@ class InventoryRequest(models.Model):
             print(f"[DEBUG] Entering transaction creation block for request id={self.pk}")
             try:
                 store_stock = Stock.objects.get(product=self.product, branch=self.branch)
+                # Use only unique fields for get_or_create
                 barman_stock, created = BarmanStock.objects.get_or_create(
-                    stock=store_stock, # Changed from product to stock
+                    stock=store_stock,
                     bartender=self.requested_by,
-                    branch=self.branch
                 )
+                # Update branch if needed
+                if barman_stock.branch != self.branch:
+                    barman_stock.branch = self.branch
+                    barman_stock.save(update_fields=['branch'])
+                # Always create a new InventoryTransaction (history)
                 InventoryTransaction.objects.create(
                     product=self.product,
                     transaction_type='store_to_barman',
@@ -488,10 +483,6 @@ class InventoryRequest(models.Model):
                     notes=f"Fulfilled request #{self.pk} by {self.requested_by.username}.",
                     branch=self.branch,  # <-- Fix: set branch foreign key
                 )
-                # Update original_quantity and original_unit on the stock
-                store_stock.original_quantity = self.quantity
-                store_stock.original_unit = self.request_unit
-                store_stock.save(update_fields=['original_quantity', 'original_unit'])
                 print(f"[DEBUG] InventoryTransaction created for request id={self.pk}")
                 self.responded_at = timezone.now()
                 super().save(update_fields=['responded_at'])

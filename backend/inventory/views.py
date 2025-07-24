@@ -61,10 +61,11 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             stock = Stock.objects.get(product=req.product, branch=req.branch)
             # Convert request quantity to base units
             conversion_factor = req.product.get_conversion_factor(req.request_unit, req.product.base_unit)
-            quantity_in_base_units = req.quantity * conversion_factor
+            quantity_in_base_units = (req.quantity * conversion_factor).quantize(Decimal('0.01'))
             if stock.quantity_in_base_units < quantity_in_base_units:
                 return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
             stock.quantity_in_base_units -= quantity_in_base_units
+            stock.quantity_in_base_units = stock.quantity_in_base_units.quantize(Decimal('0.01'))
             # Update original_quantity and original_unit to reflect this deduction
             stock.original_quantity = req.quantity
             stock.original_unit = req.request_unit
