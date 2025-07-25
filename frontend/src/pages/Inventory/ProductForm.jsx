@@ -150,9 +150,7 @@ const AddProductForm = () => {
     setBatchProducts((prev) => [
       ...prev,
       {
-        name: formData.name,
-        description: formData.description,
-        base_unit_price: formData.base_unit_price,
+        ...formData, // include all UI fields for display
         base_unit_id: formData.base_unit,
         category_id: formData.category,
         stock: {
@@ -634,19 +632,29 @@ const AddProductForm = () => {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="border px-2 py-1">{t('product_name')}</th>
+                  <th className="border px-2 py-1">{t('description')}</th>
+                  <th className="border px-2 py-1">{t('category')}</th>
                   <th className="border px-2 py-1">{t('base_unit_price')}</th>
                   <th className="border px-2 py-1">{t('base_unit')}</th>
-                  <th className="border px-2 py-1">{t('category')}</th>
+                  <th className="border px-2 py-1">{t('input_unit')}</th>
+                  <th className="border px-2 py-1">{t('input_quantity')}</th>
+                  <th className="border px-2 py-1">{t('conversion_amount')}</th>
+                  <th className="border px-2 py-1">{t('minimum_threshold_base_units')}</th>
                   <th className="border px-2 py-1">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {batchProducts.map((p, idx) => (
                   <tr key={idx} className="text-center">
-                    <td className="border px-2 py-1">{p.name}</td>
-                    <td className="border px-2 py-1">{p.base_unit_price}</td>
-                    <td className="border px-2 py-1">{units.find(u => String(u.id) === String(p.base_unit))?.unit_name || ''}</td>
-                    <td className="border px-2 py-1">{categories.find(c => String(c.id) === String(p.category))?.category_name || ''}</td>
+                    <td className="border px-2 py-1">{p.name || 'N/A'}</td>
+                    <td className="border px-2 py-1">{p.description || 'N/A'}</td>
+                    <td className="border px-2 py-1">{categories.find(c => String(c.id) === String(p.category || p.category_id))?.category_name || 'N/A'}</td>
+                    <td className="border px-2 py-1">{p.base_unit_price || 'N/A'}</td>
+                    <td className="border px-2 py-1">{units.find(u => String(u.id) === String(p.base_unit || p.base_unit_id))?.unit_name || 'N/A'}</td>
+                    <td className="border px-2 py-1">{units.find(u => String(u.id) === String(p.input_unit))?.unit_name || 'N/A'}</td>
+                    <td className="border px-2 py-1">{p.input_quantity || 'N/A'}</td>
+                    <td className="border px-2 py-1">{p.conversion_amount || 'N/A'}</td>
+                    <td className="border px-2 py-1">{p.minimum_threshold_base_units || 'N/A'}</td>
                     <td className="border px-2 py-1">
                       <button onClick={() => handleRemoveFromBatch(idx)} className="text-red-500 hover:underline ml-2">{t('remove')}</button>
                     </td>
@@ -682,7 +690,17 @@ const AddProductForm = () => {
             <p className="mb-2">{t('confirm_batch_submit_instruction') || 'Are you sure you want to submit all products in the list?'}</p>
             <ul className="mb-4">
               {batchProducts.map((p, idx) => (
-                <li key={idx}>{p.name} ({p.base_unit_price} ETB, {categories.find(c => String(c.id) === String(p.category))?.category_name || ''})</li>
+                <li key={idx} className="mb-2 border-b pb-2">
+                  <div><strong>{t('product_name')}:</strong> {p.name || 'N/A'}</div>
+                  <div><strong>{t('description')}:</strong> {p.description || 'N/A'}</div>
+                  <div><strong>{t('category')}:</strong> {categories.find(c => String(c.id) === String(p.category || p.category_id))?.category_name || 'N/A'}</div>
+                  <div><strong>{t('base_unit_price')}:</strong> {p.base_unit_price || 'N/A'}</div>
+                  <div><strong>{t('base_unit')}:</strong> {units.find(u => String(u.id) === String(p.base_unit || p.base_unit_id))?.unit_name || 'N/A'}</div>
+                  <div><strong>{t('input_unit')}:</strong> {units.find(u => String(u.id) === String(p.input_unit))?.unit_name || 'N/A'}</div>
+                  <div><strong>{t('input_quantity')}:</strong> {p.input_quantity || 'N/A'}</div>
+                  <div><strong>{t('conversion_amount')}:</strong> {p.conversion_amount || 'N/A'}</div>
+                  <div><strong>{t('minimum_threshold_base_units')}:</strong> {p.minimum_threshold_base_units || 'N/A'}</div>
+                </li>
               ))}
             </ul>
             <div className="flex flex-col sm:flex-row justify-end gap-2">
