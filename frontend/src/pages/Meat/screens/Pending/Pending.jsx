@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaLock } from 'react-icons/fa';
 import { useOrders } from '../../hooks/useOrders';
 import NotificationPopup from '../../../../components/NotificationPopup.jsx';
+import ClosedOrders from './ClosedOrders';
+import { OrderCard } from '../../components/OrderCard';
 
 const getTodayDateString = () => {
   const today = new Date();
@@ -11,16 +13,63 @@ const getTodayDateString = () => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-export const Pending = () => {
-  const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem } = useOrders(filterDate);
+export const Pending = ({ filterDate, setFilterDate }) => {
+  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, setOrderPrinted } = useOrders(filterDate);
+  // Use only active orders (move this to the top)
+  const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
+  const [showClosed, setShowClosed] = useState(false);
   const prevOrderIdsRef = useRef([]);
-  const prevOrderItemsRef = useRef({});
+  const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
-  // Use only active orders
-  const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // Helper to get update message
+  function getOrderUpdateMessage(prevItems, currItems) {
+    // Find added items
+    for (const item of currItems) {
+      if (!prevItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} added`;
+      }
+    }
+    // Find removed items
+    for (const item of prevItems) {
+      if (!currItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} removed`;
+      }
+    }
+    // Find status/quantity changes
+    for (const item of currItems) {
+      const prev = prevItems.find(i => i.name === item.name);
+      if (prev) {
+        if (prev.status !== item.status) {
+          return `Updated: ${item.name} ${item.status}`;
+        }
+        if (prev.quantity !== item.quantity) {
+          return `Updated: ${item.name} quantity changed to ${item.quantity}`;
+        }
+      }
+    }
+    return '';
+  }
+
+  // Track previous items for each order
+  const prevOrderItemsMap = useRef({});
+
+  // After orders update, compare previous and current items for each order
+  useEffect(() => {
+    allOrders.forEach(order => {
+      const prevItems = Array.isArray(prevOrderItemsMap.current[order.id])
+        ? prevOrderItemsMap.current[order.id]
+        : [];
+      const msg = getOrderUpdateMessage(prevItems, order.items);
+      if (msg) {
+        setLastUpdate({ orderId: order.id, message: msg });
+      }
+      prevOrderItemsMap.current[order.id] = order.items; // Always store the array
+    });
+  }, [allOrders]);
+
+  const closedOrders = getClosedOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   // Notification logic: show popup when a new order is displayed in the UI or when a new item is added to an existing order
   useEffect(() => {
@@ -36,7 +85,7 @@ export const Pending = () => {
     } else {
       // Check for new items in existing orders
       for (const order of allOrders) {
-        const prevItemsCount = prevOrderItemsRef.current[order.id] || 0;
+        const prevItemsCount = prevOrderItemsMap.current[order.id] || 0;
         const currentItemsCount = order.items.length;
         if (currentItemsCount > prevItemsCount) {
           setNotificationOrder(order);
@@ -47,9 +96,9 @@ export const Pending = () => {
     }
     // Update refs
     prevOrderIdsRef.current = currentIds;
-    prevOrderItemsRef.current = {};
+    prevOrderItemsMap.current = {};
     for (const order of allOrders) {
-      prevOrderItemsRef.current[order.id] = order.items.length;
+      prevOrderItemsMap.current[order.id] = order.items.length;
     }
   }, [allOrders.length, allOrders.map(order => order.id).join(','), allOrders.map(order => order.items.length).join(',')]);
 
@@ -93,10 +142,22 @@ export const Pending = () => {
           className="p-2 border rounded"
         />
       </div>
-      {Object.keys(groupedByTableNumber).length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No active orders</p>
-        </div>
+      <div className="flex gap-4 mb-6">
+        <button
+          className={`px-4 py-2 rounded ${!showClosed ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setShowClosed(false)}
+        >
+          Active Orders
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${showClosed ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          onClick={() => setShowClosed(true)}
+        >
+          Closed Orders
+        </button>
+      </div>
+      {showClosed ? (
+        <ClosedOrders orders={closedOrders} />
       ) : (
         <div className="space-y-8">
           {tableEntries.map(([tableNum, tableOrders]) => (
@@ -110,57 +171,22 @@ export const Pending = () => {
                   const hasPendingItems = order.items.some(item => item.status === 'pending');
                   const staff = order.waiterName || order.created_by_username || 'Unknown';
                   return (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-semibold text-gray-900">
-                          Order #{order.order_number} <span style={{ color: '#888', marginLeft: 8 }}>({staff})</span>
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      onAcceptOrder={acceptOrder}
+                      onRejectOrder={rejectOrder}
+                      onAcceptItem={acceptOrderItem}
+                      onRejectItem={rejectOrderItem}
+                      onPrint={setOrderPrinted}
+                      showActions={true}
+                    >
+                      {lastUpdate.orderId === order.id && lastUpdate.message && (
+                        <span style={{ color: '#16a34a', marginLeft: 12, fontWeight: 500 }}>
+                          {lastUpdate.message}
                         </span>
-                        <span className="text-lg font-bold text-blue-700">
-                          ${(
-                            order.total_money && Number(order.total_money) > 0
-                              ? Number(order.total_money)
-                              : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
-                          ).toFixed(2)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="space-y-2">
-                          {order.items.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center text-sm py-1">
-                              <span>{item.name} × {item.quantity}</span>
-                              <span>${(item.price * item.quantity).toFixed(2)}</span>
-                              <span className="ml-4">
-                                {item.status === 'pending' && (
-                                  <>
-                                    <button
-                                      onClick={() => acceptOrderItem(item.id)}
-                                      className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
-                                    >
-                                      Accept
-                                    </button>
-                                    <button
-                                      onClick={() => rejectOrderItem(item.id)}
-                                      className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                )}
-                                {item.status === 'accepted' && (
-                                  <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
-                                )}
-                                {item.status === 'rejected' && (
-                                  <span className="text-red-700">Rejected</span>
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                      )}
+                    </OrderCard>
                   );
                 })}
               </div>

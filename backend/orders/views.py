@@ -74,7 +74,12 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        queryset = Order.objects.filter(food_status__in=['pending', 'preparing']).distinct()
+        # Show all orders that are not paid and have at least one item
+        queryset = Order.objects.filter(
+            food_status__in=['pending', 'preparing', 'completed'],
+            cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+            items__isnull=False
+        ).distinct()
         date = self.request.query_params.get('date')
         if date:
             queryset = queryset.filter(created_at__date=date)
@@ -84,7 +89,10 @@ class BeverageOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
+        queryset = Order.objects.filter(
+            beverage_status__in=['pending', 'preparing', 'completed'],
+            items__isnull=False
+        ).distinct()
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')
         end = self.request.query_params.get('end')
