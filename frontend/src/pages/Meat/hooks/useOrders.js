@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-
 export const useOrders = (filterDate) => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async (date) => {
     try {
       let url = 'http://localhost:8000/api/orders/food/';
-      if (date) {
-        url += `?date=${date}`;
-      }
-      const response = await axios.get(url);
+      if (date) url += `?date=${date}`;
+      const response = await axios.get(url, { withCredentials: true });
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -26,36 +23,28 @@ export const useOrders = (filterDate) => {
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
       const payload = { food_status: status };
-      if (reason) {
-        // You would need to add 'rejectionReason' to your Order model and serializer for this to work
-        // For now, we just update the status
-      }
-
-      await axios.patch(`http://localhost:8000/api/orders/${orderId}/`, payload);
-      
-      // Update the order's status in the local state instead of removing it
+      // add rejectionReason here once supported by backend
+      await axios.patch(
+        `http://localhost:8000/api/orders/${orderId}/`,
+        payload,
+        { withCredentials: true }
+      );
       setOrders(prevOrders =>
         prevOrders.map(order =>
-          order.id === orderId ? { ...order, status: status } : order
+          order.id === orderId ? { ...order, food_status: status } : order
         )
       );
-
     } catch (error) {
       console.error(error);
     }
   };
 
-  const acceptOrder = (orderId) => {
-    updateOrderStatus(orderId, 'preparing');
-  };
+  const acceptOrder = (orderId) => updateOrderStatus(orderId, 'preparing');
+  const rejectOrder = (orderId, reason) => updateOrderStatus(orderId, 'rejected', reason);
 
-  const rejectOrder = (orderId, reason) => {
-    updateOrderStatus(orderId, 'rejected', reason);
-  };
-
-  const getPendingOrders = () => orders.filter(order => order.status === 'pending');
-  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
-  const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
+  const getPendingOrders = () => orders.filter(order => order.food_status === 'pending');
+  const getPreparingOrders = () => orders.filter(order => order.food_status === 'preparing');
+  const getRejectedOrders = () => orders.filter(order => order.food_status === 'rejected');
 
   const getClosedOrders = () =>
     orders.filter(order =>
@@ -73,7 +62,8 @@ export const useOrders = (filterDate) => {
     try {
       const response = await axios.patch(
         `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
-        { status }
+        { status },
+        { withCredentials: true }
       );
       setOrders(prevOrders =>
         prevOrders.map(order => ({
@@ -101,6 +91,6 @@ export const useOrders = (filterDate) => {
     getClosedOrders,
     getActiveOrders,
     acceptOrderItem,
-    rejectOrderItem
+    rejectOrderItem,
   };
 };

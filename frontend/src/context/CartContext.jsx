@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthContext'; // Assuming AuthContext is in the same folder
+import { useAuth } from './AuthContext'; // Assuming AuthContext provides user info only
 import axiosInstance from '../api/axiosInstance';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children, initialActiveTableId }) => {
-  const { user, tokens } = useAuth(); // Get user and tokens from AuthContext
+  const { user } = useAuth(); // No tokens here, only user
   const [tableCarts, setTableCarts] = useState(() => {
     try {
       const localData = localStorage.getItem('tableCarts');
@@ -29,16 +29,12 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       return {};
     }
   });
-  const [activeTableId, setActiveTableId] = useState(null); // The currently selected table ID
-  const [orders, setOrders] = useState([]); // Start with an empty array, will be populated from DB
+  const [activeTableId, setActiveTableId] = useState(null);
+  const [orders, setOrders] = useState([]);
 
-  // Fetch orders from the database on component mount
+  // Fetch orders once on mount — session auth uses cookies automatically
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!tokens) {
-        setOrders([]); // Clear orders if no token
-        return;
-      }
       try {
         const response = await axiosInstance.get('/orders/order-list/');
         setOrders(response.data);
@@ -48,7 +44,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     };
 
     fetchOrders();
-  }, [tokens]); // Rerun when tokens change (login/logout)
+  }, []);
 
   useEffect(() => {
     try {
@@ -61,7 +57,6 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   useEffect(() => {
     if (initialActiveTableId) {
       setActiveTableId(initialActiveTableId);
-      // Initialize cart for the table if it doesn't exist
       setTableCarts(prev => ({
         ...prev,
         [initialActiveTableId]: prev[initialActiveTableId] || []
@@ -70,18 +65,15 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     }
   }, [initialActiveTableId]);
 
-  // Function to set the active table
   const setActiveTable = useCallback((tableId) => {
     setActiveTableId(tableId);
-    // Initialize cart for the table if it doesn't exist
     setTableCarts(prev => ({
       ...prev,
       [tableId]: prev[tableId] || []
     }));
     console.log('CartContext: Active table set to', tableId);
-  }, []); // Empty dependency array means this function is created only once
+  }, []);
 
-  // Get cart items for the active table
   const cartItems = activeTableId ? (tableCarts[activeTableId] || []) : [];
   console.log('CartContext: Current cart items for table', activeTableId, ':', cartItems);
 
@@ -90,8 +82,8 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       console.warn("No active table selected. Cannot add item to cart.");
       return;
     }
-    const { icon, ...rest } = item; // Destructure to remove the icon
-    const itemToAdd = rest; // Item without the icon
+    const { icon, ...rest } = item;
+    const itemToAdd = rest;
 
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
@@ -158,22 +150,19 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const placeOrder = async (orderData) => {
     try {
-      // Ensure orderData uses 'table' (table ID) instead of 'table_number' or 'branch'
       const payload = {
         ...orderData,
         table: activeTableId,
         waiter_username: user?.username,
-        // waiter_table_number removed because 'tables' is not defined here
       };
       delete payload.table_number;
       delete payload.branch;
+
       const response = await axiosInstance.post('/orders/order-list/', payload);
       const newOrder = response.data;
 
-      // Update local state with the new order
       setOrders(prevOrders => [...prevOrders, newOrder]);
 
-      // Clear the cart for the active table
       if (activeTableId) {
         setTableCarts(prev => ({
           ...prev,
@@ -189,11 +178,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const updateOrder = (orderId, updatedItems) => {
-    setOrders(prevOrders => prevOrders.map(order => 
+    setOrders(prevOrders => prevOrders.map(order =>
       order.id === orderId ? { ...order, items: updatedItems, timestamp: new Date().toISOString() } : order
     ));
     console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
-    clearCart(); // Clear the cart after updating the order
+    clearCart();
   };
 
   const deleteOrder = (orderId) => {
@@ -203,9 +192,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const loadCartForEditing = (tableId, items) => {
     setActiveTableId(tableId);
+
     setTableCarts(prev => ({
       ...prev,
-      [tableId]: items // Directly replace the cart for this table
+      [tableId]: items, // Load items to edit
+
     }));
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };
@@ -218,7 +209,6 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  // Get cart items for any table
   const getTableCart = (tableId) => {
     return tableCarts[tableId] || [];
   };
@@ -247,8 +237,8 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
         loadCartForEditing,
         updateOrder,
         deleteOrder,
-        getTableCart, // Expose getTableCart for getting any table's cart
-        user, // Expose user
+        getTableCart,
+        user,
       }}
     >
       {children}
@@ -262,4 +252,4 @@ export const useCart = () => {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-}; 
+};

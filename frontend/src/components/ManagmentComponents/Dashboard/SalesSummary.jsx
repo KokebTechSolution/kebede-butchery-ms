@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../../api/axiosInstance"; // adjust path as needed
 
 export default function SalesSummary() {
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -7,22 +7,18 @@ export default function SalesSummary() {
   const [ordersCount, setOrdersCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Example API endpoint (you should create this)
-  const SALES_SUMMARY_API = "http://localhost:8000/api/orders/sales-summary/";
+  const SALES_SUMMARY_API = "orders/sales-summary/"; // relative path for axiosInstance baseURL
 
   useEffect(() => {
     const fetchSalesSummary = async () => {
       try {
-        const response = await axios.get(SALES_SUMMARY_API, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-        });
+        const response = await axiosInstance.get(SALES_SUMMARY_API);
 
         const { total_revenue, avg_order_value, orders_count } = response.data;
 
         setTotalRevenue(total_revenue);
         setAvgOrderValue(avg_order_value);
         setOrdersCount(orders_count);
-
       } catch (error) {
         console.error("Error fetching sales summary:", error);
       } finally {

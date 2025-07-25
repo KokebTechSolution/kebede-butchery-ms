@@ -23,9 +23,16 @@ export const Pending = () => {
   const prevOrderIdsRef = useRef([]);
   const prevOrderItemsRef = useRef({});
   const pollingRef = useRef(null);
+  const { user } = useAuth();
+  const branchId = user?.branch;
 
   // Use only active orders
-  const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const allOrders = getActiveOrders()
+  
+  .filter(order => String(order.branch_id) === String(branchId))
+  .slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  console.log('Fetched orders:', allOrders);
+console.log('Current branchId:', branchId);
   // Group by table_number, fallback to 'N/A' if missing
   const groupedByTableNumber = allOrders.reduce((acc, order) => {
     const tableNum = order.table_number !== undefined && order.table_number !== null ? order.table_number : 'N/A';

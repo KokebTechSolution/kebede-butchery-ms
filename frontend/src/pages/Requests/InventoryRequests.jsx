@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import {
   fetchRequests,
   acceptRequest,
   rejectRequest,
-} from '../../api/inventory';
-import axios from 'axios';
+} from '../../api/inventory'; // make sure these use axios withCredentials too
 import NewRequest from './NewRequest';
 
 const InventoryRequestList = () => {
+  const { t } = useTranslation();
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
@@ -36,8 +39,8 @@ const InventoryRequestList = () => {
       const data = await fetchRequests();
       setRequests(data);
     } catch (err) {
-      console.error('Failed to fetch requests:', err);
-      alert('Error loading requests');
+      console.error(t('error_loading_requests'), err);
+      alert(t('error_loading_requests'));
     } finally {
       setLoading(false);
     }
@@ -45,25 +48,23 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const token = localStorage.getItem('access');
       const res = await axios.get('http://localhost:8000/api/inventory/inventory/', {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setProducts(res.data);
     } catch (err) {
-      console.error('Failed to fetch products:', err);
+      console.error(t('error_loading_products'), err);
     }
   };
 
   const loadBranches = async () => {
     try {
-      const token = localStorage.getItem('access');
       const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setBranches(res.data);
     } catch (err) {
-      console.error('Failed to fetch branches:', err);
+      console.error(t('error_loading_branches'), err);
     }
   };
 
@@ -73,8 +74,8 @@ const InventoryRequestList = () => {
       await acceptRequest(id);
       await loadRequests();
     } catch (err) {
-      console.error('Accept failed:', err);
-      alert('Failed to accept the request');
+      console.error(t('accept_failed'), err);
+      alert(t('accept_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -86,8 +87,8 @@ const InventoryRequestList = () => {
       await rejectRequest(id);
       await loadRequests();
     } catch (err) {
-      console.error('Reject failed:', err);
-      alert('Failed to reject the request');
+      console.error(t('reject_failed'), err);
+      alert(t('reject_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -105,12 +106,11 @@ const InventoryRequestList = () => {
     e.preventDefault();
 
     if (!formData.product || !formData.branch || !formData.quantity || Number(formData.quantity) <= 0) {
-      setFormMessage('Please select a product, branch, and enter a valid quantity.');
+      setFormMessage(t('form_validation_error'));
       return;
     }
 
     try {
-      const token = localStorage.getItem('access');
       await axios.post(
         'http://localhost:8000/api/inventory/requests/',
         {
@@ -121,14 +121,12 @@ const InventoryRequestList = () => {
           branch_id: parseInt(formData.branch),
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true,
         }
       );
 
-      setFormMessage('Request submitted successfully!');
+      setFormMessage(t('request_submitted_successfully'));
       setFormData({
         product: '',
         quantity: '',
@@ -153,23 +151,14 @@ const InventoryRequestList = () => {
         }
       }
 
-      setFormMessage(messages.join(' | ') || 'Submission failed due to an unknown error.');
+      setFormMessage(messages.join(' | ') || t('unknown_submission_error'));
     }
   };
 
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Inventory Requests</h1>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={() => {
-            setFormMessage('');
-            setShowModal(true);
-          }}
-        >
-          + New Request
-        </button>
+        <h1 className="text-2xl font-bold">{t('inventory_requests_title')}</h1>
       </div>
 
       <NewRequest
@@ -184,34 +173,34 @@ const InventoryRequestList = () => {
       />
 
       {loading ? (
-        <p>Loading requests...</p>
+        <p>{t('loading_requests')}</p>
       ) : requests.length === 0 ? (
-        <p className="text-gray-600 italic">No requests found.</p>
+        <p className="text-gray-600 italic">{t('no_requests_found')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border text-sm">
             <thead className="bg-gray-100">
               <tr className="text-center">
-                <th className="border px-4 py-2">Product</th>
-                <th className="border px-4 py-2">Category</th>
-                <th className="border px-4 py-2">Item Type</th>
-                <th className="border px-4 py-2">Quantity</th>
-                <th className="border px-4 py-2">Unit Type</th>
-                <th className="border px-4 py-2">Branch</th>
-                <th className="border px-4 py-2">Requested At</th>
-                <th className="border px-4 py-2">Status</th>
-                <th className="border px-4 py-2">Actions</th>
+                <th className="border px-4 py-2">{t('product')}</th>
+                <th className="border px-4 py-2">{t('category')}</th>
+                <th className="border px-4 py-2">{t('item_type')}</th>
+                <th className="border px-4 py-2">{t('quantity')}</th>
+                <th className="border px-4 py-2">{t('unit_type')}</th>
+                <th className="border px-4 py-2">{t('branch')}</th>
+                <th className="border px-4 py-2">{t('requested_at')}</th>
+                <th className="border px-4 py-2">{t('status')}</th>
+                <th className="border px-4 py-2">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
               {requests.map((req) => (
                 <tr key={req.id} className="text-center hover:bg-gray-50 transition">
-                  <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{req.product?.name || t('na')}</td>
+                  <td className="border px-4 py-2">{req.product?.category?.category_name || t('na')}</td>
+                  <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || t('na')}</td>
                   <td className="border px-4 py-2">{req.quantity}</td>
                   <td className="border px-4 py-2">{req.unit_type}</td>
-                  <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{req.branch?.name || t('na')}</td>
                   <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
                   <td className="border px-4 py-2">
                     <span
@@ -223,7 +212,7 @@ const InventoryRequestList = () => {
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {req.status}
+                      {t(req.status)}
                     </span>
                   </td>
                   <td className="border px-4 py-2 space-x-2">
@@ -234,22 +223,22 @@ const InventoryRequestList = () => {
                           disabled={processingId === req.id}
                           className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
                         >
-                          Accept
+                          {t('accept')}
                         </button>
                         <button
                           onClick={() => handleReject(req.id)}
                           disabled={processingId === req.id}
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50"
                         >
-                          Reject
+                          {t('reject')}
                         </button>
                       </>
                     ) : req.status === 'accepted' ? (
                       <span className={`font-semibold ${req.reached_status ? 'text-green-600' : 'text-red-600'}`}>
-                        {req.reached_status ? 'Reached' : 'Not Reached'}
+                        {req.reached_status ? t('reached') : t('not_reached')}
                       </span>
                     ) : (
-                      <span className="text-gray-500 italic">No actions</span>
+                      <span className="text-gray-500 italic">{t('no_actions')}</span>
                     )}
                   </td>
                 </tr>

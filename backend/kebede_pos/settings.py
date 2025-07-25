@@ -123,10 +123,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'kebede_pos_db',
-        'USER': 'kebede_user',
-        'PASSWORD': '1234',
+        'USER': 'postgres',
+        'PASSWORD': 'kokeb',
         'HOST': '127.0.0.1',
-        'PORT': '5433',
+        'PORT': '5432',
     }
 }
 
@@ -160,6 +160,8 @@ USE_I18N = True
 
 USE_TZ = True
 
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -191,6 +193,14 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",  # Important!
 ]
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  # For local dev
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  # Use True in production
+CSRF_COOKIE_SECURE = False 
+
 """
 from pathlib import Path
 import os

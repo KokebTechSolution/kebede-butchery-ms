@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../../api/axiosInstance"; // adjust the import path
 import { RefreshCw } from "lucide-react";
 
 export default function EmployeeActivity() {
@@ -9,7 +9,7 @@ export default function EmployeeActivity() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_URL = "http://localhost:8000/api/activity/employee-activity/";
+  const API_URL = "activity/employee-activity/"; // relative to baseURL in axiosInstance
 
   useEffect(() => {
     fetchEmployeeActivity();
@@ -19,10 +19,7 @@ export default function EmployeeActivity() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-      });
-
+      const response = await axiosInstance.get(API_URL);
       setActiveStaff(response.data.active_staff);
       setInactiveStaff(response.data.inactive_staff);
       setOrdersProcessed(response.data.orders_processed);

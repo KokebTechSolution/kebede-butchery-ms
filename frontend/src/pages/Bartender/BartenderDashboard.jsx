@@ -1,16 +1,17 @@
-// src/pages/Bartender/BartenderDashboard.jsx
 import React, { useState, useEffect } from "react";
-import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaUsers, FaBell, FaLock } from "react-icons/fa";
+import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaLock } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
- import { useBeverages } from  "./hooks/useBeverages";
-// import { useDashboardStats } from "./hooks/useDashboardStats";
-
+import { useBeverages } from "./hooks/useBeverages";
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./Inventory/InventoryRequests";
 import Reports from "./screens/Reports";
+import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 export default function BartenderDashboard() {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('Orders');
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
@@ -29,9 +30,25 @@ export default function BartenderDashboard() {
     }
   }, [lastMessage]);
 
-  // Helper to get closed orders: all items accepted or rejected (no pending/preparing) AND payment processed
+  useEffect(() => {
+    async function fetchRequests() {
+      try {
+        const res = await axios.get("http://localhost:8000/api/inventory/inventoryrequests/", {
+          withCredentials: true,  // send session cookies
+        });
+        setInventoryRequests(
+          res.data.filter(req => String(req.branch_id) === String(branchId))
+        );
+      } catch (err) {
+        console.error("Failed to fetch inventory requests", err);
+      }
+    }
+    if (branchId) fetchRequests();
+  }, [branchId]);
+
   const getClosedOrders = () =>
     orders.filter(order =>
+      String(order.branch_id) === String(branchId) &&
       order.has_payment &&
       order.items.length > 0 &&
       order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
@@ -40,33 +57,36 @@ export default function BartenderDashboard() {
   const renderContent = () => {
     switch (activeSection) {
       case 'Inventory':
-        return <Inventory />;
+        return <Inventory requests={inventoryRequests} />;
       case 'Reports':
         return <Reports />;
       case 'Closed':
         return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
+        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
       case 'Orders':
       default:
+        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
         return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };
 
   const navItems = [
-    { label: 'Orders', icon: <FaClipboardList />, section: 'Orders' },
-    { label: 'Closed', icon: <FaLock />, section: 'Closed' },
-    { label: 'Inventory', icon: <FaBoxes />, section: 'Inventory' },
-    { label: 'Reports', icon: <FaChartBar />, section: 'Reports' },
+    { label: t('orders'), icon: <FaClipboardList />, section: 'Orders' },
+    { label: t('closed'), icon: <FaLock />, section: 'Closed' },
+    { label: t('inventory'), icon: <FaBoxes />, section: 'Inventory' },
+    { label: t('reports'), icon: <FaChartBar />, section: 'Reports' },
   ];
 
   return (
     <div className="bg-gray-100">
-      {/* Main Content */}
       <main className="p-4 md:p-6 lg:p-8 space-y-6">
         {/* Welcome Banner */}
         <div className="bg-blue-100 text-blue-800 p-4 md:p-6 rounded shadow-sm">
-          <h1 className="text-3xl font-bold">Welcome, {userName} 🍻</h1>
+          <h1 className="text-3xl font-bold">
+            {t("welcome", { name: userName })} 🍻
+          </h1>
           <p className="text-md mt-1">
-            Manage beverage orders, bar inventory, and sales reports efficiently.
+            {t("dashboard_intro")}
           </p>
         </div>
 
@@ -74,9 +94,9 @@ export default function BartenderDashboard() {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3 mb-4">
             <FaBeer className="text-2xl text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-700">Bar Operations</h2>
+            <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
           </div>
-          
+
           <div className="flex flex-wrap gap-3">
             {navItems.map(({ label, icon, section }) => (
               <button
@@ -95,7 +115,6 @@ export default function BartenderDashboard() {
           </div>
         </div>
 
-
         {/* Main Content Area */}
         <div className="bg-white rounded-lg shadow">
           {renderContent()}
@@ -103,7 +122,7 @@ export default function BartenderDashboard() {
 
         {/* Tip Banner */}
         <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg text-blue-700 text-sm">
-          💡 <strong>Tip:</strong> Prepare beverages in the order they were received. Keep your bar station clean and organized.
+          💡 <strong>{t("tip")}:</strong> {t("tip_text")}
         </div>
       </main>
     </div>

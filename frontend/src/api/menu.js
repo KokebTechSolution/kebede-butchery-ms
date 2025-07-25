@@ -2,9 +2,7 @@
 
 import axiosInstance from './axiosInstance';
 
-// ========== API METHODS ========== //
 
-// Fetch all menus
 export const fetchMenus = async () => {
     try {
         const response = await axiosInstance.get('menu/menus/');
@@ -114,16 +112,6 @@ export const deleteMenuItem = async (id) => {
     }
 };
 
-// Fetch all menu categories
-export const fetchMenuCategories = async () => {
-    try {
-        const response = await axiosInstance.get('menu/menucategories/');
-        return response.data;
-    } catch (error) {
-        console.error('❌ Error fetching menu categories:', error);
-        throw error;
-    }
-};
 
 // Create a new menu category
 export const createMenuCategory = async (categoryData) => {
@@ -137,3 +125,59 @@ export const createMenuCategory = async (categoryData) => {
 };
 
 
+// Fetch inventory categories
+export const fetchInventoryCategories = async () => {
+  try {
+    const response = await axiosInstance.get('inventory/categories/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching inventory categories:', error);
+    throw error;
+  }
+};
+
+
+
+
+
+export async function syncMenuCategoriesWithInventory() {
+  try {
+    // Fetch inventory categories
+    const inventoryResponse = await axiosInstance.get("inventory/categories/");
+    const inventoryCategories = inventoryResponse.data;
+
+    // Fetch existing menu categories
+    const menuResponse = await axiosInstance.get("menu/menucategories/");
+    const menuCategories = menuResponse.data;
+
+    const existingNames = menuCategories.map(cat => cat.name);
+
+    // Filter only new categories not already in menu
+    const newCategories = inventoryCategories.filter(
+      cat => !existingNames.includes(cat.category_name)
+    );
+
+    // Create the missing categories
+    for (const cat of newCategories) {
+      await axiosInstance.post("menu/menucategories/", {
+        name: cat.category_name
+      });
+    }
+
+    console.log("✅ Sync complete:", newCategories.length, "categories added");
+  } catch (error) {
+    console.error("❌ Failed to sync categories:", error);
+  }
+}
+
+
+// Fetch menu categories AFTER syncing
+export const fetchMenuCategories = async () => {
+  try {
+    const response = await axiosInstance.get('menu/menucategories/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching menu categories:', error);
+    throw error;
+  }
+};

@@ -19,16 +19,17 @@ export const ReportSection = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Set default date range to last 30 days and fetch report on mount
+  // Initialize default date range to last 30 days (including today)
   useEffect(() => {
     const today = new Date();
     const prior = new Date();
-    prior.setDate(today.getDate() - 29); // 30 days including today
+    prior.setDate(today.getDate() - 29);
     const format = (d) => d.toISOString().slice(0, 10);
     setStart(format(prior));
     setEnd(format(today));
   }, []);
 
+  // Fetch report when start or end date changes
   useEffect(() => {
     if (start && end) {
       fetchReport();
@@ -54,27 +55,27 @@ export const ReportSection = () => {
     }
   };
 
-  // Helper to format date as YYYY-MM-DD
+  // Format date as YYYY-MM-DD string
   const formatDate = (date) => {
-    if (typeof date === 'string') return date;
+    if (typeof date === "string") return date;
     return date.toISOString().slice(0, 10);
   };
 
-  // Helper to fetch and export report for a given range
+  // Export report CSV for daily, weekly, or monthly range
   const exportReport = async (range) => {
     let exportStart, exportEnd, label;
     const today = end || new Date();
-    if (range === 'daily') {
+    if (range === "daily") {
       exportStart = exportEnd = formatDate(today);
       label = `daily-${exportEnd}`;
-    } else if (range === 'weekly') {
+    } else if (range === "weekly") {
       const d = new Date(end || new Date());
       const prior = new Date(d);
       prior.setDate(d.getDate() - 6);
       exportStart = formatDate(prior);
       exportEnd = formatDate(d);
       label = `weekly-${exportStart}_to_${exportEnd}`;
-    } else if (range === 'monthly') {
+    } else if (range === "monthly") {
       const d = new Date(end || new Date());
       const prior = new Date(d);
       prior.setDate(d.getDate() - 29);
@@ -85,17 +86,16 @@ export const ReportSection = () => {
     try {
       const res = await axiosInstance.get(`/orders/sales-report/?start=${exportStart}&end=${exportEnd}`);
       const data = res.data;
-      // Build CSV
       let csv = `Report Type,${label}\nStart Date,${exportStart}\nEnd Date,${exportEnd}\n`;
       csv += `Total Orders,${data.total_orders}\nTotal Sales,${data.total_sales}\nCash Sales,${data.cash_sales}\nOnline Sales,${data.online_sales}\n\n`;
       csv += `Top Selling Items\nName,Quantity,Revenue\n`;
       (data.top_selling_items ?? []).forEach(item => {
         csv += `${item.name},${item.quantity},${item.revenue}\n`;
       });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       saveAs(blob, `sales_report_${label}.csv`);
     } catch (e) {
-      alert('Failed to export report.');
+      alert("Failed to export report.");
     }
   };
 
@@ -110,22 +110,26 @@ export const ReportSection = () => {
         </p>
         <div className="flex gap-4 mt-4">
           <div>
-            <label htmlFor="start-date" className="block mb-1">Start Date:</label>
+            <label htmlFor="start-date" className="block mb-1">
+              Start Date:
+            </label>
             <input
               id="start-date"
               type="date"
               value={start}
-              onChange={e => setStart(e.target.value)}
+              onChange={(e) => setStart(e.target.value)}
               className="p-2 border rounded"
             />
           </div>
           <div>
-            <label htmlFor="end-date" className="block mb-1">End Date:</label>
+            <label htmlFor="end-date" className="block mb-1">
+              End Date:
+            </label>
             <input
               id="end-date"
               type="date"
               value={end}
-              onChange={e => setEnd(e.target.value)}
+              onChange={(e) => setEnd(e.target.value)}
               className="p-2 border rounded"
             />
           </div>
@@ -138,13 +142,12 @@ export const ReportSection = () => {
 
       {report && (
         <div className="px-4 py-3 w-full space-y-6">
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="border border-solid border-[#e2dddd] rounded-xl">
               <CardContent className="p-4">
                 <div className="flex flex-col space-y-2">
-                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">
-                    Total Orders
-                  </span>
+                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">Total Orders</span>
                   <span className="text-2xl font-bold text-blue-600 [font-family:'Work_Sans',Helvetica]">
                     {report.total_orders ?? 0}
                   </span>
@@ -154,9 +157,7 @@ export const ReportSection = () => {
             <Card className="border border-solid border-[#e2dddd] rounded-xl">
               <CardContent className="p-4">
                 <div className="flex flex-col space-y-2">
-                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">
-                    Total Sales
-                  </span>
+                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">Total Sales</span>
                   <span className="text-2xl font-bold text-green-600 [font-family:'Work_Sans',Helvetica]">
                     ${Number(report.total_sales ?? 0).toFixed(2)}
                   </span>
@@ -166,9 +167,7 @@ export const ReportSection = () => {
             <Card className="border border-solid border-[#e2dddd] rounded-xl">
               <CardContent className="p-4">
                 <div className="flex flex-col space-y-2">
-                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">
-                    Cash Sales
-                  </span>
+                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">Cash Sales</span>
                   <span className="text-2xl font-bold text-gray-600 [font-family:'Work_Sans',Helvetica]">
                     ${Number(report.cash_sales ?? 0).toFixed(2)}
                   </span>
@@ -178,9 +177,7 @@ export const ReportSection = () => {
             <Card className="border border-solid border-[#e2dddd] rounded-xl">
               <CardContent className="p-4">
                 <div className="flex flex-col space-y-2">
-                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">
-                    Online Sales
-                  </span>
+                  <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">Online Sales</span>
                   <span className="text-2xl font-bold text-gray-600 [font-family:'Work_Sans',Helvetica]">
                     ${Number(report.online_sales ?? 0).toFixed(2)}
                   </span>
@@ -198,20 +195,16 @@ export const ReportSection = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(!report.top_selling_items || report.top_selling_items.length === 0) && <div className="text-gray-500">No sales in this range.</div>}
+                {(!report.top_selling_items || report.top_selling_items.length === 0) && (
+                  <div className="text-gray-500">No sales in this range.</div>
+                )}
                 {(report.top_selling_items ?? []).map((item, index) => (
                   <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                     <div className="flex flex-col">
-                      <span className="font-medium text-[#161111] [font-family:'Work_Sans',Helvetica]">
-                        {item.name}
-                      </span>
-                      <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">
-                        {item.quantity} sold
-                      </span>
+                      <span className="font-medium text-[#161111] [font-family:'Work_Sans',Helvetica]">{item.name}</span>
+                      <span className="text-sm text-[#82686b] [font-family:'Work_Sans',Helvetica]">{item.quantity} sold</span>
                     </div>
-                    <span className="font-semibold text-green-600 [font-family:'Work_Sans',Helvetica]">
-                      ${item.revenue.toFixed(2)}
-                    </span>
+                    <span className="font-semibold text-green-600 [font-family:'Work_Sans',Helvetica]">${item.revenue.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -229,12 +222,8 @@ export const ReportSection = () => {
               <div className="space-y-3">
                 {(report.peak_hours ?? []).map((hour, index) => (
                   <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-[#161111] [font-family:'Work_Sans',Helvetica]">
-                      {hour.time}
-                    </span>
-                    <span className="font-semibold text-blue-600 [font-family:'Work_Sans',Helvetica]">
-                      {hour.orders} orders
-                    </span>
+                    <span className="font-medium text-[#161111] [font-family:'Work_Sans',Helvetica]">{hour.time}</span>
+                    <span className="font-semibold text-blue-600 [font-family:'Work_Sans',Helvetica]">{hour.orders} orders</span>
                   </div>
                 ))}
               </div>
@@ -253,21 +242,21 @@ export const ReportSection = () => {
                 <Button
                   variant="outline"
                   className="px-6 py-2 [font-family:'Work_Sans',Helvetica] font-medium"
-                  onClick={() => exportReport('daily')}
+                  onClick={() => exportReport("daily")}
                 >
                   Export Daily Report
                 </Button>
                 <Button
                   variant="outline"
                   className="px-6 py-2 [font-family:'Work_Sans',Helvetica] font-medium"
-                  onClick={() => exportReport('weekly')}
+                  onClick={() => exportReport("weekly")}
                 >
                   Export Weekly Report
                 </Button>
                 <Button
                   variant="outline"
                   className="px-6 py-2 [font-family:'Work_Sans',Helvetica] font-medium"
-                  onClick={() => exportReport('monthly')}
+                  onClick={() => exportReport("monthly")}
                 >
                   Export Monthly Report
                 </Button>

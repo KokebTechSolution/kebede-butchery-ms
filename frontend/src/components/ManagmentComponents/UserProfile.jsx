@@ -1,76 +1,65 @@
-// src/components/ManagmentComponents/UserProfile.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaUserCircle, FaChevronDown } from "react-icons/fa";
+import { UserCircle2 } from "lucide-react";
+import EditProfileModal from "./EditProfileModal";
+import { useAuth } from "../../context/AuthContext";
 
 const UserProfile = ({ first_name, role }) => {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Close dropdown when clicking outside
+  const dropdownRef = useRef();
+
+  // Close dropdown if clicked outside
   useEffect(() => {
-    function handleClickOutside(event) {
+    const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpen(false);
+        setIsOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleToggle = () => setOpen(!open);
-
-  const handleLogout = () => {
-    setOpen(false);
-    navigate("/logout"); // redirect to logout page
-  };
-
-  const handleEditProfile = () => {
-    setOpen(false);
-    navigate("/profile/edit"); // Replace with your actual route
-  };
-
   return (
-    <div
-      className="relative flex items-center gap-3 cursor-pointer select-none"
-      tabIndex={0}
-      aria-label="User menu"
-      ref={dropdownRef}
-      onClick={handleToggle}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleToggle();
-        } else if (e.key === "Escape") {
-          setOpen(false);
-        }
-      }}
-    >
-      <FaUserCircle className="text-white text-5xl" />
-      <div className="hidden sm:flex flex-col">
-        <p className="text-white font-semibold text-lg">{first_name}</p>
-        <p className="text-white text-xs uppercase tracking-widest">{role}</p>
-      </div>
-      <FaChevronDown className="text-white ml-1 hidden sm:block" />
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex items-center gap-3 px-3 py-1 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors"
+      >
+        {/* User Icon */}
+        <UserCircle2 className="w-8 h-8 text-white" />
+
+        {/* Name and Role */}
+        <div className="flex flex-col items-start text-left">
+          <span className="text-white font-bold leading-none text-sm">{first_name}</span>
+          <span className="text-gray-200 text-xs italic">({role})</span>
+        </div>
+      </button>
 
       {/* Dropdown menu */}
-      {open && (
-        <div className="absolute right-0 mt-12 w-44 bg-red-800 rounded shadow-lg z-50 ring-1 ring-black ring-opacity-5 focus:outline-none">
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-50">
           <button
-            onClick={handleEditProfile}
-            className="block w-full text-left px-4 py-2 text-white hover:bg-red-900 transition-colors"
+            onClick={() => {
+              setModalOpen(true);
+              setIsOpen(false);
+            }}
+            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
           >
-            Edit Profile
+            Edit Password
           </button>
           <button
-            onClick={handleLogout}
-            className="block w-full text-left px-4 py-2 text-white hover:bg-red-900 transition-colors"
+            onClick={() => logout()}
+            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
           >
             Logout
           </button>
         </div>
       )}
+
+      {/* Edit Profile Modal */}
+      {modalOpen && <EditProfileModal onClose={() => setModalOpen(false)} />}
     </div>
   );
 };

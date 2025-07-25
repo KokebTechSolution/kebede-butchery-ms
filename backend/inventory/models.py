@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Sum, F
 from django.core.exceptions import ValidationError
-
+from decimal import Decimal, ROUND_DOWN
 
 class ItemType(models.Model):
     type_name = models.CharField(max_length=50, unique=True)
@@ -204,17 +204,14 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.action_type} - {self.product.name} by {self.action_by}"
-
-
 class BarmanStock(models.Model):
     stock = models.ForeignKey('Stock', on_delete=models.CASCADE, related_name='barman_stocks')
     bartender = models.ForeignKey(User, on_delete=models.CASCADE)
-
     carton_quantity = models.PositiveIntegerField(default=0)
     bottle_quantity = models.PositiveIntegerField(default=0)
     unit_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
-    minimum_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    minimum_threshold = models.DecimalField(max_digits=10, decimal_places=5, default=0.00)
     running_out = models.BooleanField(default=False)
 
     class Meta:
@@ -249,7 +246,7 @@ class BarmanStock(models.Model):
         total = self.get_total_stock()
         threshold = float(self.minimum_threshold)
 
-        new_status = threshold > 0 and total <= (threshold / 4)
+        new_status = threshold > 0 and total <= threshold
         if self.running_out != new_status:
             self.running_out = new_status
             super().save(update_fields=['running_out'])
@@ -261,7 +258,13 @@ class BarmanStock(models.Model):
 
     def save(self, *args, **kwargs):
         self.full_clean()
+
+        # Auto-set minimum threshold to 20% of stock's bottle quantity if not already set
+        if self.minimum_threshold == 0 and self.stock and self.stock.bottle_quantity:
+            raw_threshold = Decimal(self.stock.bottle_quantity) * Decimal("0.2")
+            self.minimum_threshold = raw_threshold.quantize(Decimal("0.00001"), rounding=ROUND_DOWN)
         super().save(*args, **kwargs)
 
+        # Ensure running_out gets evaluated/updated
         if not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', []):
             self.check_running_out()

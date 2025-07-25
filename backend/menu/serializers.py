@@ -1,26 +1,44 @@
-# menu/serializers.py
-
 from rest_framework import serializers
+from .models import MenuItem
+from inventory.models import Product, Category as InventoryCategory  # Make sure this is the right import
 from .models import Menu, MenuSection, MenuItem, MenuCategory
-from inventory.models import Product
+
 
 class MenuItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     stock_info = serializers.SerializerMethodField()
     is_running_out = serializers.SerializerMethodField()
     
+<<<<<<< HEAD
     # Explicit foreign key field for product
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False, allow_null=True)
+=======
+    product = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        allow_null=True,
+        required=False
+    )
+>>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
 
     class Meta:
         model = MenuItem
-        fields = '__all__'
+        fields = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'item_type',
+            'category',
+            'category_name',
+            'is_available',
+            'product',
+            'stock_info',
+            'is_running_out',
+            'created_at',
+            'updated_at',
+        ]
 
     def get_stock_info(self, obj):
-        """
-        Returns carton/bottle/unit quantity info from stock for the given branch (if available).
-        Requires context['branch_id'] to be passed.
-        """
         branch_id = self.context.get('branch_id')
         if not branch_id:
             return None
@@ -41,7 +59,14 @@ class MenuItemSerializer(serializers.ModelSerializer):
             return None
         return obj.is_running_out(branch_id)
 
-        fields = ['id', 'name', 'description', 'price', 'item_type', 'category', 'category_name', 'is_available', 'created_at', 'updated_at']
+    def create(self, validated_data):
+        # Simply create the menu item with the provided data
+        # The product field can be null for food items
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Simply update the menu item with the provided data
+        return super().update(instance, validated_data)
 
 class MenuSectionSerializer(serializers.ModelSerializer):
     items = MenuItemSerializer(many=True, read_only=True)
@@ -49,13 +74,13 @@ class MenuSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MenuSection
         fields = ['id', 'name', 'items', 'created_at', 'updated_at']
+
 class MenuSerializer(serializers.ModelSerializer):
     items = MenuItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Menu
         fields = ['id', 'name', 'is_active', 'created_at', 'updated_at', 'items']
-
 
 class MenuCategorySerializer(serializers.ModelSerializer):
     class Meta:
