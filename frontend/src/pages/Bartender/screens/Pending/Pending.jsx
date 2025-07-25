@@ -7,14 +7,7 @@ import { useBeverages  } from '../../hooks/useBeverages';
 import NotificationPopup from '../../../../components/NotificationPopup.jsx';
 
 
-export const Pending = () => {
-  const [filterDate, setFilterDate] = useState(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  });
+export const Pending = ({ orders, filterDate, setFilterDate }) => {
   const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useBeverages(filterDate);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
@@ -185,7 +178,7 @@ console.log('Current branchId:', branchId);
                             {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
                           </span>
                           <span className="text-lg font-bold text-blue-700">
-                            ${(
+                            ETB{(
                               order.total_money && Number(order.total_money) > 0
                                 ? Number(order.total_money)
                                 : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
@@ -221,7 +214,7 @@ console.log('Current branchId:', branchId);
                               <div key={index} className="flex justify-between items-center">
                                 <div className="flex-1">
                                   <span className="font-medium">{item.name}</span>
-                                  <span className="text-gray-600 ml-2">${item.price}</span>
+                                  <span className="text-gray-600 ml-2">ETB{item.price}</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {item.status === 'pending' ? (
@@ -275,7 +268,7 @@ console.log('Current branchId:', branchId);
                             {order.items.map((item, index) => (
                               <div key={index} className="flex justify-between items-center text-sm py-1">
                                 <span>{item.name} × {item.quantity}</span>
-                                <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                <span>ETB{(item.price * item.quantity).toFixed(2)}</span>
                                 <span className="ml-4">
                                   {item.status === 'pending' && (
                                     <>

@@ -11,6 +11,7 @@ import api from '../../../api/axiosInstance';
 import NewRequest from './NewRequest';
 import BarmanStockStatus from './BarmanStockStatus';
 import { useAuth } from '../../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const InventoryRequestList = () => {
   const [requests, setRequests] = useState([]);
@@ -174,12 +175,14 @@ const InventoryRequestList = () => {
     req => String(req.branch_id || req.branch?.id) === String(branchId)
   );
 
+  const { t } = useTranslation();
+
   return (
     <div className="p-4">
       <BarmanStockStatus stocks={stocks} tab={tab} setTab={setTab} bartenderId={bartenderId} />
 
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Inventory Request History</h1>
+        <h1 className="text-2xl font-bold">{t('inventory_requests')}</h1>
         {isBartender && (
           <button
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -188,7 +191,7 @@ const InventoryRequestList = () => {
               setShowModal(true);
             }}
           >
-            + New Request
+            {t('new_request')}
           </button>
         )}
       </div>
@@ -255,22 +258,22 @@ const InventoryRequestList = () => {
       {loading ? (
         <p>Loading requests...</p>
       ) : filteredRequests.length === 0 ? (
-        <p className="text-gray-600 italic">No requests found for your branch.</p>
+        <p className="text-gray-600 italic">{t('no_requests_found_for_branch')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border text-sm">
             <thead className="bg-gray-100">
               <tr className="text-center">
-                <th className="border px-4 py-2">Product</th>
-                <th className="border px-4 py-2">Category</th>
-                <th className="border px-4 py-2">Item Type</th>
-                <th className="border px-4 py-2">Quantity</th>
-                <th className="border px-4 py-2">Quantity (Basic Unit)</th>
-                <th className="border px-4 py-2">Unit Type</th>
-                <th className="border px-4 py-2">Branch</th>
-                <th className="border px-4 py-2">Requested At</th>
-                <th className="border px-4 py-2">Status</th>
-                <th className="border px-4 py-2">Actions</th>
+                <th className="border px-4 py-2">{t('product')}</th>
+                <th className="border px-4 py-2">{t('category')}</th>
+                <th className="border px-4 py-2">{t('item_type')}</th>
+                <th className="border px-4 py-2">{t('quantity')}</th>
+                <th className="border px-4 py-2">{t('quantity_basic_unit')}</th>
+                <th className="border px-4 py-2">{t('unit_type')}</th>
+                <th className="border px-4 py-2">{t('branch')}</th>
+                <th className="border px-4 py-2">{t('requested_at')}</th>
+                <th className="border px-4 py-2">{t('status')}</th>
+                <th className="border px-4 py-2">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -318,14 +321,14 @@ const InventoryRequestList = () => {
                             disabled={processingId === req.id}
                             className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:opacity-50"
                           >
-                            Edit
+                            {t('edit')}
                           </button>
                           <button
                             onClick={() => handleCancelRequest(req.id)}
                             disabled={processingId === req.id}
                             className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </>
                       )}
@@ -337,7 +340,7 @@ const InventoryRequestList = () => {
                           disabled={processingId === req.id}
                           className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
                         >
-                          Accept
+                          {t('accept')}
                         </button>
                       )}
 
@@ -348,20 +351,27 @@ const InventoryRequestList = () => {
                           disabled={processingId === req.id}
                           className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
                         >
-                          Mark Reached
+                          {t('mark_reached')}
                         </button>
                       )}
                       {req.status === 'accepted' && isBartender && reached && (
                         <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                          Reached
+                          {t('reached')}
                         </span>
                       )}
 
                       {/* No actions available */}
                       {!canEditOrCancel &&
                         !(isManager && req.status === 'pending') &&
-                        !(req.status === 'accepted' && isBartender) && (
-                          <span className="text-gray-500 italic">No action available</span>
+                        !(req.status === 'accepted' && isBartender) &&
+                        reached && (
+                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
+                        )}
+                      {!canEditOrCancel &&
+                        !(isManager && req.status === 'pending') &&
+                        !(req.status === 'accepted' && isBartender) &&
+                        !reached && (
+                          <span className="text-gray-500 italic">{t('no_action_available')}</span>
                         )}
                     </td>
                   </tr>

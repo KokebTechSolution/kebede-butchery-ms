@@ -159,56 +159,129 @@ class ProductMeasurement(models.Model):
             raise ValidationError("From Unit and To Unit cannot be the same.")
         if self.amount_per <= 0:
             raise ValidationError({'amount_per': 'Amount per must be positive.'})
+from decimal import Decimal
+from django.db import models
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from django.db.models import F
 
 class Stock(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='store_stocks')
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='product_stocks')
-    quantity_in_base_units = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
-                                               help_text="Total quantity in the product's base unit (e.g., total bottles, total liters).")
-    minimum_threshold_base_units = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,
-                                                       help_text="Minimum stock level in base units before 'running_out' is flagged.")
-    running_out = models.BooleanField(default=False, help_text="True if stock is below the minimum threshold.")
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='store_stocks'
+    )
+    branch = models.ForeignKey(
+        'branches.Branch',
+        on_delete=models.CASCADE,
+        related_name='product_stocks'
+    )
+    quantity_in_base_units = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Total quantity in the product's base unit (e.g., total bottles, total liters)."
+    )
+    minimum_threshold_base_units = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Minimum stock level in base units before 'running_out' is flagged."
+    )
+    running_out = models.BooleanField(
+        default=False,
+        help_text="True if stock is below the minimum threshold."
+    )
     last_stock_update = models.DateTimeField(default=timezone.now)
-    original_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    original_unit = models.ForeignKey(ProductUnit, on_delete=models.SET_NULL, null=True, blank=True, related_name='stock_original_unit')
+
+    original_quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("0.00"),  # 🔧 Changed from null=True to default
+        help_text="Original quantity in its original unit (e.g. cartons)"
+    )
+    original_unit = models.ForeignKey(
+        'ProductUnit',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stock_original_unit'
+    )
+
     class Meta:
         verbose_name = "Main Store Stock"
         verbose_name_plural = "Main Store Stocks"
         unique_together = ('product', 'branch')
         ordering = ['branch__name', 'product__name']
+
     def __str__(self):
         return f"{self.product.name} @ {self.branch.name} ({self.quantity_in_base_units} {self.product.base_unit.unit_name})"
+
     def clean(self):
         if self.quantity_in_base_units < 0:
             raise ValidationError({'quantity_in_base_units': 'Quantity cannot be negative.'})
         if self.minimum_threshold_base_units < 0:
             raise ValidationError({'minimum_threshold_base_units': 'Minimum threshold cannot be negative.'})
-    def adjust_quantity(self, quantity, unit, is_addition=True):
-        # quantity is already in base units
-        if not isinstance(quantity, Decimal):
+    def adjust_quantity(self, quantity, unit, is_addition=True, original_quantity_delta=None):
+        """
+        Adjust quantity_in_base_units and original_quantity by adding the delta values.
+
+        quantity: Decimal or numeric, amount in base units (positive number)
+        original_quantity_delta: Decimal or numeric, the change in original units (positive number)
+        is_addition: if False, quantities will be subtracted
+        """
+
+        # Convert to Decimal and validate
+        try:
             quantity = Decimal(str(quantity))
-        quantity_in_base_units_to_adjust = quantity
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValidationError("Invalid base quantity. Must be a numeric value.")
+
+        if original_quantity_delta is None:
+            original_quantity_delta = Decimal("0.00")
+        else:
+            try:
+                original_quantity_delta = Decimal(str(original_quantity_delta))
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValidationError("Invalid original quantity delta. Must be a numeric value.")
+
         if not is_addition:
             current_stock = Stock.objects.filter(id=self.id).values_list('quantity_in_base_units', flat=True).first()
             if current_stock is None:
-                raise ValueError("Stock record not found for adjustment.")
-            if current_stock < quantity_in_base_units_to_adjust:
-                raise ValidationError(f"Insufficient stock of {self.product.name} to remove {quantity} {self.product.base_unit.unit_name}. Available: {current_stock} {self.product.base_unit.unit_name}")
-            quantity_in_base_units_to_adjust = -quantity_in_base_units_to_adjust
+                raise ValidationError("Stock record not found for adjustment.")
+            if current_stock < quantity:
+                raise ValidationError(
+                    f"Insufficient stock of {self.product.name} to remove {quantity} {self.product.base_unit.unit_name}. "
+                    f"Available: {current_stock} {self.product.base_unit.unit_name}"
+                )
+            quantity = -quantity
+            original_quantity_delta = -original_quantity_delta
+
+        # Ensure original_quantity is initialized
+        if self.original_quantity is None:
+            self.original_quantity = Decimal("0.00")
+
+        # Update fields atomically
         Stock.objects.filter(id=self.id).update(
-            quantity_in_base_units=F('quantity_in_base_units') + quantity_in_base_units_to_adjust,
+            quantity_in_base_units=F('quantity_in_base_units') + quantity,
+            original_quantity=F('original_quantity') + original_quantity_delta,
             last_stock_update=timezone.now()
         )
+
         self.refresh_from_db()
         self.update_running_out_status()
+
     def update_running_out_status(self):
-        from django.db.models.expressions import CombinedExpression, F
+        from django.db.models.expressions import CombinedExpression
+
         if isinstance(self.quantity_in_base_units, (CombinedExpression, F)) or isinstance(self.minimum_threshold_base_units, (CombinedExpression, F)):
             return
+
         new_status = self.quantity_in_base_units <= self.minimum_threshold_base_units
         if self.running_out != new_status:
             Stock.objects.filter(id=self.id).update(running_out=new_status)
             self.running_out = new_status
+
     def save(self, *args, **kwargs):
         do_clean = kwargs.pop('clean', True)
         if do_clean:
@@ -217,6 +290,25 @@ class Stock(models.Model):
         super().save(*args, **kwargs)
         if is_new or (not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', [])):
             self.update_running_out_status()
+
+    @property
+    def original_quantity_display(self):
+        if not self.original_unit or not self.product:
+            return None
+        try:
+            conversion_factor = self.product.get_conversion_factor(self.original_unit, self.product.base_unit)
+            if conversion_factor > 0:
+                full_units = int(self.quantity_in_base_units // conversion_factor)
+                remainder = int(self.quantity_in_base_units % conversion_factor)
+                return {
+                    'full_units': full_units,
+                    'original_unit': self.original_unit.unit_name,
+                    'remainder': remainder,
+                    'base_unit': self.product.base_unit.unit_name
+                }
+        except Exception:
+            pass
+        return None
 
 class BarmanStock(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='barman_stocks')
@@ -254,11 +346,25 @@ class BarmanStock(models.Model):
             if current_stock < quantity_in_base_units_to_adjust:
                 raise ValidationError(f"Insufficient stock of {self.stock.product.name} to remove {quantity} {self.stock.product.base_unit.unit_name}. Available: {current_stock} {self.stock.product.base_unit.unit_name}")
             quantity_in_base_units_to_adjust = -quantity_in_base_units_to_adjust
+
         BarmanStock.objects.filter(id=self.id).update(
             quantity_in_base_units=F('quantity_in_base_units') + quantity_in_base_units_to_adjust,
             last_stock_update=timezone.now()
         )
         self.refresh_from_db()
+
+        # Always recalculate original_quantity based on current base units and conversion factor
+        if self.original_unit:
+            try:
+                conversion_factor = self.stock.product.get_conversion_factor(self.original_unit, self.stock.product.base_unit)
+                if conversion_factor > 0:
+                    self.original_quantity = (self.quantity_in_base_units / conversion_factor).quantize(Decimal('0.01'), rounding=ROUND_DOWN)
+                else:
+                    self.original_quantity = Decimal('0.00')
+            except Exception:
+                self.original_quantity = Decimal('0.00')
+            self.save(update_fields=['original_quantity'])
+
         if is_addition and self.minimum_threshold_base_units == 0 and self.quantity_in_base_units > 0:
             new_threshold = self.quantity_in_base_units * Decimal('0.20')
             if new_threshold == 0 and self.quantity_in_base_units > 0:
@@ -330,6 +436,25 @@ class BarmanStock(models.Model):
         except ProductUnit.DoesNotExist:
             pass
         return " ".join(summary_parts)
+
+    @property
+    def original_quantity_display(self):
+        if not self.original_unit or not self.stock or not self.stock.product:
+            return None
+        try:
+            conversion_factor = self.stock.product.get_conversion_factor(self.original_unit, self.stock.product.base_unit)
+            if conversion_factor > 0:
+                full_units = int(self.quantity_in_base_units // conversion_factor)
+                remainder = int(self.quantity_in_base_units % conversion_factor)
+                return {
+                    'full_units': full_units,
+                    'original_unit': self.original_unit.unit_name,
+                    'remainder': remainder,
+                    'base_unit': self.stock.product.base_unit.unit_name
+                }
+        except Exception:
+            pass
+        return None
 
 # --- Transaction & Request Models ---
 class InventoryTransaction(models.Model):

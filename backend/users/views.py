@@ -24,6 +24,46 @@ from .serializers import (
 )
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def test_logout(request):
+    print('test_logout called, method:', request.method)
+    if request.method == 'POST':
+        return JsonResponse({'ok': True})
+    return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+@csrf_exempt
+def session_logout(request):
+    print("session_logout called, method:", request.method)
+    if request.method == 'POST':
+        from django.contrib.auth import logout
+        logout(request)
+        try:
+            request.session.flush()
+            request.session.clear()
+            request.session.delete()
+        except Exception as e:
+            print("Session clear/delete error:", e)
+        try:
+            from django.contrib.sessions.models import Session
+            if request.session.session_key:
+                Session.objects.filter(session_key=request.session.session_key).delete()
+        except Exception as e:
+            print("Session DB delete error:", e)
+        response = JsonResponse({
+            "message": "Logged out successfully.",
+            "redirect_url": "http://localhost:3000/login"
+        })
+        response.delete_cookie('sessionid', path='/')
+        response.delete_cookie('sessionid', path='')
+        response.delete_cookie('sessionid', domain=None)
+        response.delete_cookie('sessionid', domain=request.get_host().split(':')[0])
+        return response
+    return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
 User = get_user_model()
 
 
@@ -42,14 +82,6 @@ class SessionLoginView(APIView):
 @ensure_csrf_cookie
 def get_csrf(request):
     return JsonResponse({"message": "CSRF cookie set"})
-class SessionLogoutView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        print("🔒 Logging out session:", request.session.items())
-        logout(request)
-        request.session.flush()  # ⬅️ Ensures session is destroyed on logout
-        return Response({"message": "Logged out successfully."})
 
 
 class UserViewSet(ModelViewSet):
@@ -124,6 +156,7 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
         serializer = UserLoginSerializer(request.user)
         return Response(serializer.data)
 

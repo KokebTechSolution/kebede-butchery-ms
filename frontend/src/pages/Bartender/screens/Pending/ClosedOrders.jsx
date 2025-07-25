@@ -2,14 +2,19 @@ import React from 'react';
 import { FaLock } from 'react-icons/fa';
 
 const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
-  if (!orders || orders.length === 0) {
+  // Filter orders by date before grouping
+  const filteredOrders = filterDate
+    ? orders.filter(order => order.created_at && order.created_at.slice(0, 10) === filterDate)
+    : orders;
+
+  if (!filteredOrders || filteredOrders.length === 0) {
     return (
       <div className="text-gray-400 text-center">No closed orders</div>
     );
   }
 
   // Group orders by table number
-  const groupedByTable = orders.reduce((acc, order) => {
+  const groupedByTable = filteredOrders.reduce((acc, order) => {
     const table = order.table_number || 'No Table';
     if (!acc[table]) acc[table] = [];
     acc[table].push(order);
@@ -24,9 +29,11 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
           id="closed-order-date-filter"
           type="date"
           value={filterDate}
+          max={new Date().toISOString().slice(0, 10)}
           onChange={e => setFilterDate(e.target.value)}
           className="p-2 border rounded"
         />
+        <span className="text-xs text-gray-500">(Default: today)</span>
       </div>
       <div className="space-y-8">
         {Object.entries(groupedByTable).map(([table, tableOrders]) => (

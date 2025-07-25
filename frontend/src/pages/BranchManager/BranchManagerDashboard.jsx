@@ -18,7 +18,7 @@ export default function BranchManagerDashboard() {
         <header className="bg-white rounded-xl shadow-md px-6 py-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">
-              {t('welcome', { name: firstName })} 👋
+              {t('welcome', { name: firstName })} 44b
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               {t('dashboard_intro')}
@@ -29,6 +29,7 @@ export default function BranchManagerDashboard() {
           {tab === 'dashboard' ? <Outlet /> : <StaffListPage />}
         </section>
       </main>
+      {/* Remove per-page footer. Footer is now global. */}
     </div>
   );
 }

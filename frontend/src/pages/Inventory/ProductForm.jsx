@@ -51,6 +51,7 @@ const AddProductForm = () => {
   const [submitMessage, setSubmitMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [batchProducts, setBatchProducts] = useState([]);
 
   const [formData, setFormData] = useState(initialFormData);
   const [calculatedBaseUnits, setCalculatedBaseUnits] = useState('');
@@ -136,6 +137,98 @@ const AddProductForm = () => {
     if (!valid) return;
     console.log('Validation passed, showing modal');
     setShowConfirmModal(true);
+  };
+
+  // Add product to batch
+  const handleAddToBatch = (e) => {
+    e.preventDefault();
+    setErrors({});
+    setSubmitMessage('');
+    setSubmitError('');
+    const valid = validateForm();
+    if (!valid) return;
+    setBatchProducts((prev) => [
+      ...prev,
+      {
+        name: formData.name,
+        description: formData.description,
+        base_unit_price: formData.base_unit_price,
+        base_unit_id: formData.base_unit,
+        category_id: formData.category,
+        stock: {
+          branch_id: branchId,
+          quantity_in_base_units: calculatedBaseUnits,
+          minimum_threshold_base_units: formData.minimum_threshold_base_units,
+        },
+        measurement: {
+          from_unit_id: formData.input_unit,
+          to_unit_id: formData.base_unit,
+          amount_per: formData.conversion_amount,
+          is_default_sales_unit: true,
+        },
+      },
+    ]);
+    setFormData(initialFormData);
+    setCalculatedBaseUnits('');
+    setIsNewProduct(true);
+    setTimeout(() => {
+      const batchSection = document.getElementById('batch-list-section');
+      if (batchSection) batchSection.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  // Remove product from batch
+  const handleRemoveFromBatch = (idx) => {
+    setBatchProducts((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Clear all products from batch
+  const handleClearBatch = () => {
+    setBatchProducts([]);
+  };
+
+  // Confirmation dialog state
+  const [showBatchConfirm, setShowBatchConfirm] = useState(false);
+
+  // Submit all products in batch
+  const handleBatchSubmit = async () => {
+    setShowBatchConfirm(false);
+    setIsSubmitting(true);
+    setSubmitMessage('');
+    setSubmitError('');
+    const csrfToken = getCookie('csrftoken');
+    try {
+      const productsPayload = batchProducts.map((p) => ({
+        name: p.name,
+        description: p.description,
+        base_unit_price: p.base_unit_price,
+        base_unit_id: p.base_unit_id || p.base_unit,
+        category_id: p.category_id || p.category,
+        stock: p.stock,
+        measurement: p.measurement,
+      }));
+      const response = await axios.post(
+        'http://localhost:8000/api/inventory/products/bulk_create/',
+        { products: productsPayload },
+        {
+          withCredentials: true,
+          headers: { 'X-CSRFToken': csrfToken },
+        }
+      );
+      setSubmitMessage(t('submit_success'));
+      setBatchProducts([]);
+      setFormData(initialFormData);
+      setCalculatedBaseUnits('');
+      setIsNewProduct(true);
+      await reloadProducts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => setSubmitMessage(''), 2000);
+    } catch (err) {
+      setSubmitError(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 1. Add live validation on input change
@@ -302,7 +395,8 @@ const AddProductForm = () => {
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
       {console.log('Rendering modal?', showConfirmModal)}
       <h1 className="text-2xl font-bold mb-4">{t('add_new_product')}</h1>
-    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="mb-2 text-gray-600">{t('add_multiple_products_instruction') || 'Add multiple products to the list below, then submit all at once.'}</p>
+      <form onSubmit={handleAddToBatch} className="space-y-4">
         {submitMessage && (
           <div className="bg-green-100 text-green-800 p-2 rounded text-center font-semibold">{submitMessage}</div>
         )}
@@ -525,12 +619,91 @@ const AddProductForm = () => {
       </div>
       <button
         type="submit"
-          className={`bg-green-600 text-white px-4 py-2 rounded mt-4 w-full rounded-md ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full rounded-md ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
         disabled={isSubmitting}
       >
-          {isSubmitting ? t('submitting') : t('submit')}
+          {t('add_product_to_list')}
       </button>
     </form>
+      {/* Batch list display */}
+      <section id="batch-list-section" className="mt-6">
+        {batchProducts.length > 0 && (
+          <div>
+            <h2 className="text-lg font-bold mb-2">{t('products_in_queue')}</h2>
+            <table className="min-w-full border mb-2">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border px-2 py-1">{t('product_name')}</th>
+                  <th className="border px-2 py-1">{t('base_unit_price')}</th>
+                  <th className="border px-2 py-1">{t('base_unit')}</th>
+                  <th className="border px-2 py-1">{t('category')}</th>
+                  <th className="border px-2 py-1">{t('actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batchProducts.map((p, idx) => (
+                  <tr key={idx} className="text-center">
+                    <td className="border px-2 py-1">{p.name}</td>
+                    <td className="border px-2 py-1">{p.base_unit_price}</td>
+                    <td className="border px-2 py-1">{units.find(u => String(u.id) === String(p.base_unit))?.unit_name || ''}</td>
+                    <td className="border px-2 py-1">{categories.find(c => String(c.id) === String(p.category))?.category_name || ''}</td>
+                    <td className="border px-2 py-1">
+                      <button onClick={() => handleRemoveFromBatch(idx)} className="text-red-500 hover:underline ml-2">{t('remove')}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex gap-2 mb-2">
+              <button onClick={handleClearBatch} className="bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400">{t('clear_all')}</button>
+              <button
+                onClick={() => setShowBatchConfirm(true)}
+                className={`bg-green-600 text-white px-4 py-2 rounded w-full ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isSubmitting || batchProducts.length === 0}
+              >
+                {isSubmitting ? t('submitting') : t('submit_all')}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+      {/* Confirmation dialog for batch submit */}
+      {showBatchConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              className="absolute top-2 right-2 text-2xl text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Close modal"
+              onClick={() => setShowBatchConfirm(false)}
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-bold mb-4">{t('confirm_product_details')}</h2>
+            <p className="mb-2">{t('confirm_batch_submit_instruction') || 'Are you sure you want to submit all products in the list?'}</p>
+            <ul className="mb-4">
+              {batchProducts.map((p, idx) => (
+                <li key={idx}>{p.name} ({p.base_unit_price} ETB, {categories.find(c => String(c.id) === String(p.category))?.category_name || ''})</li>
+              ))}
+            </ul>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded w-full sm:w-auto"
+                onClick={handleBatchSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t('submitting') : t('confirm')}
+              </button>
+              <button
+                className="bg-gray-400 text-white px-4 py-2 rounded w-full sm:w-auto"
+                onClick={() => setShowBatchConfirm(false)}
+                disabled={isSubmitting}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">

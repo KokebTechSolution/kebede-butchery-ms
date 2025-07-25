@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../../api/axiosInstance'; // assumes this has withCredentials set
 import { useAuth } from '../../../context/AuthContext';
 
-export const useBeverages = () => {
+export const useBeverages = (filterDate) => {
   const [orders, setOrders] = useState([]);
   const { user } = useAuth();
   const branchId = user?.branch;
 
-  const fetchOrders = async (date) => {
+  const fetchOrders = async () => {
     try {
       const response = await axiosInstance.get(`/orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent
@@ -27,6 +27,13 @@ export const useBeverages = () => {
       return () => clearInterval(intervalId);
     }
   }, [branchId]);
+
+  // Helper to check if order matches filterDate (YYYY-MM-DD)
+  const matchesFilterDate = (order) => {
+    if (!filterDate) return true;
+    if (!order.created_at) return false;
+    return order.created_at.slice(0, 10) === filterDate;
+  };
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
     try {
@@ -62,12 +69,14 @@ export const useBeverages = () => {
     orders.filter(order =>
       order.has_payment &&
       order.items.length > 0 &&
-      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+      order.items.every(item => item.status === 'accepted' || item.status === 'rejected') &&
+      matchesFilterDate(order)
     );
 
   const getActiveOrders = () =>
     orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id)
+      !getClosedOrders().some(closed => closed.id === order.id) &&
+      matchesFilterDate(order)
     );
 
   // Item-level status update

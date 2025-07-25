@@ -328,14 +328,16 @@ const InventoryRequestList = () => {
     </>
   ) : req.status === 'accepted' && req.reached_status ? (
     <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-      Reached
+      {t('reached')}
     </span>
   ) : req.status === 'rejected' ? (
     <span className="px-2 py-1 rounded bg-red-200 text-red-900 font-semibold">
-      Rejected
+      {t('rejected')}
     </span>
+  ) : req.reached_status ? (
+    <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
   ) : (
-    <span className="text-gray-500 italic">No action available</span>
+    <span className="text-gray-500 italic">{t('no_action_available')}</span>
   )}
 </td>
 

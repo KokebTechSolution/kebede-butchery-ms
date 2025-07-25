@@ -36,6 +36,11 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     fetchSessionUser();
+    // On mount, if no valid session, ensure user is null and localStorage is cleared
+    if (!localStorage.getItem('user')) {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
   }, []);
 
   // Called after login to update user state
@@ -54,18 +59,18 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       localStorage.removeItem('user');
-      navigate('/login', { replace: true });
+      // Force a full reload to clear all state and ensure Topbar re-renders
+      window.location.href = '/login';
     }
   };
 
   // Update user state partially (for profile updates, etc.)
   const updateUser = (newUserData) => {
-    setUser((prevUser) => ({
-      ...prevUser,
-      ...newUserData,
-    }));
-    // Also update localStorage to keep it in sync
-    localStorage.setItem('user', JSON.stringify({ ...user, ...newUserData }));
+    setUser((prevUser) => {
+      const updated = { ...prevUser, ...newUserData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // Optional: Listen to custom logout event

@@ -67,7 +67,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             stock.quantity_in_base_units -= quantity_in_base_units
             stock.quantity_in_base_units = stock.quantity_in_base_units.quantize(Decimal('0.01'))
             # Update original_quantity and original_unit to reflect this deduction
-            stock.original_quantity = req.quantity
+            stock.original_quantity -= req.quantity
             stock.original_unit = req.request_unit
             stock.save(update_fields=['quantity_in_base_units', 'original_quantity', 'original_unit'])
         except Stock.DoesNotExist:
@@ -122,11 +122,59 @@ class ProductViewSet(viewsets.ModelViewSet):
                 )
             return response
 
+    def create_product_with_related(self, product_data):
+        # Create product
+        product_serializer = ProductSerializer(data=product_data)
+        product_serializer.is_valid(raise_exception=True)
+        product = product_serializer.save()
+        # Create stock if provided
+        stock_data = product_data.get('stock')
+        if stock_data:
+            # Get original_unit and original_quantity from product_data (from frontend fields)
+            original_unit_id = product_data.get('input_unit')
+            original_quantity = product_data.get('input_quantity')
+            Stock.objects.create(
+                product=product,
+                branch_id=stock_data['branch_id'],
+                quantity_in_base_units=stock_data['quantity_in_base_units'],
+                minimum_threshold_base_units=stock_data.get('minimum_threshold_base_units', 0),
+                original_unit_id=original_unit_id,
+                original_quantity=original_quantity,
+            )
+        # Create measurement if provided
+        measurement_data = product_data.get('measurement')
+        if measurement_data:
+            ProductMeasurement.objects.create(
+                product=product,
+                from_unit_id=measurement_data['from_unit_id'],
+                to_unit_id=measurement_data['to_unit_id'],
+                amount_per=measurement_data['amount_per'],
+                is_default_sales_unit=measurement_data.get('is_default_sales_unit', True),
+            )
+        return product
+
     @action(detail=False, methods=['get'], url_path='available')
     def available(self, request):
         products = Product.objects.filter(is_active=True)
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='bulk_create')
+    def bulk_create(self, request):
+        products_data = request.data.get('products', [])
+        if not isinstance(products_data, list):
+            return Response({'detail': 'products must be a list'}, status=status.HTTP_400_BAD_REQUEST)
+        created_products = []
+        errors = []
+        for pdata in products_data:
+            try:
+                product = self.create_product_with_related(pdata)
+                created_products.append(product)
+            except Exception as e:
+                errors.append({'product': pdata.get('name'), 'error': str(e)})
+        if errors:
+            return Response({'created': ProductSerializer(created_products, many=True).data, 'errors': errors}, status=status.HTTP_207_MULTI_STATUS)
+        return Response(ProductSerializer(created_products, many=True).data, status=status.HTTP_201_CREATED)
 
 
 # Inventory Transaction
@@ -171,7 +219,7 @@ class StockViewSet(viewsets.ModelViewSet):
                 notes=f"Restocked {restock_quantity} {restock_unit.unit_name}(s) by {username}"
             )
             # Update original_quantity and original_unit on the stock
-            stock.original_quantity = restock_quantity
+            stock.original_quantity += restock_quantity
             stock.original_unit = restock_unit
             stock.save(update_fields=['original_quantity', 'original_unit'])
             return Response({'detail': 'Restocked successfully.'}, status=status.HTTP_200_OK)

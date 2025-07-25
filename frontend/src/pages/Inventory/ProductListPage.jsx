@@ -73,20 +73,31 @@ const ProductListPage = () => {
     return stocks.filter((stock) => stock.branch?.id === branchManagerBranchId);
   }, [stocks, branchManagerBranchId]);
 
+  // Calculate running low products based on stocks for the branch
+  const runningLowProducts = filteredStocksByBranch.filter((stock) => stock.running_out).length;
+
   const totalProducts = products.length;
-  const runningLowProducts = products.filter((p) => p.running_out).length;
-  const totalInventoryValue = products.reduce((sum, product) => {
+  // Calculate inventory value based on actual stock and product base_unit_price
+  const totalInventoryValue = stocks.reduce((sum, stock) => {
+    const price = parseFloat(stock.product?.base_unit_price || 0);
+    const qty = parseFloat(stock.quantity_in_base_units || 0);
+    return sum + price * qty;
+  }, 0);
+
+  // Calculate weekly inventory value
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weeklyInventoryValue = products.reduce((sum, product) => {
     const stock = stocks.find((s) => s.product?.id === product.id);
     if (!stock) return sum;
-
+    const updatedAt = product.updated_at ? new Date(product.updated_at) : null;
+    if (!updatedAt || updatedAt < oneWeekAgo) return sum;
     const cartonQty = stock.carton_quantity || 0;
     const bottleQty = stock.bottle_quantity || 0;
     const unitQty = stock.unit_quantity || 0;
-
     const pricePerUnit = parseFloat(product.price_per_unit || 0);
     const bottlesPerCarton = product.bottles_per_carton || 1;
     const totalBottles = cartonQty * bottlesPerCarton + bottleQty + unitQty;
-
     return sum + pricePerUnit * totalBottles;
   }, 0);
 
@@ -190,14 +201,19 @@ const ProductListPage = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="border px-4 py-2">{t('name')}</th>
+              <th className="border px-4 py-2">{t('description')}</th>
               <th className="border px-4 py-2">{t('category')}</th>
               <th className="border px-4 py-2">{t('item_type')}</th>
-              <th className="border px-4 py-2">{t('unit_type')}</th>
               <th className="border px-4 py-2">{t('branch')}</th>
+              <th className="border px-4 py-2">{t('branch_location')}</th>
               <th className="border px-4 py-2">{t('quantity_in_base_units')}</th>
+              <th className="border px-4 py-2">{t('original_quantity')}</th>
               <th className="border px-4 py-2">{t('minimum_threshold_base_units')}</th>
+              <th className="border px-4 py-2">{t('base_unit_price')}</th>
               <th className="border px-4 py-2">{t('running_out')}</th>
               <th className="border px-4 py-2">{t('last_stock_update')}</th>
+              <th className="border px-4 py-2">{t('product_created_at')}</th>
+              <th className="border px-4 py-2">{t('product_updated_at')}</th>
               <th className="border px-4 py-2">{t('actions')}</th>
             </tr>
           </thead>
@@ -206,18 +222,25 @@ const ProductListPage = () => {
               filteredStocksByBranch.map((stock) => (
                 <tr key={stock.id} className="text-center">
                   <td className="border px-4 py-2">{stock.product?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.description || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.product?.category?.category_name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.base_unit?.unit_name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.quantity_in_base_units}</td>
-                  <td className="border px-4 py-2">{stock.minimum_threshold_base_units}</td>
+                  <td className="border px-4 py-2">{stock.branch?.location || 'N/A'}</td>
+                  <td className="border px-4 py-2">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2">
+                    {stock.original_quantity_display || 'N/A'}
+                  </td>
+                  <td className="border px-4 py-2">{(stock.minimum_threshold_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2">{stock.product?.base_unit_price ? `ETB ${stock.product.base_unit_price}` : 'N/A'}</td>
                   <td className="border px-4 py-2">
                     <span className={`font-semibold ${stock.running_out ? 'text-red-500' : 'text-green-500'}`}>
                       {stock.running_out ? t('running_out') : t('in_stock')}
                     </span>
                   </td>
-                  <td className="border px-4 py-2">{new Date(stock.last_stock_update).toLocaleString()}</td>
+                  <td className="border px-4 py-2">{stock.last_stock_update ? new Date(stock.last_stock_update).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.created_at ? new Date(stock.product.created_at).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.updated_at ? new Date(stock.product.updated_at).toLocaleString() : 'N/A'}</td>
                   <td className="border px-4 py-2 space-x-2">
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}

@@ -25,16 +25,10 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
   const [formData, setFormData] = useState({
     name: product.name || '',
+    description: product.description || '',
     category: product.category?.id || '',
-    price_per_unit: product.price_per_unit || '',
-    uses_carton: product.uses_carton || false,
-    bottles_per_carton: product.bottles_per_carton || '',
-    quantityType: product.uses_carton ? 'carton' : 'unit',
-    carton_quantity: '',
-    bottle_quantity: '',
-    unit_quantity: '',
-    minimum_threshold: '',
-    running_out: false,
+    base_unit_price: product.base_unit_price || '',
+    base_unit_id: product.base_unit?.id || '',
   });
 
   const [stockId, setStockId] = useState(null);
@@ -83,10 +77,10 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   }, [formData.bottles_per_carton, formData.carton_quantity, formData.quantityType]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
   };
 
@@ -124,28 +118,23 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    let err = {};
+    if (!formData.name.trim()) err.name = t('name_required');
+    if (!formData.description.trim()) err.description = t('required');
+    if (!formData.category) err.category = t('category_required');
+    if (!formData.base_unit_price || Number(formData.base_unit_price) < 0) err.base_unit_price = t('valid_price_required');
+    if (!formData.base_unit_id) err.base_unit_id = t('required');
+    setErrors(err);
+    if (Object.keys(err).length > 0) return;
 
     const updatedProduct = {
       name: formData.name,
+      description: formData.description,
+      base_unit_price: formData.base_unit_price,
+      base_unit_id: formData.base_unit_id,
       category_id: formData.category,
-      price_per_unit: formData.price_per_unit,
-      uses_carton: formData.quantityType === 'carton',
-      bottles_per_carton: formData.quantityType === 'carton' ? formData.bottles_per_carton : 0,
     };
-
-    const updatedStock = {
-      carton_quantity: formData.carton_quantity,
-      bottle_quantity: formData.bottle_quantity,
-      unit_quantity: formData.unit_quantity,
-      minimum_threshold: formData.minimum_threshold,
-      running_out: formData.running_out,
-      branch_id: branchId,
-      product_id: product.id,
-    };
-
     const csrfToken = getCookie('csrftoken');
-
     try {
       await axios.put(
         `http://localhost:8000/api/inventory/products/${product.id}/`,
@@ -155,27 +144,6 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
           headers: { 'X-CSRFToken': csrfToken },
         }
       );
-
-      if (stockId) {
-        await axios.put(
-          `http://localhost:8000/api/inventory/stocks/${stockId}/`,
-          updatedStock,
-          {
-            withCredentials: true,
-            headers: { 'X-CSRFToken': csrfToken },
-          }
-        );
-      } else {
-        await axios.post(
-          'http://localhost:8000/api/inventory/stocks/',
-          updatedStock,
-          {
-            withCredentials: true,
-            headers: { 'X-CSRFToken': csrfToken },
-          }
-        );
-      }
-
       alert(t('inventory_updated'));
       onSuccess();
       onClose();
@@ -238,148 +206,92 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
   return (
     <div className="space-y-4">
-      <input
-        type="text"
-        name="name"
-        value={formData.name}
-        placeholder={t('product_name')}
-        onChange={handleChange}
-        className="border p-2 w-full"
-      />
-      {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
-
-      <select
-        name="category"
-        value={formData.category}
-        onChange={handleChange}
-        className="border p-2 w-full"
-      >
-        <option value="">{t('select_category')}</option>
-        {categories.map((cat) => (
-          <option key={cat.id} value={cat.id}>
-            {cat.category_name}
-          </option>
-        ))}
-      </select>
-      {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
-
-      <input
-        type="number"
-        name="price_per_unit"
-        value={formData.price_per_unit}
-        placeholder={t('price_per_unit')}
-        onChange={handleChange}
-        className="border p-2 w-full"
-      />
-      {errors.price_per_unit && <p className="text-red-500 text-sm">{errors.price_per_unit}</p>}
-
+      {/* Product Name (read-only, always visible) */}
       <div>
-        <label className="block font-semibold">{t('quantity_type')}</label>
-        {['carton', 'bottle', 'unit'].map((type) => (
-          <label key={type} className="inline-flex items-center mr-4">
-            <input
-              type="radio"
-              name="quantityType"
-              value={type}
-              checked={formData.quantityType === type}
-              onChange={handleChange}
-            />
-            <span className="ml-2 capitalize">{t(type)}</span>
-          </label>
-        ))}
-        {errors.quantityType && <p className="text-red-500 text-sm">{errors.quantityType}</p>}
+        <label className="block font-semibold mb-1">{t('product_name')}</label>
+        <input
+          type="text"
+          value={product.name || ''}
+          className="border p-2 w-full bg-gray-100"
+          readOnly
+        />
       </div>
 
-      {formData.quantityType === 'carton' && (
-        <>
-          <input
-            type="number"
-            name="bottles_per_carton"
-            placeholder={t('bottles_per_carton')}
-            value={formData.bottles_per_carton}
-            onChange={handleChange}
-            className="border p-2 w-full"
-          />
-          {errors.bottles_per_carton && (
-            <p className="text-red-500 text-sm">{errors.bottles_per_carton}</p>
-          )}
-          <input
-            type="number"
-            name="carton_quantity"
-            placeholder={t('carton_quantity')}
-            value={formData.carton_quantity}
-            onChange={handleChange}
-            className="border p-2 w-full"
-          />
-          {errors.carton_quantity && (
-            <p className="text-red-500 text-sm">{errors.carton_quantity}</p>
-          )}
-          <input
-            type="number"
-            value={formData.bottle_quantity}
-            readOnly
-            className="border p-2 w-full bg-gray-100"
-            aria-label={t('calculated_bottle_quantity')}
-          />
-        </>
-      )}
-
-      {formData.quantityType === 'bottle' && (
+      <div>
+        <label className="block font-semibold mb-1">{t('description')}</label>
         <input
-          type="number"
-          name="bottle_quantity"
-          placeholder={t('bottle_quantity')}
-          value={formData.bottle_quantity}
+          type="text"
+          name="description"
+          value={formData.description}
+          placeholder={t('description')}
           onChange={handleChange}
           className="border p-2 w-full"
         />
-      )}
+        {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
+      </div>
 
-      {formData.quantityType === 'unit' && (
-        <input
-          type="number"
-          name="unit_quantity"
-          placeholder={t('unit_quantity')}
-          value={formData.unit_quantity}
+      <div>
+        <label className="block font-semibold mb-1">{t('category')}</label>
+        <select
+          name="category"
+          value={formData.category}
           onChange={handleChange}
           className="border p-2 w-full"
-        />
-      )}
+        >
+          <option value="">{t('select_category')}</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.category_name}</option>
+          ))}
+        </select>
+        {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
+      </div>
 
-      <input
-        type="number"
-        name="minimum_threshold"
-        placeholder={t('minimum_threshold')}
-        value={formData.minimum_threshold}
-        onChange={handleChange}
-        className="border p-2 w-full"
-      />
-      {errors.minimum_threshold && (
-        <p className="text-red-500 text-sm">{errors.minimum_threshold}</p>
-      )}
-
-      <label className="inline-flex items-center space-x-2">
+      <div>
+        <label className="block font-semibold mb-1">{t('base_unit_price')}</label>
         <input
-          type="checkbox"
-          name="running_out"
-          checked={formData.running_out}
-          onChange={handleChange}
+          type="number"
+          name="base_unit_price"
+          value={formData.base_unit_price}
+          className="border p-2 w-full bg-gray-100"
+          readOnly
+          placeholder={t('base_unit_price')}
+          aria-label={t('base_unit_price')}
         />
-        <span>{t('running_out')}</span>
-      </label>
+        {errors.base_unit_price && <p className="text-red-500 text-sm">{errors.base_unit_price}</p>}
+      </div>
 
+      <div>
+        <label className="block font-semibold mb-1">{t('base_unit')}</label>
+        <input
+          type="text"
+          name="base_unit_id"
+          value={formData.base_unit_id}
+          className="border p-2 w-full bg-gray-100"
+          readOnly
+          placeholder={t('base_unit')}
+          aria-label={t('base_unit')}
+        />
+      </div>
+
+      <div>
+        <label className="block font-semibold mb-1">{t('branch')}</label>
+        <input
+          type="text"
+          value={product.branch?.name || ''}
+          className="border p-2 w-full bg-gray-100"
+          readOnly
+          placeholder={t('branch')}
+          aria-label={t('branch')}
+        />
+      </div>
+
+      {/* ...other read-only fields as needed... */}
       <div className="flex justify-between mt-4">
         <button onClick={handleSubmit} className="bg-blue-600 text-white px-4 py-2 rounded">
           {t('save_changes')}
         </button>
         <button onClick={onClose} className="bg-gray-400 text-white px-4 py-2 rounded">
           {t('cancel')}
-        </button>
-        <button onClick={() => setShowRestockModal(true)} className="bg-green-600 text-white px-4 py-2 rounded">
-          Restock
-        </button>
-        <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded" disabled={isDeleting}>
-          {isDeleting ? 'Deleting...' : 'Delete'}
         </button>
       </div>
       {/* Restock Modal */}

@@ -15,12 +15,7 @@ export default function BartenderDashboard() {
   const [activeSection, setActiveSection] = useState('Orders');
   const userName = t("bartender"); // use translated name
   const { lastMessage } = useNotifications();
-  const { orders } = useBeverages();
-  const { user } = useAuth();
-  const branchId = user?.branch;
-
-  const [inventoryRequests, setInventoryRequests] = useState([]);
-
+  // Move filterDate state above useBeverages
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -28,6 +23,13 @@ export default function BartenderDashboard() {
     const dd = String(today.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   });
+  // Pass filterDate to useBeverages
+  const { orders } = useBeverages(filterDate);
+  const { user } = useAuth();
+  const branchId = user?.branch;
+
+  const [inventoryRequests, setInventoryRequests] = useState([]);
+
   useEffect(() => {
     if (lastMessage) {
       alert(lastMessage.message);
@@ -79,6 +81,18 @@ export default function BartenderDashboard() {
     { label: t('reports'), icon: <FaChartBar />, section: 'Reports' },
   ];
 
+  const handleNavClick = (section) => {
+    setActiveSection(section);
+    if (section === 'Closed') {
+      // Set filterDate to today when Closed tab is clicked
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      setFilterDate(`${yyyy}-${mm}-${dd}`);
+    }
+  };
+
   return (
     <div className="bg-gray-100">
       <main className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -103,7 +117,7 @@ export default function BartenderDashboard() {
             {navItems.map(({ label, icon, section }) => (
               <button
                 key={section}
-                onClick={() => setActiveSection(section)}
+                onClick={() => handleNavClick(section)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
                   activeSection === section
                     ? 'bg-blue-100 text-blue-700 shadow'
@@ -122,10 +136,7 @@ export default function BartenderDashboard() {
           {renderContent()}
         </div>
 
-        {/* Tip Banner */}
-        <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg text-blue-700 text-sm">
-          💡 <strong>{t("tip")}:</strong> {t("tip_text")}
-        </div>
+        {/* Remove per-page footer. Footer is now global. */}
       </main>
     </div>
   );

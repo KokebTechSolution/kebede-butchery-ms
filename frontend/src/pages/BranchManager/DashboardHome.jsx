@@ -6,32 +6,33 @@ import StockLevels from "../../components/ManagmentComponents/Dashboard/StockLev
 import EmployeeActivity from "../../components/ManagmentComponents/Dashboard/EmployeeActivity";
 import StaffRequests from "../../components/ManagmentComponents/Dashboard/StaffRequests";
 import { FaCashRegister, FaBoxes, FaUsers, FaClipboardList } from "react-icons/fa";
+import { useTranslation } from 'react-i18next';
 
 export default function DashboardHome() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
-      <h1>Stock Alert</h1>
+      <h1>{t('stock_alert')}</h1>
       <StockAlerts />
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* Sales */}
-        <Card icon={<FaCashRegister />} title="Sales Overview" color="text-green-600">
+        <Card icon={<FaCashRegister />} title={t('sales_overview')} color="text-green-600">
           <SalesSummary />
         </Card>
 
         {/* Stock */}
-        <Card icon={<FaBoxes />} title="Stock Alerts" color="text-red-600">
-          
+        <Card icon={<FaBoxes />} title={t('stock_alerts')} color="text-red-600">
           <StockLevels />
         </Card>
 
         {/* Activity */}
-        <Card icon={<FaUsers />} title="Staff Activity" color="text-yellow-600">
+        <Card icon={<FaUsers />} title={t('staff_activity')} color="text-yellow-600">
           <EmployeeActivity />
         </Card>
       </div>
 
       {/* Requests */}
-      <Card icon={<FaClipboardList />} title="Pending Requests" color="text-purple-600" full>
+      <Card icon={<FaClipboardList />} title={t('pending_requests')} color="text-purple-600" full>
         <StaffRequests />
       </Card>
     </div>

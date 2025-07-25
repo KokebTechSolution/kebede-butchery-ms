@@ -25,9 +25,12 @@ class OrderListView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
-        queryset = Order.objects.filter(created_by=self.request.user)
+        queryset = Order.objects.filter(created_by=user)
         if table_number:
             queryset = queryset.filter(table_number=table_number)
         if date:
@@ -74,6 +77,9 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         queryset = Order.objects.filter(food_status__in=['pending', 'preparing']).distinct()
         date = self.request.query_params.get('date')
         if date:
@@ -84,6 +90,9 @@ class BeverageOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
 
         branch_id = self.request.query_params.get('branch_id')
@@ -125,19 +134,9 @@ class PrintedOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        queryset = Order.objects.filter(cashier_status='printed')
-        date = self.request.query_params.get('date')
-        start = self.request.query_params.get('start')
-        end = self.request.query_params.get('end')
-        if date:
-            parsed_date = parse_date(date)
-            queryset = queryset.filter(
-                Q(payment__processed_at__date=parsed_date) |
-                Q(payment__isnull=True, created_at__date=parsed_date)
-            )
-        if start and end:
-            queryset = queryset.filter(payment__processed_at__date__range=[parse_date(start), parse_date(end)])
-        return queryset
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         queryset = Order.objects.filter(cashier_status='printed')
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')
@@ -278,6 +277,7 @@ from inventory.models import BarmanStock
 from django.db import transaction
 from decimal import Decimal
 
+
 class OrderItemStatusUpdateView(APIView):
     permission_classes = [AllowAny]
 
@@ -311,23 +311,31 @@ class OrderItemStatusUpdateView(APIView):
                 return Response(
                     {
                         'error': (
-                            f"Not enough bottles. Available: {barman_stock.quantity_in_base_units}, "
+                            f"Not enough stock. Available: {barman_stock.quantity_in_base_units}, "
                             f"Required: {item.quantity}"
                         )
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Deduct quantity from stock
-            barman_stock.quantity_in_base_units -= item.quantity
+            product = barman_stock.stock.product
+            try:
+                # Assuming you have a method to get conversion factor from base unit to original unit
+                conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
+                original_quantity_delta = item.quantity / conversion_factor
+            except Exception:
+                # Fallback: treat original quantity same as base units if conversion unavailable
+                original_quantity_delta = item.quantity
 
-            # Calculate 20% of the original bottle capacity
-            original_bottle_capacity = barman_stock.stock.quantity_in_base_units
-            twenty_percent = original_bottle_capacity * Decimal("0.2")
-
-            # Mark as running out if below threshold
-            barman_stock.running_out = barman_stock.quantity_in_base_units < twenty_percent
-            barman_stock.save()
+            # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
+            try:
+                barman_stock.adjust_quantity(
+                    quantity=item.quantity,
+                    unit=product.base_unit,
+                    is_addition=False
+                )
+            except Exception as e:
+                return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update item status
         item.status = status_value

@@ -22,6 +22,7 @@ import BranchManagerRoutes from './routes/BranchManagerRoutes';
 
 // Common Components
 import Topbar from './components/ManagmentComponents/Topbar';
+import Footer from './components/ManagmentComponents/Footer';
 // import SidebarNav from './components/ManagmentComponents/SidebarNav'; // Optional if needed
 
 // Layout Wrapper with dynamic Topbar/Sidebar
@@ -34,7 +35,7 @@ const Layout = ({ children }) => {
       {/* {user?.role === 'manager' && <SidebarNav />} */}
 
       <div className="flex-1 flex flex-col">
-        {user?.isAuthenticated && <Topbar />}
+        {user?.isAuthenticated }
         <main className="p-4 flex-grow">{children}</main>
       </div>
     </div>
@@ -44,63 +45,69 @@ const Layout = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/logout" element={<Logout />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
+      <div className="min-h-screen flex flex-col bg-gray-100">
+      <Topbar />
+        <main className="flex-1">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/logout" element={<Logout />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Role-Based Dashboard on root path */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute allowedRoles={['manager', 'staff', 'waiter', 'owner', 'cashier', 'bartender', 'meat']}>
-              <Layout>
-                <RoleBasedDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+            {/* Role-Based Dashboard on root path */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute allowedRoles={['manager', 'staff', 'waiter', 'owner', 'cashier', 'bartender', 'meat']}>
+                  <Layout>
+                    <RoleBasedDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
-        {/* Branch Manager Routes */}
-        <Route
-          path="/branch-manager/*"
-          element={
-            <ProtectedRoute allowedRoles={['manager']}>
-              <Layout>
-                <BranchManagerRoutes />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+            {/* Branch Manager Routes */}
+            <Route
+              path="/branch-manager/*"
+              element={
+                <ProtectedRoute allowedRoles={['manager']}>
+                  <Layout>
+                    <BranchManagerRoutes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
-        {/* Waiter Dashboard Route */}
-        <Route
-          path="/waiter/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['waiter']}>
-              <Layout>
-                <WaiterDashboard />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+            {/* Waiter Dashboard Route */}
+            <Route
+              path="/waiter/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['waiter']}>
+                  <Layout>
+                    <WaiterDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
-        {/* TODO: Add routes for other roles like staff, waiter, etc.
-        <Route
-          path="/staff/*"
-          element={
-            <ProtectedRoute allowedRoles={['staff']}>
-              <Layout>
-                <StaffRoutes />
-              </Layout>
-            </ProtectedRoute>
-          }
-        /> */}
+            {/* TODO: Add routes for other roles like staff, waiter, etc.
+            <Route
+              path="/staff/*"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <Layout>
+                    <StaffRoutes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            /> */}
 
-        {/* Catch-all 404 Route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+            {/* Catch-all 404 Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
     </AuthProvider>
   );
 }
