@@ -4,6 +4,26 @@ import axiosInstance from '../api/axiosInstance';
 
 const CartContext = createContext();
 
+// Utility to merge cart items by name, price, type, and status
+function mergeCartItems(items) {
+  const merged = [];
+  items.forEach(item => {
+    const found = merged.find(i =>
+      i.name === item.name &&
+      i.price === item.price &&
+      (i.item_type || 'food') === (item.item_type || 'food') &&
+      i.status === item.status &&
+      (i.id ? i.id === item.id : true) // Only merge if id matches, or if id is not present
+    );
+    if (found) {
+      found.quantity += item.quantity;
+    } else {
+      merged.push({ ...item });
+    }
+  });
+  return merged;
+}
+
 export const CartProvider = ({ children, initialActiveTableId }) => {
   const { user, tokens } = useAuth(); // Get user and tokens from AuthContext
   const [tableCarts, setTableCarts] = useState(() => {
@@ -90,22 +110,29 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       console.warn("No active table selected. Cannot add item to cart.");
       return;
     }
-    const { icon, ...rest } = item; // Destructure to remove the icon
-    const itemToAdd = rest; // Item without the icon
-
+    const { icon, ...rest } = item;
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      const existingItem = currentTableCart.find((i) => i.name === itemToAdd.name);
-
-      let updatedTableCart;
-      if (existingItem) {
-        updatedTableCart = currentTableCart.map((i) =>
-          i.name === itemToAdd.name ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      } else {
-        updatedTableCart = [...currentTableCart, { ...itemToAdd, quantity: 1 }];
+      let found = false;
+      const updatedTableCart = currentTableCart.map((cartItem) => {
+        if (
+          cartItem.name === rest.name &&
+          cartItem.price === rest.price &&
+          (cartItem.item_type || 'food') === (rest.item_type || 'food')
+        ) {
+          found = true;
+          // If the item is accepted/rejected, revert status to pending when adding more
+          return {
+            ...cartItem,
+            quantity: cartItem.quantity + 1,
+            status: (cartItem.status === 'accepted' || cartItem.status === 'rejected') ? 'pending' : cartItem.status,
+          };
+        }
+        return cartItem;
+      });
+      if (!found) {
+        updatedTableCart.push({ ...rest, quantity: 1, status: rest.status || 'pending' });
       }
-      console.log('CartContext: Added/Updated item', itemToAdd.name, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -113,14 +140,15 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     });
   };
 
-  const removeFromCart = (itemName) => {
+  const removeFromCart = (itemId) => {
     if (!activeTableId) return;
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
+      // Remove any item with matching id, regardless of status
       const updatedTableCart = currentTableCart.filter(
-        (item) => item.name !== itemName
+        (item) => item.id !== itemId
       );
-      console.log('CartContext: Removed item', itemName, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      console.log('CartContext: Removed item', itemId, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -128,18 +156,24 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     });
   };
 
-  const updateQuantity = (itemName, quantity) => {
+  const updateQuantity = (itemId, quantity) => {
     if (!activeTableId) return;
     if (quantity < 1) {
-      removeFromCart(itemName);
+      removeFromCart(itemId);
       return;
     }
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      const updatedTableCart = currentTableCart.map((item) =>
-        item.name === itemName ? { ...item, quantity } : item
-      );
-      console.log('CartContext: Updated quantity for item', itemName, 'to', quantity, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      const updatedTableCart = mergeCartItems(currentTableCart.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              quantity,
+              status: item.status
+            }
+          : item
+      ));
+      console.log('CartContext: Updated quantity for item', itemId, 'to', quantity, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
         [activeTableId]: updatedTableCart,
@@ -188,12 +222,28 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     }
   };
 
-  const updateOrder = (orderId, updatedItems) => {
-    setOrders(prevOrders => prevOrders.map(order => 
-      order.id === orderId ? { ...order, items: updatedItems, timestamp: new Date().toISOString() } : order
-    ));
-    console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
-    clearCart(); // Clear the cart after updating the order
+  const updateOrder = async (orderId, updatedItems) => {
+    try {
+      // Build payload with all items and their current status
+      const payload = {
+        items: updatedItems.map(item => ({
+          ...item,
+          status: item.status || 'pending', // Default to pending if not set
+        })),
+      };
+      const response = await axiosInstance.patch(`/orders/order-list/${orderId}/`, payload);
+      const updatedOrder = response.data;
+
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? updatedOrder : order
+        )
+      );
+      console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
+      clearCart();
+    } catch (error) {
+      console.error('Failed to update order:', error);
+    }
   };
 
   const deleteOrder = (orderId) => {
@@ -205,7 +255,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     setActiveTableId(tableId);
     setTableCarts(prev => ({
       ...prev,
-      [tableId]: items // Directly replace the cart for this table
+      [tableId]: mergeCartItems(items)
     }));
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };
@@ -239,7 +289,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
           if (!activeTableId) return;
           setTableCarts(prev => ({
             ...prev,
-            [activeTableId]: items
+            [activeTableId]: mergeCartItems(items)
           }));
         },
         orders,

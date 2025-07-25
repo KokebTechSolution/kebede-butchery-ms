@@ -23,6 +23,7 @@ export const Pending = () => {
   const prevOrderIdsRef = useRef([]);
   const prevOrderItemsRef = useRef({});
   const pollingRef = useRef(null);
+  const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
   // Use only active orders
   const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -97,6 +98,50 @@ export const Pending = () => {
     }
   }, [allOrders.length, allOrders.map(order => order.id).join(','), allOrders.map(order => order.items.length).join(',')]);
 
+  // Helper to get update message
+  function getOrderUpdateMessage(prevItems, currItems) {
+    // Find added items
+    for (const item of currItems) {
+      if (!prevItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} added`;
+      }
+    }
+    // Find removed items
+    for (const item of prevItems) {
+      if (!currItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} removed`;
+      }
+    }
+    // Find status/quantity changes
+    for (const item of currItems) {
+      const prev = prevItems.find(i => i.name === item.name);
+      if (prev) {
+        if (prev.status !== item.status) {
+          return `Updated: ${item.name} ${item.status}`;
+        }
+        if (prev.quantity !== item.quantity) {
+          return `Updated: ${item.name} quantity changed to ${item.quantity}`;
+        }
+      }
+    }
+    return '';
+  }
+
+  // Track previous items for each order
+  const prevOrderItemsMap = useRef({});
+
+  // After orders update, compare previous and current items for each order
+  useEffect(() => {
+    allOrders.forEach(order => {
+      const prevItems = prevOrderItemsMap.current[order.id] || [];
+      const msg = getOrderUpdateMessage(prevItems, order.items);
+      if (msg) {
+        setLastUpdate({ orderId: order.id, message: msg });
+      }
+      prevOrderItemsMap.current[order.id] = order.items;
+    });
+  }, [allOrders]);
+
   const handleEditOrder = (order) => {
     setEditingOrderId(order.id);
     setEditingItems(order.items.map(item => ({ ...item })));
@@ -120,6 +165,30 @@ export const Pending = () => {
       )
     );
   };
+
+  // Example: Call this function after an item is updated (accept, reject, quantity change, or remove)
+  const handleItemUpdate = (order, item, action) => {
+    let message = '';
+    if (action === 'quantity') {
+      message = `Updated: ${item.name} quantity changed to ${item.quantity}`;
+    } else if (action === 'remove') {
+      message = `Updated: ${item.name} removed`;
+    } else if (action === 'accept') {
+      message = `Updated: ${item.name} accepted`;
+    } else if (action === 'reject') {
+      message = `Updated: ${item.name} rejected`;
+    }
+    setLastUpdate({ orderId: order.id, message });
+  };
+
+  // In your item update handlers, call handleItemUpdate(order, item, action)
+  // For example, in acceptOrderItem:
+  const acceptOrderItemWithMsg = (itemId, order) => {
+    acceptOrderItem(itemId);
+    const item = order.items.find(i => i.id === itemId);
+    if (item) handleItemUpdate(order, item, 'accept');
+  };
+  // Similarly for reject, quantity, remove...
 
   return (
     <div className="p-8">
@@ -182,6 +251,12 @@ export const Pending = () => {
                               : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
                           ).toFixed(2)}
                         </span>
+                        {/* Inline update message */}
+                        {lastUpdate.orderId === order.id && lastUpdate.message && (
+                          <span style={{ color: '#16a34a', marginLeft: 12, fontWeight: 500 }}>
+                            {lastUpdate.message}
+                          </span>
+                        )}
                       </div>
                       {/* Only item-level Accept/Reject below */}
                       <div className="space-y-2 mt-2">
@@ -193,7 +268,7 @@ export const Pending = () => {
                               {item.status === 'pending' && (
                                 <>
                                   <button
-                                    onClick={() => acceptOrderItem(item.id)}
+                                    onClick={() => acceptOrderItemWithMsg(item.id, order)}
                                     className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
                                   >
                                     Accept

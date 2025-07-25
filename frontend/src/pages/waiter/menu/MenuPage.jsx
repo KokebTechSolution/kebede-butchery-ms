@@ -8,6 +8,7 @@ import './MenuPage.css';
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [activeTab, setActiveTab] = useState('food');
+    const [isOrdering, setIsOrdering] = useState(false); // <-- add this
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
 
     useEffect(() => {
@@ -50,7 +51,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
 
     // Find the latest order for this table
     const latestOrder = previousOrders.length > 0 ? [...previousOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] : null;
-    const isReadyToPay = latestOrder && latestOrder.cashier_status === 'ready_for_payment';
+    const isPaid = latestOrder && latestOrder.has_payment;
 
     return (
         <div className="menu-container" style={{ display: 'flex', gap: '2rem' }}>
@@ -63,14 +64,12 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                     <button
                         className={`menu-tab ${activeTab === 'food' ? 'active' : ''}`}
                         onClick={() => setActiveTab('food')}
-                        disabled={isReadyToPay}
                     >
                         Food
                     </button>
                     <button
                         className={`menu-tab ${activeTab === 'beverage' ? 'active' : ''}`}
                         onClick={() => setActiveTab('beverage')}
-                        disabled={isReadyToPay}
                     >
                         beverages
                     </button>
@@ -82,7 +81,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                                 <h3>{category}</h3>
                                 <div className="menu-items-grid">
                                     {foodByCategory[category].map(item => (
-                                        <MenuItem key={item.id} item={item} disabled={isReadyToPay} />
+                                        <MenuItem key={item.id} item={item} disabled={isPaid} />
                                     ))}
                                 </div>
                             </div>
@@ -96,7 +95,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                                 <h3>{category}</h3>
                                 <div className="menu-items-grid">
                                     {beverageByCategory[category].map(item => (
-                                        <MenuItem key={item.id} item={item} disabled={isReadyToPay} />
+                                        <MenuItem key={item.id} item={item} disabled={isPaid} />
                                     ))}
                                 </div>
                             </div>
@@ -107,17 +106,32 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             <div style={{ flex: 1, minWidth: 300 }}>
                 <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001', marginBottom: 24 }}>
                     <h3 style={{ marginBottom: 8 }}>🛒 Current Order</h3>
-                    {cartItems.length === 0 ? (
-                        <div>No items in current order.</div>
-                    ) : (
-                        <ul style={{ marginBottom: 12 }}>
-                            {cartItems.map(item => (
-                                <li key={item.name}>
-                                    {item.name} × {item.quantity} — ${(item.price * item.quantity).toFixed(2)}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                    {(() => {
+                        function mergeCartItems(items) {
+                            const merged = [];
+                            items.forEach(item => {
+                                const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
+                                if (found) {
+                                    found.quantity += item.quantity;
+                                } else {
+                                    merged.push({ ...item });
+                                }
+                            });
+                            return merged;
+                        }
+                        const mergedCartItems = mergeCartItems(cartItems);
+                        return mergedCartItems.length === 0 ? (
+                            <div>No items in current order.</div>
+                        ) : (
+                            <ul style={{ marginBottom: 12 }}>
+                                {mergedCartItems.map(item => (
+                                    <li key={item.name + '-' + item.price + '-' + (item.item_type || 'food')}>
+                                        {item.name} × {item.quantity} — ${(item.price * item.quantity).toFixed(2)}
+                                    </li>
+                                ))}
+                            </ul>
+                        );
+                    })()}
                     <div style={{ fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>
                         Running Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
@@ -134,14 +148,23 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                             cursor: 'pointer',
                             transition: 'background 0.2s, color 0.2s',
                           }}
-                          disabled={cartItems.length === 0}
-                          onClick={onOrder}
+                          disabled={cartItems.length === 0 || isOrdering}
+                          onClick={async () => {
+                            if (isOrdering) return;
+                            setIsOrdering(true);
+                            try {
+                              await onOrder();
+                              clearCart();
+                            } finally {
+                              setIsOrdering(false);
+                            }
+                          }}
                           onMouseOver={e => e.currentTarget.style.background = '#22c55e'}
                           onMouseOut={e => e.currentTarget.style.background = '#4ade80'}
                           onMouseDown={e => e.currentTarget.style.background = '#16a34a'}
                           onMouseUp={e => e.currentTarget.style.background = '#22c55e'}
                         >
-                          Order
+                          {isOrdering ? 'Ordering...' : 'Order'}
                         </button>
                         {cartItems.length > 0 && (
                           <button

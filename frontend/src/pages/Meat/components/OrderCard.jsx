@@ -41,38 +41,54 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
           </div>
           {/* Item list below, visually separated */}
           <div className="mt-3">
-            {order.items.map((item, index) => (
-              <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
-                <span>{item.name} × {item.quantity}</span>
-                <span>${(item.price * item.quantity).toFixed(2)}</span>
-                <span className="ml-4">
-                  {item.status === 'pending' && (
-                    <>
-                      <Button
-                        variant="secondary"
-                        onClick={() => onAcceptItem(item.id)}
-                        className="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-0.5 text-xs rounded mr-1"
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => onRejectItem(item.id, 'Rejected by staff')}
-                        className="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-0.5 text-xs rounded"
-                      >
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                  {item.status === 'accepted' && (
-                    <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
-                  )}
-                  {item.status === 'rejected' && (
-                    <span className="text-red-700">Rejected</span>
-                  )}
-                </span>
-              </div>
-            ))}
+            {/* --- MERGE ITEMS FOR DISPLAY --- */}
+            {(() => {
+              function mergeDisplayItems(items) {
+                const merged = [];
+                items.forEach(item => {
+                  const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food') && i.status === item.status);
+                  if (found) {
+                    found.quantity += item.quantity;
+                  } else {
+                    merged.push({ ...item });
+                  }
+                });
+                return merged;
+              }
+              const mergedItems = mergeDisplayItems(order.items);
+              return mergedItems.map((item, index) => (
+                <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
+                  <span>{item.name} × {item.quantity}</span>
+                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="ml-4">
+                    {item.status === 'pending' && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          onClick={() => onAcceptItem(item.id)}
+                          className="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-0.5 text-xs rounded mr-1"
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => onRejectItem(item.id, 'Rejected by staff')}
+                          className="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-0.5 text-xs rounded"
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {item.status === 'accepted' && (
+                      <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
+                    )}
+                    {item.status === 'rejected' && (
+                      <span className="text-red-700">Rejected</span>
+                    )}
+                  </span>
+                </div>
+              ));
+            })()}
           </div>
         </CardContent>
       </Card>

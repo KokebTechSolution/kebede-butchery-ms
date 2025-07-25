@@ -12,6 +12,41 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
 
+function mergeOrderItems(existingItems, cartItems) {
+  const normalize = name => name.trim().toLowerCase();
+  const mergedMap = {};
+
+  // First, add all existing items to the map
+  for (const existingItem of existingItems) {
+    const normName = normalize(existingItem.name);
+    mergedMap[normName] = { ...existingItem };
+  }
+
+  // Then, merge cart items
+  for (const cartItem of cartItems) {
+    const normName = normalize(cartItem.name);
+    if (mergedMap[normName]) {
+      // If exists, sum quantities and set status to pending
+      mergedMap[normName] = {
+        ...mergedMap[normName],
+        quantity: mergedMap[normName].quantity + cartItem.quantity,
+        price: cartItem.price || mergedMap[normName].price,
+        item_type: cartItem.item_type || mergedMap[normName].item_type,
+        status: 'pending',
+      };
+    } else {
+      // If not exists, add as new (pending)
+      mergedMap[normName] = {
+        ...cartItem,
+        status: 'pending',
+      };
+    }
+  }
+
+  // Return as array
+  return Object.values(mergedMap);
+}
+
 const WaiterDashboard = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -57,7 +92,7 @@ const WaiterDashboard = () => {
     if (page === 'tables') setSelectedTable(null);
   };
 
-  const handleTableSelect = (table) => {
+  const handleTableSelect = async (table) => {
     setSelectedTable(table);
     setActiveTable(table.id);
     setCurrentPage('menu');
@@ -72,11 +107,21 @@ const WaiterDashboard = () => {
     const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
     const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
     if (openOrder) {
-      // Load open order's items into cart for editing
-      clearCart();
-      loadCartForEditing(table.id, openOrder.items);
-      setEditingOrderId(openOrder.id);
-      console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
+      // Fetch the latest order from backend before editing
+      try {
+        const response = await axiosInstance.get(`/orders/${openOrder.id}/`);
+        const latestOrder = response.data;
+        clearCart();
+        loadCartForEditing(table.id, latestOrder.items);
+        setEditingOrderId(openOrder.id);
+        console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
+      } catch (error) {
+        console.error('Failed to fetch latest order for editing:', error);
+        // Fallback to cached items if fetch fails
+        clearCart();
+        loadCartForEditing(table.id, openOrder.items);
+        setEditingOrderId(openOrder.id);
+      }
     } else {
       clearCart();
       setEditingOrderId(null);
@@ -133,16 +178,78 @@ const WaiterDashboard = () => {
       }
     }
 
+    // --- MERGE CART ITEMS BEFORE SENDING TO BACKEND ---
+    function mergeCartItems(items) {
+      const merged = [];
+      items.forEach(item => {
+        const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
+        if (found) {
+          found.quantity += item.quantity;
+        } else {
+          merged.push({ ...item });
+        }
+      });
+      return merged;
+    }
+    const mergedCartItems = mergeCartItems(cartItems);
+    // --------------------------------------------------
+
     if (openOrder && editingOrderId && editingOrder && editingOrder.cashier_status !== 'printed') {
-      // Logic for UPDATING an order
+      // --- MERGE CART ITEMS WITH EXISTING ORDER ITEMS ---
+      // 1. Start with all existing items (from editingOrder.items)
+      // 2. For each item in existing items:
+      //    - If it is accepted/rejected and not in cartItems, KEEP it
+      //    - If it is pending and not in cartItems, REMOVE it
+      //    - If it is in cartItems, use the cart version (updated quantity/status)
+      // 3. For each item in cartItems not in existing items, ADD it
+      const mergedItems = [];
+      const cartMap = new Map();
+      cartItems.forEach(item => {
+        cartMap.set(item.id, item);
+      });
+      // Add/merge existing items
+      editingOrder.items.forEach(existingItem => {
+        const cartItem = cartMap.get(existingItem.id);
+        if (cartItem) {
+          // Use cart version (updated quantity/status)
+          if (cartItem.quantity > 0) {
+            mergedItems.push({ ...cartItem });
+          }
+          cartMap.delete(existingItem.id);
+        } else {
+          // Not in cart
+          if (existingItem.status === 'accepted' || existingItem.status === 'rejected') {
+            // Always keep accepted/rejected items, even if cart is empty
+            mergedItems.push({ ...existingItem });
+          }
+          // If pending and not in cart, remove (do not add)
+        }
+      });
+      // If cart is empty, still keep accepted/rejected items
+      if (cartItems.length === 0) {
+        editingOrder.items.forEach(existingItem => {
+          if ((existingItem.status === 'accepted' || existingItem.status === 'rejected') && !mergedItems.find(i => i.id === existingItem.id)) {
+            mergedItems.push({ ...existingItem });
+          }
+        });
+      }
+      // Add new items from cart that weren't in existing items
+      cartMap.forEach(item => {
+        if (item.quantity > 0) {
+          mergedItems.push({ ...item });
+        }
+      });
       const updatedOrderData = {
-        items: cartItems.map(item => ({
+        items: mergedItems.map(item => ({
+          id: item.id,
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: item.item_type || 'food'
+          item_type: item.item_type || 'food',
+          status: item.status // preserve status
         }))
       };
+      console.log('PATCH payload (merged):', updatedOrderData);
       try {
         const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
         const updatedOrder = response.data;
@@ -158,15 +265,17 @@ const WaiterDashboard = () => {
       // Logic for CREATING a new order
       const newOrderData = {
         table: selectedTable.id,
-        items: cartItems.map(item => ({
+        items: mergedCartItems.map(item => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: item.item_type || 'food'
+          item_type: item.item_type || 'food',
+          status: item.status // <-- preserve status!
         })),
         waiter_username: user?.username,
         waiter_table_number: selectedTable?.number
       };
+      console.log('POST payload:', newOrderData); // <-- log payload
       try {
         const newOrderId = await placeOrder(newOrderData);
         if (!newOrderId) {

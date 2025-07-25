@@ -73,8 +73,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   };
 
   const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
-  // Only allow print if all items are accepted
-  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted');
+  // Only allow print if all items are accepted or rejected
+  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected');
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
@@ -84,6 +84,22 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       </div>
     );
   }
+
+  // --- MERGE ITEMS FOR DISPLAY ---
+  function mergeDisplayItems(items) {
+    const merged = [];
+    items.forEach(item => {
+      const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
+      if (found) {
+        found.quantity += item.quantity;
+      } else {
+        merged.push({ ...item });
+      }
+    });
+    return merged;
+  }
+  const mergedItems = mergeDisplayItems(currentOrder.items);
+  // --------------------------------
 
   return (
     <div className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
@@ -158,7 +174,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
               </tr>
             </thead>
             <tbody>
-              {currentOrder.items.map((item, index) => (
+              {mergedItems.map((item, index) => (
                 <tr key={item.id || item.name + '-' + index}>
                   <td>{currentOrder.table_number || 'N/A'}</td>
                   <td>{item.name}</td>
