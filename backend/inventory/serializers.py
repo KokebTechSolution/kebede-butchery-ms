@@ -258,3 +258,49 @@ class ProductMeasurementSerializer(serializers.ModelSerializer):
             'from_unit': {'read_only': True},
             'to_unit': {'read_only': True},
         }
+
+# Product with Stock information
+class ProductWithStockSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    base_unit = ProductUnitSerializer(read_only=True)
+    store_stocks = serializers.SerializerMethodField()
+
+    def get_store_stocks(self, obj):
+        # Create a simplified stock representation to avoid circular imports
+        stocks = obj.store_stocks.all()
+        stock_data = []
+        for stock in stocks:
+            stock_data.append({
+                'id': stock.id,
+                'branch': {
+                    'id': stock.branch.id,
+                    'name': stock.branch.name,
+                    'location': stock.branch.location
+                },
+                'quantity_in_base_units': stock.quantity_in_base_units,
+                'minimum_threshold_base_units': stock.minimum_threshold_base_units,
+                'running_out': stock.running_out,
+                'last_stock_update': stock.last_stock_update,
+                'original_quantity': stock.original_quantity,
+                'original_unit': {
+                    'id': stock.original_unit.id,
+                    'unit_name': stock.original_unit.unit_name,
+                    'abbreviation': stock.original_unit.abbreviation
+                } if stock.original_unit else None,
+                'original_quantity_display': stock.original_quantity_display
+            })
+        return stock_data
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'description',
+            'base_unit_price',
+            'base_unit',
+            'category',
+            'store_stocks',
+            'created_at',
+            'updated_at',
+        ]

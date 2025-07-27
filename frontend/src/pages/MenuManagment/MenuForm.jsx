@@ -4,6 +4,7 @@ import {
   updateMenuItem,
   fetchMenuCategories,
   syncMenuCategoriesWithInventory,
+  fetchMenuItems,
 } from '../../api/menu';
 import { fetchAvailableProducts } from '../../api/stock';
 
@@ -25,21 +26,31 @@ const MenuForm = ({
 
   const [categories, setCategories] = useState([]);
   const [availableProducts, setAvailableProducts] = useState([]);
+  const [existingMenuItems, setExistingMenuItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedProductPrice, setSelectedProductPrice] = useState('');
+
+  // Calculate isBeverage early so it can be used in useEffect
+  const isBeverage = forcebeverageOnly || formData.item_type?.toLowerCase() === 'beverage';
 
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       try {
         await syncMenuCategoriesWithInventory();
-        const categories = await fetchMenuCategories();
+        const [categories, products, menuItems] = await Promise.all([
+          fetchMenuCategories(),
+          fetchAvailableProducts(),
+          fetchMenuItems(),
+        ]);
         setCategories(categories);
+        setAvailableProducts(products);
+        setExistingMenuItems(menuItems);
       } catch (error) {
-        setError('Failed to load categories.');
+        setError('Failed to load data.');
       }
     };
-    loadCategories();
-    fetchAvailableProducts().then(setAvailableProducts).catch(() => setError('Failed to load products.'));
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -65,8 +76,43 @@ const MenuForm = ({
     setError('');
   }, [selectedItem]);
 
-  const isBeverage =
-    forcebeverageOnly || formData.item_type?.toLowerCase() === 'beverage';
+  // Fetch product price when product is selected
+  useEffect(() => {
+    const fetchProductPrice = async () => {
+      if (formData.product && isBeverage) {
+        try {
+          const selectedProduct = availableProducts.find(
+            (p) => String(p.id) === String(formData.product)
+          );
+          if (selectedProduct) {
+            setSelectedProductPrice(selectedProduct.base_unit_price || 'N/A');
+          } else {
+            setSelectedProductPrice('');
+          }
+        } catch (error) {
+          console.error('Error fetching product price:', error);
+          setSelectedProductPrice('Error loading price');
+        }
+      } else {
+        setSelectedProductPrice('');
+      }
+    };
+
+    fetchProductPrice();
+  }, [formData.product, availableProducts, isBeverage]);
+
+  // Check if menu item already exists
+  const checkExistingMenuItem = (productName, categoryId, itemType) => {
+    if (!selectedItem) { // Only check for new items, not when editing
+      const existing = existingMenuItems.find(item => 
+        item.name?.toLowerCase() === productName?.toLowerCase() &&
+        String(item.category) === String(categoryId) &&
+        item.item_type?.toLowerCase() === itemType?.toLowerCase()
+      );
+      return existing;
+    }
+    return null;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -109,6 +155,17 @@ const MenuForm = ({
         setLoading(false);
         return;
       }
+
+      // Check for existing menu item (only for new items)
+      if (!selectedItem) {
+        const existingItem = checkExistingMenuItem(productName, formData.category, formData.item_type);
+        if (existingItem) {
+          setError(`A menu item with the name "${productName}" already exists in this category. Please use a different name or edit the existing item.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const payload = {
         name: productName,
         product: isBeverage ? productId : null,
@@ -228,6 +285,22 @@ const MenuForm = ({
           />
         )}
       </div>
+      {/* Product Base Price (Read-only for beverages) */}
+      {isBeverage && formData.product && selectedProductPrice && (
+        <div>
+          <label className="block mb-1 text-sm text-gray-600">Product Base Price (Reference)</label>
+          <input
+            type="text"
+            value={`$${selectedProductPrice}`}
+            readOnly
+            className="w-full p-2 border rounded bg-gray-100 text-gray-700"
+            placeholder="Product base price will appear here"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            This is the base unit price from inventory. Set your menu price above.
+          </p>
+        </div>
+      )}
       {/* Description */}
       <div>
         <label className="block mb-1">Description</label>
@@ -240,7 +313,7 @@ const MenuForm = ({
       </div>
       {/* Price */}
       <div>
-        <label className="block mb-1">Price</label>
+        <label className="block mb-1">Menu Price</label>
         <input
           type="number"
           name="price"
@@ -248,7 +321,18 @@ const MenuForm = ({
           onChange={handleInputChange}
           required
           className="w-full p-2 border rounded"
+          placeholder="Enter menu price"
         />
+        {isBeverage && selectedProductPrice && formData.price && (
+          <p className="text-xs text-gray-500 mt-1">
+            {Number(formData.price) > Number(selectedProductPrice) 
+              ? `Markup: $${(Number(formData.price) - Number(selectedProductPrice)).toFixed(2)}`
+              : Number(formData.price) < Number(selectedProductPrice)
+              ? `Discount: $${(Number(selectedProductPrice) - Number(formData.price)).toFixed(2)}`
+              : 'Price matches base price'
+            }
+          </p>
+        )}
       </div>
       {/* Availability */}
       <div className="flex items-center gap-2">

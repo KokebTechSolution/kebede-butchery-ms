@@ -82,7 +82,9 @@ const AddProductForm = () => {
     // Calculate total in base units
     const qty = parseFloat(formData.input_quantity) || 0;
     const conv = parseFloat(formData.conversion_amount) || 1;
-    setCalculatedBaseUnits(qty * conv);
+    const calculated = qty * conv;
+    setCalculatedBaseUnits(calculated);
+    console.log(`[FRONTEND DEBUG] Calculation: ${qty} × ${conv} = ${calculated}`);
   }, [formData.input_quantity, formData.conversion_amount]);
 
   useEffect(() => {
@@ -92,15 +94,30 @@ const AddProductForm = () => {
     prevIsNewProduct.current = isNewProduct;
   }, [isNewProduct]);
 
-  // Prevent duplicate product names
+  // Prevent duplicate product names with enhanced checking
   const isDuplicateName = (name) => {
-    return products.some((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (!name || !name.trim()) return false;
+    const trimmedName = name.trim().toLowerCase();
+    return products.some((p) => p.name.trim().toLowerCase() === trimmedName);
+  };
+
+  // Get duplicate product info for better error messages
+  const getDuplicateProductInfo = (name) => {
+    if (!name || !name.trim()) return null;
+    const trimmedName = name.trim().toLowerCase();
+    return products.find((p) => p.name.trim().toLowerCase() === trimmedName);
   };
 
   const validateForm = () => {
     let err = {};
+    if (!formData.item_type) err.item_type = t('item_type_required') || 'Item type is required';
     if (!formData.name.trim()) err.name = t('product_name_required');
-    if (isNewProduct && isDuplicateName(formData.name)) err.name = t('duplicate_product_name');
+    if (isNewProduct && isDuplicateName(formData.name)) {
+      const duplicateProduct = getDuplicateProductInfo(formData.name);
+      err.name = duplicateProduct 
+        ? `Product "${formData.name}" already exists (ID: ${duplicateProduct.id}). Please use a different name.`
+        : t('duplicate_product_name');
+    }
     if (!formData.category) err.category = t('category_required');
     if (!formData.base_unit_price) err.base_unit_price = t('price_required');
     else if (isNaN(Number(formData.base_unit_price)) || Number(formData.base_unit_price) < 0)
@@ -139,6 +156,16 @@ const AddProductForm = () => {
     setShowConfirmModal(true);
   };
 
+  // Check for duplicates within the batch
+  const checkBatchDuplicates = (productName) => {
+    return batchProducts.some((p) => p.name.trim().toLowerCase() === productName.trim().toLowerCase());
+  };
+
+  // Check for duplicates between batch and existing products
+  const checkExistingDuplicates = (productName) => {
+    return products.some((p) => p.name.trim().toLowerCase() === productName.trim().toLowerCase());
+  };
+
   // Add product to batch
   const handleAddToBatch = (e) => {
     e.preventDefault();
@@ -147,6 +174,20 @@ const AddProductForm = () => {
     setSubmitError('');
     const valid = validateForm();
     if (!valid) return;
+
+    // Check for duplicates within batch
+    if (checkBatchDuplicates(formData.name)) {
+      setSubmitError(`Product "${formData.name}" is already in the batch. Please use a different name.`);
+      return;
+    }
+
+    // Check for duplicates with existing products
+    if (checkExistingDuplicates(formData.name)) {
+      const duplicateProduct = getDuplicateProductInfo(formData.name);
+      setSubmitError(`Product "${formData.name}" already exists in inventory (ID: ${duplicateProduct?.id || 'unknown'}). Please use a different name.`);
+      return;
+    }
+
     setBatchProducts((prev) => [
       ...prev,
       {
@@ -169,6 +210,7 @@ const AddProductForm = () => {
     setFormData(initialFormData);
     setCalculatedBaseUnits('');
     setIsNewProduct(true);
+    setSubmitMessage(`✅ "${formData.name}" added to batch successfully!`);
     setTimeout(() => {
       const batchSection = document.getElementById('batch-list-section');
       if (batchSection) batchSection.scrollIntoView({ behavior: 'smooth' });
@@ -202,9 +244,30 @@ const AddProductForm = () => {
         base_unit_price: p.base_unit_price,
         base_unit_id: p.base_unit_id || p.base_unit,
         category_id: p.category_id || p.category,
-        stock: p.stock,
-        measurement: p.measurement,
+        stock: {
+          branch_id: branchId,
+          quantity_in_base_units: p.stock.quantity_in_base_units,
+          minimum_threshold_base_units: p.stock.minimum_threshold_base_units,
+          original_quantity: p.input_quantity,
+          original_unit_id: p.input_unit,
+        },
+        measurement: {
+          from_unit_id: p.measurement.from_unit_id,
+          to_unit_id: p.measurement.to_unit_id,
+          amount_per: p.measurement.amount_per,
+          is_default_sales_unit: p.measurement.is_default_sales_unit,
+        },
       }));
+      
+      console.log('[FRONTEND DEBUG] Batch products payload:');
+      productsPayload.forEach((p, idx) => {
+        console.log(`  Product ${idx + 1}: ${p.name}`);
+        console.log(`    - original_quantity: ${p.stock.original_quantity}`);
+        console.log(`    - quantity_in_base_units: ${p.stock.quantity_in_base_units}`);
+        console.log(`    - conversion_amount: ${p.measurement.amount_per}`);
+      });
+      
+      console.log('Submitting batch products:', productsPayload);
       const response = await axios.post(
         'http://localhost:8000/api/inventory/products/bulk_create/',
         { products: productsPayload },
@@ -213,16 +276,59 @@ const AddProductForm = () => {
           headers: { 'X-CSRFToken': csrfToken },
         }
       );
-      setSubmitMessage(t('submit_success'));
+      console.log('Batch submit response:', response.data);
+      
+      if (response.status === 207) {
+        // Partial success - some products created, some failed
+        const successCount = response.data.created?.length || 0;
+        const errorCount = response.data.errors?.length || 0;
+        setSubmitMessage(`${successCount} products created successfully. ${errorCount} failed.`);
+        if (response.data.errors) {
+          console.error('Errors:', response.data.errors);
+          const errorMessages = response.data.errors.map(err => 
+            `${err.product}: ${err.error}`
+          ).join('\n');
+          setSubmitError(`Some products failed to create:\n${errorMessages}`);
+        }
+      } else {
+        setSubmitMessage(`✅ All ${batchProducts.length} products created successfully!`);
+      }
+      
       setBatchProducts([]);
       setFormData(initialFormData);
       setCalculatedBaseUnits('');
       setIsNewProduct(true);
       await reloadProducts();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setSubmitMessage(''), 2000);
+      setTimeout(() => setSubmitMessage(''), 5000);
     } catch (err) {
-      setSubmitError(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
+      console.error('Batch submit error:', err.response?.data || err.message);
+      let errorMessage = t('submit_error') + ': ';
+      
+      if (err.response?.data?.errors) {
+        // Handle backend validation errors
+        const errorMessages = err.response.data.errors.map(err => {
+          let message = `${err.product}: ${err.error}`;
+          
+          // Add helpful suggestions for conversion errors
+          if (err.error.includes('No conversion path found')) {
+            const match = err.error.match(/from '([^']+)' to '([^']+)'/);
+            if (match) {
+              const [, fromUnit, toUnit] = match;
+              message += `\n💡 Suggestion: Add conversion 1 ${fromUnit} = X ${toUnit}`;
+            }
+          }
+          
+          return message;
+        }).join('\n');
+        errorMessage += `\n${errorMessages}`;
+      } else if (err.response?.data?.detail) {
+        errorMessage += err.response.data.detail;
+      } else {
+        errorMessage += JSON.stringify(err.response?.data || err.message);
+      }
+      
+      setSubmitError(errorMessage);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -238,9 +344,18 @@ const AddProductForm = () => {
     // Validate this field only
     let err = { ...errors };
     switch (name) {
+      case 'item_type':
+        if (!value) err.item_type = t('item_type_required') || 'Item type is required';
+        else delete err.item_type;
+        break;
       case 'name':
         if (!value.trim()) err.name = t('product_name_required');
-        else if (isNewProduct && isDuplicateName(value)) err.name = t('duplicate_product_name');
+        else if (isNewProduct && isDuplicateName(value)) {
+          const duplicateProduct = getDuplicateProductInfo(value);
+          err.name = duplicateProduct 
+            ? `Product "${value}" already exists (ID: ${duplicateProduct.id}). Please use a different name.`
+            : t('duplicate_product_name');
+        }
         else delete err.name;
         break;
       case 'category':
@@ -389,11 +504,37 @@ const AddProductForm = () => {
     console.log('Loaded units:', units);
   }, [itemTypes, categories, units]);
 
+  // Add debug logging for form data changes
+  useEffect(() => {
+    console.log('Form data changed:', formData);
+  }, [formData]);
+
   return (
     <div className="p-4 max-w-3xl mx-auto h-[90vh] overflow-y-auto">
       {console.log('Rendering modal?', showConfirmModal)}
       <h1 className="text-2xl font-bold mb-4">{t('add_new_product')}</h1>
       <p className="mb-2 text-gray-600">{t('add_multiple_products_instruction') || 'Add multiple products to the list below, then submit all at once.'}</p>
+      
+      {/* Debug Section - Remove in production */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <h3 className="font-semibold text-yellow-800 mb-2">Debug Info (Remove in production)</h3>
+        <div className="text-sm text-yellow-700 space-y-1">
+          <div><strong>Categories loaded:</strong> {categories.length}</div>
+          <div><strong>Item Types loaded:</strong> {itemTypes.length}</div>
+          <div><strong>Selected Item Type:</strong> {formData.item_type || 'None'}</div>
+          <div><strong>Selected Category:</strong> {formData.category || 'None'}</div>
+          <div><strong>Available Categories for Item Type:</strong> {
+            formData.item_type 
+              ? categories.filter((cat) => {
+                  const catItemTypeId = cat.item_type?.id || cat.item_type;
+                  return String(catItemTypeId) === String(formData.item_type);
+                }).length
+              : 'N/A'
+          }</div>
+          <div><strong>Form Data:</strong> {JSON.stringify(formData, null, 2)}</div>
+        </div>
+      </div>
+      
       <form onSubmit={handleAddToBatch} className="space-y-4">
         {submitMessage && (
           <div className="bg-green-100 text-green-800 p-2 rounded text-center font-semibold">{submitMessage}</div>
@@ -479,31 +620,46 @@ const AddProductForm = () => {
           value={formData.category}
             onChange={handleInputChange}
             className={`border p-2 w-full rounded focus:ring-2 focus:ring-blue-200 text-base sm:text-sm ${errors?.category ? 'border-red-500' : ''}`}
-            disabled={!formData.item_type}
+            disabled={!formData.item_type || categories.length === 0}
           >
-            <option value="">{formData.item_type ? t('select_category') : t('select_item_type_first')}</option>
-            {formData.item_type && categories.length > 0 ? (
+            <option value="">
+              {!formData.item_type 
+                ? t('select_item_type_first') || 'Select item type first'
+                : categories.filter((cat) => {
+                    // Handle both nested object and direct ID formats
+                    const catItemTypeId = cat.item_type?.id || cat.item_type;
+                    return String(catItemTypeId) === String(formData.item_type);
+                  }).length === 0
+                ? t('no_categories_for_type') || 'No categories for this item type'
+                : t('select_category') || 'Select category'
+              }
+            </option>
+            {formData.item_type && categories.length > 0 && 
               categories
                 .filter((cat) => {
-                  if (cat.item_type && typeof cat.item_type === 'object') {
-                    return String(cat.item_type.id) === String(formData.item_type);
-                  }
-                  return String(cat.item_type) === String(formData.item_type);
+                  // Handle both nested object and direct ID formats
+                  const catItemTypeId = cat.item_type?.id || cat.item_type;
+                  return String(catItemTypeId) === String(formData.item_type);
                 })
                 .map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.category_name}
             </option>
                 ))
-            ) : null}
+            }
         </select>
           {formData.item_type && categories.filter((cat) => {
-            if (cat.item_type && typeof cat.item_type === 'object') {
-              return String(cat.item_type.id) === String(formData.item_type);
-            }
-            return String(cat.item_type) === String(formData.item_type);
+            const catItemTypeId = cat.item_type?.id || cat.item_type;
+            return String(catItemTypeId) === String(formData.item_type);
           }).length === 0 && (
-            <p className="text-gray-500 text-sm mt-1">{t('no_categories_for_item_type')}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {t('no_categories_for_item_type') || 'No categories available for this item type. Please add categories in the admin panel.'}
+            </p>
+          )}
+          {categories.length === 0 && (
+            <p className="text-red-500 text-sm mt-1">
+              {t('no_categories_available') || 'No categories available. Please add categories in the admin panel.'}
+            </p>
           )}
           {errors?.category && <p className="text-red-500 text-sm">{errors.category}</p>}
       </div>

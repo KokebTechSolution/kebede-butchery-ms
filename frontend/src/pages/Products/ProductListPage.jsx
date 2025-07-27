@@ -1,6 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { fetchProducts, updateProduct, deleteProduct } from '../../api/product';
+import axios from 'axios';
 import AddProductsForm from './AddProductsForm';
+
+// Helper to get CSRF token from cookies
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let c of cookies) {
+      const cookie = c.trim();
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
 
 function ProductListPage() {
   const [productList, setProductList] = useState([]);
@@ -24,29 +40,49 @@ function ProductListPage() {
   });
 
   useEffect(() => {
-    fetchProducts()
-      .then(data => {
-        setProductList(data);
+    // Use the correct inventory API endpoint
+    const fetchProducts = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/inventory/products/', {
+          withCredentials: true,
+        });
+        console.log('[DEBUG] Products API response:', response.data);
+        // Log the first product to see the structure
+        if (response.data.length > 0) {
+          console.log('[DEBUG] First product structure:', response.data[0]);
+          console.log('[DEBUG] First product store_stocks:', response.data[0].store_stocks);
+          
+          // Log each stock entry for the first product
+          if (response.data[0].store_stocks && response.data[0].store_stocks.length > 0) {
+            response.data[0].store_stocks.forEach((stock, index) => {
+              console.log(`[DEBUG] Stock ${index + 1}:`, {
+                quantity_in_base_units: stock.quantity_in_base_units,
+                original_quantity: stock.original_quantity,
+                original_unit: stock.original_unit?.unit_name,
+                original_quantity_display: stock.original_quantity_display
+              });
+            });
+          }
+        }
+        setProductList(response.data);
         setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
+      } catch (err) {
+        console.error('Error fetching products:', err);
         setError('Failed to load products.');
         setLoading(false);
-      });
+      }
+    };
+    fetchProducts();
   }, []);
 
   const handleEdit = (product) => {
     setEditProduct(product);
     setFormData({
       name: product.name,
-      category: product.category,
-      item_type: product.item_type,
-      unit: product.unit,
-      price_per_unit: product.price_per_unit,
-      stock_qty: product.stock_qty,
-      branch_id: product.branch_id,
-      expiration_date: product.expiration_date ? product.expiration_date.split('T')[0] : '',
+      description: product.description || '',
+      category_id: product.category?.id || '',
+      base_unit_id: product.base_unit?.id || '',
+      base_unit_price: product.base_unit_price || '',
     });
   };
 
@@ -56,8 +92,18 @@ function ProductListPage() {
 
   const handleEditSubmit = async () => {
     try {
-      const updated = await updateProduct(editProduct.id, formData);
-      setProductList(prev => prev.map(product => product.id === updated.id ? updated : product));
+      const response = await axios.patch(
+        `http://localhost:8000/api/inventory/products/${editProduct.id}/`,
+        formData,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+        }
+      );
+      setProductList(prev => prev.map(product => product.id === response.data.id ? response.data : product));
       setEditProduct(null);
     } catch (err) {
       console.error('Update failed:', err);
@@ -72,7 +118,12 @@ function ProductListPage() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await deleteProduct(deleteProductId);
+      await axios.delete(`http://localhost:8000/api/inventory/products/${deleteProductId}/`, {
+        withCredentials: true,
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+      });
       setProductList(prev => prev.filter(product => product.id !== deleteProductId));
       setDeleteProductId(null);
       setDeleteProductName('');
@@ -113,12 +164,10 @@ function ProductListPage() {
                 <tr>
                   <th className="px-6 py-3 text-left">Name</th>
                   <th className="px-6 py-3 text-left">Category</th>
-                  <th className="px-6 py-3 text-left">Type</th>
-                  <th className="px-6 py-3 text-left">Unit</th>
-                  <th className="px-6 py-3 text-left">Price/Unit</th>
-                  <th className="px-6 py-3 text-left">Stock Qty</th>
-                  <th className="px-6 py-3 text-left">Branch</th>
-                  <th className="px-6 py-3 text-left">Expiration</th>
+                  <th className="px-6 py-3 text-left">Base Unit</th>
+                  <th className="px-6 py-3 text-left">Base Price</th>
+                  <th className="px-6 py-3 text-left">Stock (Base Units)</th>
+                  <th className="px-6 py-3 text-left">Original Stock</th>
                   <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
               </thead>
@@ -126,14 +175,18 @@ function ProductListPage() {
                 {productList.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">{product.name}</td>
-                    <td className="px-6 py-4 capitalize">{product.category}</td>
-                    <td className="px-6 py-4">{product.item_type}</td>
-                    <td className="px-6 py-4">{product.unit}</td>
-                    <td className="px-6 py-4">{product.price_per_unit}</td>
-                    <td className="px-6 py-4">{product.stock_qty}</td>
-                    <td className="px-6 py-4">{product.branch_id}</td>
+                    <td className="px-6 py-4 capitalize">{product.category?.category_name || 'N/A'}</td>
+                    <td className="px-6 py-4">{product.base_unit?.unit_name || 'N/A'}</td>
+                    <td className="px-6 py-4">${product.base_unit_price || '0.00'}</td>
                     <td className="px-6 py-4">
-                      {product.expiration_date ? new Date(product.expiration_date).toLocaleDateString() : 'N/A'}
+                      {product.store_stocks && product.store_stocks.length > 0 
+                        ? product.store_stocks[0].quantity_in_base_units 
+                        : '0.00'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {product.store_stocks && product.store_stocks.length > 0 
+                        ? `${product.store_stocks[0].original_quantity || '0.00'} ${product.store_stocks[0].original_unit?.unit_name || ''}`
+                        : 'N/A'}
                     </td>
                     <td className="px-6 py-4 space-x-2">
                       <button
@@ -148,6 +201,23 @@ function ProductListPage() {
                       >
                         Delete
                       </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await axios.get(`http://localhost:8000/api/inventory/products/${product.id}/debug_values/`, {
+                              withCredentials: true,
+                            });
+                            console.log(`[DEBUG] Product ${product.name} debug values:`, response.data);
+                            alert(`Debug data logged to console for ${product.name}`);
+                          } catch (err) {
+                            console.error('Debug request failed:', err);
+                            alert('Debug request failed');
+                          }
+                        }}
+                        className="bg-blue-500 text-white px-3 py-1 rounded shadow hover:bg-blue-600 text-xs"
+                      >
+                        Debug
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -161,18 +231,35 @@ function ProductListPage() {
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">Edit Product</h2>
-              {['name', 'category', 'item_type', 'unit', 'price_per_unit', 'stock_qty', 'branch_id', 'expiration_date'].map(field => (
+              <div className="space-y-3">
                 <input
-                  key={field}
-                  type={field === 'price_per_unit' || field === 'stock_qty' || field === 'branch_id' ? 'number' : field === 'expiration_date' ? 'date' : 'text'}
-                  name={field}
-                  value={formData[field]}
+                  type="text"
+                  name="name"
+                  value={formData.name}
                   onChange={handleEditChange}
-                  placeholder={field.replace('_', ' ').toUpperCase()}
-                  className="w-full mb-3 border px-4 py-2 rounded"
+                  placeholder="Product Name"
+                  className="w-full border px-4 py-2 rounded"
                 />
-              ))}
-              <div className="flex justify-end space-x-3">
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleEditChange}
+                  placeholder="Description"
+                  className="w-full border px-4 py-2 rounded"
+                  rows="3"
+                />
+                <input
+                  type="number"
+                  name="base_unit_price"
+                  value={formData.base_unit_price}
+                  onChange={handleEditChange}
+                  placeholder="Base Unit Price"
+                  step="0.01"
+                  min="0"
+                  className="w-full border px-4 py-2 rounded"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 mt-4">
                 <button onClick={() => setEditProduct(null)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancel</button>
                 <button onClick={handleEditSubmit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
               </div>

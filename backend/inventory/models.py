@@ -296,14 +296,12 @@ class Stock(models.Model):
         if not self.original_unit or not self.product:
             return None
         try:
-            conversion_factor = self.product.get_conversion_factor(self.original_unit, self.product.base_unit)
-            if conversion_factor > 0:
-                full_units = int(self.quantity_in_base_units // conversion_factor)
-                remainder = int(self.quantity_in_base_units % conversion_factor)
+            # Use original_quantity directly instead of recalculating from quantity_in_base_units
+            if self.original_quantity > 0:
                 return {
-                    'full_units': full_units,
+                    'full_units': int(self.original_quantity),
                     'original_unit': self.original_unit.unit_name,
-                    'remainder': remainder,
+                    'remainder': 0,
                     'base_unit': self.product.base_unit.unit_name
                 }
         except Exception:
@@ -373,11 +371,12 @@ class BarmanStock(models.Model):
                 minimum_threshold_base_units=new_threshold.quantize(Decimal('0.01'), rounding=ROUND_DOWN)
             )
             self.refresh_from_db()
-        # --- NEW: update original_quantity and original_unit on addition ---
-        if is_addition:
-            self.original_quantity = quantity
+        
+        # Update original_unit if it's not set or if we're adding stock
+        if is_addition and (not self.original_unit or self.original_unit != unit):
             self.original_unit = unit
-            self.save(update_fields=['original_quantity', 'original_unit'])
+            self.save(update_fields=['original_unit'])
+        
         self.update_running_out_status()
     def update_running_out_status(self):
         new_status = self.quantity_in_base_units <= self.minimum_threshold_base_units
@@ -442,14 +441,12 @@ class BarmanStock(models.Model):
         if not self.original_unit or not self.stock or not self.stock.product:
             return None
         try:
-            conversion_factor = self.stock.product.get_conversion_factor(self.original_unit, self.stock.product.base_unit)
-            if conversion_factor > 0:
-                full_units = int(self.quantity_in_base_units // conversion_factor)
-                remainder = int(self.quantity_in_base_units % conversion_factor)
+            # Use original_quantity directly instead of recalculating from quantity_in_base_units
+            if self.original_quantity and self.original_quantity > 0:
                 return {
-                    'full_units': full_units,
+                    'full_units': int(self.original_quantity),
                     'original_unit': self.original_unit.unit_name,
-                    'remainder': remainder,
+                    'remainder': 0,
                     'base_unit': self.stock.product.base_unit.unit_name
                 }
         except Exception:
@@ -591,22 +588,47 @@ class InventoryRequest(models.Model):
                 barman_stock, created = BarmanStock.objects.get_or_create(
                     stock=store_stock,
                     bartender=self.requested_by,
+                    defaults={
+                        'branch': self.branch,
+                        'quantity_in_base_units': Decimal('0.00'),
+                        'minimum_threshold_base_units': Decimal('0.00'),
+                    }
                 )
                 # Update branch if needed
                 if barman_stock.branch != self.branch:
                     barman_stock.branch = self.branch
-                    barman_stock.save(update_fields=['branch'])
+                
+                # Calculate quantity in base units for the barman stock
+                try:
+                    conversion_factor = self.product.get_conversion_factor(self.request_unit, self.product.base_unit)
+                    quantity_in_base_units = (self.quantity * conversion_factor).quantize(Decimal('0.01'))
+                    print(f"[DEBUG] Converting {self.quantity} {self.request_unit.unit_name} to {quantity_in_base_units} {self.product.base_unit.unit_name}")
+                except ValueError as e:
+                    print(f"[ERROR] Conversion error: {e}")
+                    # Fallback: assume 1:1 conversion
+                    quantity_in_base_units = self.quantity
+                
+                # Update barman stock quantity
+                barman_stock.quantity_in_base_units = (barman_stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
+                # Recalculate original_quantity based on total base units
+                barman_stock.original_quantity = (barman_stock.quantity_in_base_units / conversion_factor).quantize(Decimal('0.01'))
+                barman_stock.original_unit = self.request_unit
+                barman_stock.last_stock_update = timezone.now()
+                barman_stock.save()
+                print(f"[DEBUG] Updated barman stock: {barman_stock.quantity_in_base_units} base units, {barman_stock.original_quantity} {barman_stock.original_unit.unit_name}")
+                
                 # Always create a new InventoryTransaction (history)
                 InventoryTransaction.objects.create(
                     product=self.product,
                     transaction_type='store_to_barman',
                     quantity=self.quantity,
                     transaction_unit=self.request_unit,
+                    quantity_in_base_units=quantity_in_base_units,
                     from_stock_main=store_stock,
                     to_stock_barman=barman_stock,
                     initiated_by=self.responded_by,
                     notes=f"Fulfilled request #{self.pk} by {self.requested_by.username}.",
-                    branch=self.branch,  # <-- Fix: set branch foreign key
+                    branch=self.branch,
                 )
                 print(f"[DEBUG] InventoryTransaction created for request id={self.pk}")
                 self.responded_at = timezone.now()
@@ -615,6 +637,8 @@ class InventoryRequest(models.Model):
                 print(f"[ERROR] Main store stock not found for product {self.product.name} at branch {self.branch.name} during request fulfillment.")
             except Exception as e:
                 print(f"[ERROR] Exception fulfilling request {self.pk}: {e}")
+                import traceback
+                traceback.print_exc()
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
