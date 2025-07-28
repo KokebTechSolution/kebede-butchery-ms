@@ -45,6 +45,24 @@ export const useOrders = (filterDate) => {
     }
   };
 
+  const isFood = item => !item.item_type || item.item_type === 'food';
+
+  const getClosedOrders = () =>
+    orders.filter(order =>
+      order.has_payment &&
+      order.items.some(isFood) &&
+      order.items
+        .filter(isFood)
+        .every(item => item.status === 'accepted' || item.status === 'rejected')
+    );
+
+  const getActiveOrders = () =>
+    orders.filter(order =>
+      !getClosedOrders().some(closed => closed.id === order.id) &&
+      order.items.some(isFood)
+    );
+
+  // Accept/reject order (updates status)
   const acceptOrder = (orderId) => {
     updateOrderStatus(orderId, 'preparing');
   };
@@ -53,22 +71,7 @@ export const useOrders = (filterDate) => {
     updateOrderStatus(orderId, 'rejected', reason);
   };
 
-  const getPendingOrders = () => orders.filter(order => order.status === 'pending');
-  const getPreparingOrders = () => orders.filter(order => order.status === 'preparing');
-  const getRejectedOrders = () => orders.filter(order => order.status === 'rejected');
-
-  const getClosedOrders = () =>
-    orders.filter(order =>
-      order.has_payment &&
-      order.items.length > 0 &&
-      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
-    );
-
-  const getActiveOrders = () =>
-    orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id)
-    );
-
+  // Accept/reject order item (updates item status)
   const updateOrderItemStatus = async (itemId, status) => {
     try {
       const response = await axios.patch(
@@ -106,9 +109,9 @@ export const useOrders = (filterDate) => {
     orders,
     acceptOrder,
     rejectOrder,
-    getPendingOrders,
-    getPreparingOrders,
-    getRejectedOrders,
+    getPendingOrders: () => orders.filter(order => order.status === 'pending'),
+    getPreparingOrders: () => orders.filter(order => order.status === 'preparing'),
+    getRejectedOrders: () => orders.filter(order => order.status === 'rejected'),
     getClosedOrders,
     getActiveOrders,
     acceptOrderItem,
