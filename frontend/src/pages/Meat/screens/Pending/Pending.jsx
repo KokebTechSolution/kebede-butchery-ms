@@ -15,14 +15,60 @@ const getTodayDateString = () => {
 
 export const Pending = ({ filterDate, setFilterDate }) => {
   const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, setOrderPrinted } = useOrders(filterDate);
+  // Use only active orders (move this to the top)
+  const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
   const [showClosed, setShowClosed] = useState(false);
   const prevOrderIdsRef = useRef([]);
-  const prevOrderItemsRef = useRef({});
+  const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
-  // Use only active orders
-  const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // Helper to get update message
+  function getOrderUpdateMessage(prevItems, currItems) {
+    // Find added items
+    for (const item of currItems) {
+      if (!prevItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} added`;
+      }
+    }
+    // Find removed items
+    for (const item of prevItems) {
+      if (!currItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} removed`;
+      }
+    }
+    // Find status/quantity changes
+    for (const item of currItems) {
+      const prev = prevItems.find(i => i.name === item.name);
+      if (prev) {
+        if (prev.status !== item.status) {
+          return `Updated: ${item.name} ${item.status}`;
+        }
+        if (prev.quantity !== item.quantity) {
+          return `Updated: ${item.name} quantity changed to ${item.quantity}`;
+        }
+      }
+    }
+    return '';
+  }
+
+  // Track previous items for each order
+  const prevOrderItemsMap = useRef({});
+
+  // After orders update, compare previous and current items for each order
+  useEffect(() => {
+    allOrders.forEach(order => {
+      const prevItems = Array.isArray(prevOrderItemsMap.current[order.id])
+        ? prevOrderItemsMap.current[order.id]
+        : [];
+      const msg = getOrderUpdateMessage(prevItems, order.items);
+      if (msg) {
+        setLastUpdate({ orderId: order.id, message: msg });
+      }
+      prevOrderItemsMap.current[order.id] = order.items; // Always store the array
+    });
+  }, [allOrders]);
+
   const closedOrders = getClosedOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   // Notification logic: show popup when a new order is displayed in the UI or when a new item is added to an existing order
@@ -39,7 +85,7 @@ export const Pending = ({ filterDate, setFilterDate }) => {
     } else {
       // Check for new items in existing orders
       for (const order of allOrders) {
-        const prevItemsCount = prevOrderItemsRef.current[order.id] || 0;
+        const prevItemsCount = prevOrderItemsMap.current[order.id] || 0;
         const currentItemsCount = order.items.length;
         if (currentItemsCount > prevItemsCount) {
           setNotificationOrder(order);
@@ -50,9 +96,9 @@ export const Pending = ({ filterDate, setFilterDate }) => {
     }
     // Update refs
     prevOrderIdsRef.current = currentIds;
-    prevOrderItemsRef.current = {};
+    prevOrderItemsMap.current = {};
     for (const order of allOrders) {
-      prevOrderItemsRef.current[order.id] = order.items.length;
+      prevOrderItemsMap.current[order.id] = order.items.length;
     }
   }, [allOrders.length, allOrders.map(order => order.id).join(','), allOrders.map(order => order.items.length).join(',')]);
 
@@ -134,7 +180,13 @@ export const Pending = ({ filterDate, setFilterDate }) => {
                       onRejectItem={rejectOrderItem}
                       onPrint={setOrderPrinted}
                       showActions={true}
-                    />
+                    >
+                      {lastUpdate.orderId === order.id && lastUpdate.message && (
+                        <span style={{ color: '#16a34a', marginLeft: 12, fontWeight: 500 }}>
+                          {lastUpdate.message}
+                        </span>
+                      )}
+                    </OrderCard>
                   );
                 })}
               </div>

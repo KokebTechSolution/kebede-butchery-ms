@@ -119,7 +119,6 @@ const AnalyticsDashboard = () => {
           <KpiCard title="Total Revenue" value={analyticsData.kpi.totalRevenue} isCurrency />
           <KpiCard title="Cost of Inventory" value={analyticsData.kpi.costOfInventory} isCurrency />
           <KpiCard title="Profit of Inventory" value={analyticsData.kpi.profitOfInventory} isCurrency isProfitLoss />
-          <KpiCard title="Operating Expenses" value={analyticsData.kpi.operatingExpenses} isCurrency />
           {/* Net Profit replaced with Income from Food */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-1">INCOME FROM FOOD</p>
