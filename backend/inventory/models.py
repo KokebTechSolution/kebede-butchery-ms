@@ -591,6 +591,15 @@ class InventoryTransaction(models.Model):
             print(f"[DEBUG] Skipping stock adjustments due to skip_stock_adjustment=True")
             return
             
+        # IMPORTANT: Only apply stock adjustments for NEW transactions (when self.pk was None before saving)
+        # This prevents double stock adjustments when the transaction is saved multiple times
+        if hasattr(self, '_stock_adjustments_applied'):
+            print(f"[DEBUG] Stock adjustments already applied for transaction {self.pk}, skipping")
+            return
+            
+        # Mark that we've applied stock adjustments for this transaction
+        self._stock_adjustments_applied = True
+            
         # Calculate abs_quantity_in_base_units for stock adjustments
         is_addition = self.quantity_in_base_units > 0
         abs_quantity_in_base_units = abs(self.quantity_in_base_units)
@@ -657,15 +666,54 @@ class InventoryRequest(models.Model):
         print(f"[DEBUG] InventoryRequest.save() called for id={self.pk}, status={self.status}")
         original_status = None
         if self.pk:
-            original_status = InventoryRequest.objects.get(pk=self.pk).status
+            try:
+                original_status = InventoryRequest.objects.get(pk=self.pk).status
+            except InventoryRequest.DoesNotExist:
+                original_status = None
         print(f"[DEBUG] original_status={original_status}, new status={self.status}")
+        
         self.full_clean()
         super().save(*args, **kwargs)
         
         # Prevent double execution by checking if we're already processing fulfillment
-        if original_status != 'fulfilled' and self.status == 'fulfilled' and not kwargs.get('_fulfilling', False):
+        # and ensure we only process when status changes from non-fulfilled to fulfilled
+        if (original_status != 'fulfilled' and 
+            self.status == 'fulfilled' and 
+            not kwargs.get('_fulfilling', False) and
+            self.reached_status):
+            
             print(f"[DEBUG] Entering transaction creation block for request id={self.pk}")
             try:
+                # Check if this specific request has already been fulfilled
+                # Only prevent duplicates for the exact same request being processed multiple times
+                existing_transaction = InventoryTransaction.objects.filter(
+                    transaction_type='store_to_barman',
+                    from_stock_main__product=self.product,
+                    to_stock_barman__bartender=self.requested_by,
+                    notes__contains=f"Fulfilled request #{self.pk}"
+                ).first()
+                
+                if existing_transaction:
+                    print(f"[DEBUG] Request {self.pk} already fulfilled, skipping duplicate creation")
+                    print(f"[DEBUG] Existing transaction ID: {existing_transaction.id}")
+                    return
+                
+                # Additional check - look for transactions with the same request details
+                # This is more specific and only blocks true duplicates
+                existing_transaction = InventoryTransaction.objects.filter(
+                    transaction_type='store_to_barman',
+                    from_stock_main__product=self.product,
+                    to_stock_barman__bartender=self.requested_by,
+                    quantity=self.quantity,
+                    transaction_unit=self.request_unit,
+                    notes__contains=f"Fulfilled request #{self.pk}"
+                ).first()
+                
+                if existing_transaction:
+                    print(f"[DEBUG] Similar transaction already exists for request {self.pk}, skipping duplicate creation")
+                    print(f"[DEBUG] Existing transaction ID: {existing_transaction.id}")
+                    return
+                
                 store_stock = Stock.objects.get(product=self.product, branch=self.branch)
                 
                 # Calculate quantity in base units
@@ -678,11 +726,11 @@ class InventoryRequest(models.Model):
                     # Fallback: assume 1:1 conversion
                     quantity_in_base_units = self.quantity
                 
-                # First, reduce main store stock using InventoryTransaction
+                # Check if we have sufficient stock
                 if store_stock.quantity_in_base_units < quantity_in_base_units:
                     raise ValueError(f"Insufficient stock in main store. Available: {store_stock.quantity_in_base_units}, Required: {quantity_in_base_units}")
                 
-                # Use only unique fields for get_or_create
+                # Get or create barman stock
                 barman_stock, created = BarmanStock.objects.get_or_create(
                     stock=store_stock,
                     bartender=self.requested_by,
@@ -692,31 +740,48 @@ class InventoryRequest(models.Model):
                         'minimum_threshold_base_units': Decimal('0.00'),
                     }
                 )
+                
                 # Update branch if needed
                 if barman_stock.branch != self.branch:
                     barman_stock.branch = self.branch
+                    barman_stock.save(update_fields=['branch'])
                 
-                # Create InventoryTransaction to handle the transfer properly
+                print(f"[DEBUG] Store stock before transaction: {store_stock.quantity_in_base_units}")
+                print(f"[DEBUG] Barman stock before transaction: {barman_stock.quantity_in_base_units}")
+                
+                # Create InventoryTransaction with all values set at once to avoid double save
                 transaction = InventoryTransaction.objects.create(
                     product=self.product,
                     transaction_type='store_to_barman',
                     quantity=self.quantity,
                     transaction_unit=self.request_unit,
+                    quantity_in_base_units=quantity_in_base_units,  # Set this directly
                     from_stock_main=store_stock,
                     to_stock_barman=barman_stock,
                     initiated_by=self.responded_by,
                     notes=f"Fulfilled request #{self.pk} by {self.requested_by.username}.",
                     branch=self.branch,
                 )
-                # Set the quantity_in_base_units directly to avoid double calculation
-                transaction.quantity_in_base_units = quantity_in_base_units
-                transaction._skip_quantity_calculation = True
-                transaction.save(skip_stock_adjustment=False)  # Let it handle stock adjustments
+                
+                print(f"[DEBUG] Created transaction {transaction.id} for request {self.pk}")
+                print(f"[DEBUG] Transaction details: quantity={transaction.quantity}, quantity_in_base_units={transaction.quantity_in_base_units}")
+                
+                # The stock adjustments will be handled automatically by the transaction's save method
+                # No need to call save() again since we set quantity_in_base_units during creation
+                
+                # Refresh stocks to see the changes
+                store_stock.refresh_from_db()
+                barman_stock.refresh_from_db()
+                print(f"[DEBUG] Store stock after transaction: {store_stock.quantity_in_base_units}")
+                print(f"[DEBUG] Barman stock after transaction: {barman_stock.quantity_in_base_units}")
                 
                 print(f"[DEBUG] InventoryTransaction created for request id={self.pk}")
-                self.responded_at = timezone.now()
-                # Use direct database update to avoid recursive save() call
-                InventoryRequest.objects.filter(pk=self.pk).update(responded_at=self.responded_at)
+                
+                # Update responded_at using direct database update to avoid recursive save
+                if not self.responded_at:
+                    self.responded_at = timezone.now()
+                    InventoryRequest.objects.filter(pk=self.pk).update(responded_at=self.responded_at)
+                    
             except Stock.DoesNotExist:
                 print(f"[ERROR] Main store stock not found for product {self.product.name} at branch {self.branch.name} during request fulfillment.")
             except Exception as e:

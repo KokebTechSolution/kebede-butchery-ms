@@ -85,12 +85,16 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         req = self.get_object()
         if req.status != 'accepted':
             return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if already fulfilled to prevent duplicate processing
+        if req.status == 'fulfilled' and req.reached_status:
+            return Response({'detail': 'Request is already fulfilled.'}, status=status.HTTP_400_BAD_REQUEST)
+        
         # Only update if not already fulfilled
-        if req.status != 'fulfilled':
-            req.status = 'fulfilled'
-            req.reached_status = True
-            req.responded_by = request.user
-            req.save()  # This triggers InventoryRequest.save(), which creates the transaction
+        req.status = 'fulfilled'
+        req.reached_status = True
+        req.responded_by = request.user
+        req.save()  # This triggers InventoryRequest.save(), which creates the transaction
         return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
