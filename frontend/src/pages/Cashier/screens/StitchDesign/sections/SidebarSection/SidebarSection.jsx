@@ -154,7 +154,7 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
                       <ul className="space-y-1">
-                        {(order.items ?? []).map((item, itemIndex) => (
+                        {order.items.filter(item => item.status === 'accepted').map((item, itemIndex) => (
                           <li key={item.id || `${item.name}-${itemIndex}`} className="text-sm">
                             <span className="font-medium">{item.quantity}x</span> {item.name}
                             <span className="text-[#876363] ml-2">({item.price})</span>

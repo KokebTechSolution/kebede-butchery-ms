@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import StaffPerformance from './StaffPerformance';
 import StaffListPage from '../Staff/StaffListPage';
+import FoodReportsDashboard from './components/FoodReportsDashboard';
 
 function OwnerDashboard() {
   const [screen, setScreen] = useState('analytics');
@@ -16,6 +17,14 @@ function OwnerDashboard() {
           onClick={() => setScreen('analytics')}
         >
           Analytics
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            screen === 'foodreports' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+          onClick={() => setScreen('foodreports')}
+        >
+          Food Reports
         </button>
         <button
           className={`px-4 py-2 rounded ${
@@ -36,6 +45,7 @@ function OwnerDashboard() {
       </div>
 
       {screen === 'analytics' && <AnalyticsDashboard />}
+      {screen === 'foodreports' && <FoodReportsDashboard />}
       {screen === 'staff' && <StaffPerformance />}
       {screen === 'staffmgmt' && <StaffListPage />}
     </div>

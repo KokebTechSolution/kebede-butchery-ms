@@ -1,24 +1,74 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const mockReportData = {
-  totalSold: 45,
-  totalRejected: 8,
-  yesterdayTotalSold: 38,
-  yesterdayTotalRejected: 12,
-  dailySales: [
-    { date: '2025-01-01', sold: 32, rejected: 5 },
-    { date: '2025-01-02', sold: 28, rejected: 8 },
-    { date: '2025-01-03', sold: 35, rejected: 6 },
-    { date: '2025-01-04', sold: 42, rejected: 4 },
-    { date: '2025-01-05', sold: 38, rejected: 12 },
-    { date: '2025-01-06', sold: 45, rejected: 8 },
-  ]
+export const useReports = (date) => {
+  const [reportData, setReportData] = useState({
+    totalSold: 0,
+    totalRejected: 0,
+    yesterdayTotalSold: 0,
+    yesterdayTotalRejected: 0,
+    dailySales: [],
+  });
+
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const res = await axios.get(`/api/reports/dashboard-report/?date=${date}`);
+        setReportData({
+          totalSold: res.data.totalSold || 0,
+          totalRejected: res.data.totalRejected || 0,
+          yesterdayTotalSold: res.data.yesterdayTotalSold || 0,
+          yesterdayTotalRejected: res.data.yesterdayTotalRejected || 0,
+          dailySales: res.data.dailySales || [],
+        });
+      } catch (err) {
+        setReportData({
+          totalSold: 0,
+          totalRejected: 0,
+          yesterdayTotalSold: 0,
+          yesterdayTotalRejected: 0,
+          dailySales: [],
+        });
+      }
+    };
+    if (date) fetchReport();
+  }, [date]);
+
+  return { reportData };
 };
 
-export const useReports = () => {
-  const [reportData] = useState(mockReportData);
+export const useFoodReports = (date) => {
+  const [reportData, setReportData] = useState({
+    totalSold: 0,
+    totalRejected: 0,
+    yesterdayTotalSold: 0,
+    yesterdayTotalRejected: 0,
+    dailySales: [],
+  });
 
-  return {
-    reportData
-  };
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const res = await axios.get(`/api/reports/food-dashboard-report/?date=${date}`);
+        setReportData({
+          totalSold: res.data.totalSold || 0,
+          totalRejected: res.data.totalRejected || 0,
+          yesterdayTotalSold: res.data.yesterdayTotalSold || 0,
+          yesterdayTotalRejected: res.data.yesterdayTotalRejected || 0,
+          dailySales: res.data.dailySales || [],
+        });
+      } catch (err) {
+        setReportData({
+          totalSold: 0,
+          totalRejected: 0,
+          yesterdayTotalSold: 0,
+          yesterdayTotalRejected: 0,
+          dailySales: [],
+        });
+      }
+    };
+    if (date) fetchReport();
+  }, [date]);
+
+  return { reportData };
 };

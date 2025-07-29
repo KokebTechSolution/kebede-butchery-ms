@@ -200,6 +200,7 @@ const ProductListPage = () => {
         <table className="min-w-full border">
           <thead className="bg-gray-100">
             <tr>
+
               <th className="border px-4 py-2">{t('name')}</th>
               <th className="border px-4 py-2">{t('description')}</th>
               <th className="border px-4 py-2">{t('category')}</th>
@@ -215,6 +216,78 @@ const ProductListPage = () => {
               <th className="border px-4 py-2">{t('product_created_at')}</th>
               <th className="border px-4 py-2">{t('product_updated_at')}</th>
               <th className="border px-4 py-2">{t('actions')}</th>
+
+              <th className="border px-4 py-2">Name</th>
+              <th className="border px-4 py-2">Category</th>
+              <th className="border px-4 py-2">Item Type</th>
+              <th className="border px-4 py-2">Uses Carton</th>
+              <th className="border px-4 py-2">Bottles/Carton</th>
+              <th className="border px-4 py-2">Carton Qty</th>
+              <th className="border px-4 py-2">Total Price</th>
+              <th className="border px-4 py-2">Bottle Qty</th>
+              <th className="border px-4 py-2">Unit Qty</th>
+              <th className="border px-4 py-2">Min Threshold</th>
+              <th className="border px-4 py-2">Running Out</th>
+              <th className="border px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stocks.length > 0 ? (
+              stocks.map(stock => (
+                <tr
+                  key={stock.id}
+                  className="text-center hover:bg-gray-50"
+                >
+                  <td className="border px-4 py-2">{stock.product?.name}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.category_name}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name}</td>
+                  <td className="border px-4 py-2">{stock.product?.uses_carton ? 'Yes' : 'No'}</td>
+                  <td className="border px-4 py-2">{stock.product?.bottles_per_carton}</td>
+                  <td className="border px-4 py-2">{stock.carton_quantity}</td>
+                  <td className="border px-4 py-2">{stock.total_carton_price !== undefined ? stock.total_carton_price : ''}</td>
+                  <td className="border px-4 py-2">{stock.bottle_quantity}</td>
+                  <td className="border px-4 py-2">{stock.unit_quantity}</td>
+                  <td className="border px-4 py-2">{stock.minimum_threshold}</td>
+                  <td className="border px-4 py-2">
+                    {stock.running_out ? (
+                      <span className="text-red-500 font-semibold">Running Out</span>
+                    ) : (
+                      <span className="text-green-500 font-semibold">In Stock</span>
+                    )}
+                  </td>
+                  <td className="border px-4 py-2 space-x-1">
+                    {/* You may need to update action handlers to work with stock instead of product */}
+                    <button
+                      onClick={() => window.location.href = `/restock/${stock.product?.id}`}
+                      className="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
+                    >
+                      Restock
+                    </button>
+                    <button
+                      onClick={() => window.location.href = `/sell/${stock.product?.id}`}
+                      className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600"
+                    >
+                      Sell
+                    </button>
+                    <button
+                      onClick={() => handleEdit(stock.product?.id)}
+                      className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(stock.product?.id)}
+                      className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
+                    >
+                      Delete
+
+              {[
+                'name', 'category', 'item_type', 'uses_carton', 'bottles_per_carton',
+                'carton_qty', 'bottle_qty', 'unit_qty', 'branch', 'running_out', 'actions'
+              ].map((key) => (
+                <th key={key} className="border px-4 py-2">{t(key)}</th>
+              ))}
+
             </tr>
           </thead>
           <tbody>
@@ -250,23 +323,42 @@ const ProductListPage = () => {
                     </button>
                     <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
                       {t('delete')}
+
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
+
                 <td colSpan="10" className="border px-4 py-4 text-center text-gray-500">
+
+                <td className="border px-4 py-4 text-center text-gray-500" colSpan="12">
+                  No stock found.
+
+                <td colSpan="11" className="border px-4 py-4 text-center text-gray-500">
+
                   {t('no_products_found')}
+
                 </td>
               </tr>
             )}
           </tbody>
           <tfoot>
             <tr>
+
               <td colSpan="4" className="border px-4 py-2 font-bold text-right">{t('total_inventory_value')}:</td>
               <td className="border px-4 py-2 font-bold">
                 ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}
+
+              <td className="border px-4 py-2 font-bold text-right" colSpan="7">Total Money (All Cartons):</td>
+              <td className="border px-4 py-2 font-bold" colSpan="1">
+
+              <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
+              <td className="border px-4 py-2 font-bold">
+
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+
               </td>
               <td className="border px-4 py-2" colSpan="4"></td>
             </tr>

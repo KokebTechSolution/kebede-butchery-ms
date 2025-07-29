@@ -23,7 +23,7 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
 
     def get_table_number(self, obj):
-        return obj.table.table_number if obj.table else '-'
+        return obj.table.number if obj.table else '-'
     get_table_number.short_description = 'Table Number'
     get_table_number.admin_order_field = 'table__table_number'
 

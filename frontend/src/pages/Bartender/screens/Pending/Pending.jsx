@@ -16,8 +16,7 @@ export const Pending = ({ orders, filterDate, setFilterDate }) => {
   const prevOrderIdsRef = useRef([]);
   const prevOrderItemsRef = useRef({});
   const pollingRef = useRef(null);
-  const { user } = useAuth();
-  const branchId = user?.branch;
+  const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
   // Use only active orders
   const allOrders = getActiveOrders()
@@ -97,6 +96,50 @@ console.log('Current branchId:', branchId);
     }
   }, [allOrders.length, allOrders.map(order => order.id).join(','), allOrders.map(order => order.items.length).join(',')]);
 
+  // Helper to get update message
+  function getOrderUpdateMessage(prevItems, currItems) {
+    // Find added items
+    for (const item of currItems) {
+      if (!prevItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} added`;
+      }
+    }
+    // Find removed items
+    for (const item of prevItems) {
+      if (!currItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} removed`;
+      }
+    }
+    // Find status/quantity changes
+    for (const item of currItems) {
+      const prev = prevItems.find(i => i.name === item.name);
+      if (prev) {
+        if (prev.status !== item.status) {
+          return `Updated: ${item.name} ${item.status}`;
+        }
+        if (prev.quantity !== item.quantity) {
+          return `Updated: ${item.name} quantity changed to ${item.quantity}`;
+        }
+      }
+    }
+    return '';
+  }
+
+  // Track previous items for each order
+  const prevOrderItemsMap = useRef({});
+
+  // After orders update, compare previous and current items for each order
+  useEffect(() => {
+    allOrders.forEach(order => {
+      const prevItems = prevOrderItemsMap.current[order.id] || [];
+      const msg = getOrderUpdateMessage(prevItems, order.items);
+      if (msg) {
+        setLastUpdate({ orderId: order.id, message: msg });
+      }
+      prevOrderItemsMap.current[order.id] = order.items;
+    });
+  }, [allOrders]);
+
   const handleEditOrder = (order) => {
     setEditingOrderId(order.id);
     setEditingItems(order.items.map(item => ({ ...item })));
@@ -120,6 +163,30 @@ console.log('Current branchId:', branchId);
       )
     );
   };
+
+  // Example: Call this function after an item is updated (accept, reject, quantity change, or remove)
+  const handleItemUpdate = (order, item, action) => {
+    let message = '';
+    if (action === 'quantity') {
+      message = `Updated: ${item.name} quantity changed to ${item.quantity}`;
+    } else if (action === 'remove') {
+      message = `Updated: ${item.name} removed`;
+    } else if (action === 'accept') {
+      message = `Updated: ${item.name} accepted`;
+    } else if (action === 'reject') {
+      message = `Updated: ${item.name} rejected`;
+    }
+    setLastUpdate({ orderId: order.id, message });
+  };
+
+  // In your item update handlers, call handleItemUpdate(order, item, action)
+  // For example, in acceptOrderItem:
+  const acceptOrderItemWithMsg = (itemId, order) => {
+    acceptOrderItem(itemId);
+    const item = order.items.find(i => i.id === itemId);
+    if (item) handleItemUpdate(order, item, 'accept');
+  };
+  // Similarly for reject, quantity, remove...
 
   return (
     <div className="p-8">
@@ -165,10 +232,10 @@ console.log('Current branchId:', branchId);
               <div className="space-y-4">
                 {tableOrders.map(order => {
                   // Determine if there are any pending items
-                  const hasPendingItems = order.items.some(item => item.status === 'pending');
                   const waiter = order.waiterName || order.created_by_username || 'Unknown';
                   return (
                     <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center space-x-3">
                           <h3 className="font-semibold text-gray-900">
@@ -183,30 +250,29 @@ console.log('Current branchId:', branchId);
                                 ? Number(order.total_money)
                                 : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
                             ).toFixed(2)}
+                      <div className="flex items-center space-x-3">
+                        <h3 className="font-semibold text-gray-900">
+                          Order #{order.order_number} <span style={{ color: '#888', marginLeft: 8 }}>({waiter})</span>
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
+                        </span>
+                        <span className="text-lg font-bold text-blue-700">
+                          ${(
+                            order.total_money && Number(order.total_money) > 0
+                              ? Number(order.total_money)
+                              : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
+                          ).toFixed(2)}
+                        </span>
+                        {/* Inline update message */}
+                        {lastUpdate.orderId === order.id && lastUpdate.message && (
+                          <span style={{ color: '#16a34a', marginLeft: 12, fontWeight: 500 }}>
+                            {lastUpdate.message}
+
                           </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {order.status === 'pending' && hasPendingItems && (
-                            <button
-                              onClick={() => acceptOrder(order.id)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-                            >
-                              Accept
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleEditOrder(order)}
-                            disabled={order.status !== 'pending'}
-                            className={`p-2 rounded transition-colors ${
-                              order.status === 'pending'
-                                ? 'text-blue-700 hover:bg-blue-50'
-                                : 'text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            {order.status === 'pending' ? <FaEdit size={16} /> : <FaLock size={16} />}
-                          </button>
-                        </div>
+                        )}
                       </div>
+
                       {editingOrderId === order.id ? (
                         <div className="border-t pt-4">
                           <div className="space-y-3 mb-4">
@@ -298,6 +364,40 @@ console.log('Current branchId:', branchId);
                           </div>
                         </div>
                       )}
+                      {/* Only item-level Accept/Reject below */}
+                      <div className="space-y-2 mt-2">
+                        {order.items.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
+                            <span>{item.name} × {item.quantity}</span>
+                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="ml-4">
+                              {item.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => acceptOrderItemWithMsg(item.id, order)}
+                                    className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    onClick={() => rejectOrderItem(item.id)}
+                                    className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {item.status === 'accepted' && (
+                                <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
+                              )}
+                              {item.status === 'rejected' && (
+                                <span className="text-red-700">Rejected</span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
                     </div>
                   );
                 })}

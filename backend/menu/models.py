@@ -46,7 +46,11 @@ class MenuItem(models.Model):
     item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
     is_available = models.BooleanField(default=True)
+<<<<<<< HEAD
+    product = models.ForeignKey('inventory.Product', on_delete=models.CASCADE, null=True, blank=True)
+=======
     product = models.ForeignKey('inventory.Product', on_delete=models.SET_NULL, null=True, blank=True)
+>>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
