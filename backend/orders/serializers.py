@@ -11,28 +11,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
-    waiterName = serializers.CharField(source='created_by.username', read_only=True)
-    has_payment = serializers.SerializerMethodField()
-    table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
-    table_number = serializers.IntegerField(source='table.number', read_only=True)
-    branch = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = Order
-        fields = ['id', 'order_number','table', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
-
-
-        read_only_fields = ['created_at', 'updated_at', 'order_number']
-
- 
-class OrderItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
-
-
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
     waiterName = serializers.CharField(source='created_by.first_name', read_only=True)
     has_payment = serializers.SerializerMethodField()
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
@@ -47,6 +25,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'total_money', 'cashier_status', 'payment_option', 'has_payment',
         ]
         read_only_fields = ['created_at', 'updated_at', 'order_number']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', None)
@@ -76,6 +58,7 @@ class OrderSerializer(serializers.ModelSerializer):
             order.food_status = 'completed'
             order.beverage_status = 'completed'
         order.save()
+        
         return order
 
     @transaction.atomic

@@ -41,6 +41,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       setOrders(data);
       return data;
     } catch (error) {
+      console.error(`[DEBUG] OrderList: Error fetching orders:`, error);
       setOrders([]);
       return [];
     }
@@ -129,19 +130,28 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       </div>
       <h2>Orders</h2>
       {filteredOrders.length === 0 ? (
-        <p className="no-orders-message">No orders placed yet.</p>
+        <div className="no-orders-message">
+          <p>No orders found for the selected date.</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Try selecting a different date or check if orders have been placed today.
+          </p>
+        </div>
       ) : (
         <div className="order-list">
-          {filteredOrders.map(order => (
-            <div
-              key={order.id}
-              className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
-              onClick={() => onSelectOrder(order.id)}
-            >
-              <span className="order-list-item-id">{order.order_number}</span>
-              <span className="order-list-item-status">{getStatusLabel(order.cashier_status)}</span>
-            </div>
-          ))}
+          {filteredOrders.map(order => {
+            return (
+              <div
+                key={order.id}
+                className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
+                onClick={() => {
+                  onSelectOrder(order.id);
+                }}
+              >
+                <span className="order-list-item-id">{order.order_number}</span>
+                <span className="order-list-item-status">{getStatusLabel(order.cashier_status)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

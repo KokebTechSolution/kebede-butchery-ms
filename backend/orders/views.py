@@ -54,11 +54,13 @@ class OrderListView(generics.ListCreateAPIView):
             new_seq += 1
             new_order_number = f"{today_str}-{new_seq:02d}"
         items_data = self.request.data.get('items', [])
+        
         has_food = any(item.get('item_type') == 'food' for item in items_data)
         has_beverages = any(item.get('item_type') == 'beverage' for item in items_data)
         food_status = 'pending' if has_food else 'not_applicable'
         beverage_status = 'pending' if has_beverages else 'not_applicable'
-        serializer.save(
+        
+        order = serializer.save(
             created_by=user, 
             order_number=new_order_number,
             food_status=food_status,
@@ -67,9 +69,14 @@ class OrderListView(generics.ListCreateAPIView):
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Order.objects.all()
+    queryset = Order.objects.prefetch_related('items').all()
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class FoodOrderListView(generics.ListAPIView):
@@ -151,18 +158,24 @@ class PrintedOrderListView(generics.ListAPIView):
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
-        queryset = Order.objects.filter(cashier_status='printed')
+        
+        # Include orders that are ready for payment (pending or printed status)
+        queryset = Order.objects.filter(cashier_status__in=['pending', 'printed'])
+        
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')
         end = self.request.query_params.get('end')
+        
         if date:
             parsed_date = parse_date(date)
             queryset = queryset.filter(
                 Q(payment__processed_at__date=parsed_date) |
                 Q(payment__isnull=True, created_at__date=parsed_date)
             )
+        
         if start and end:
             queryset = queryset.filter(payment__processed_at__date__range=[parse_date(start), parse_date(end)])
+        
         return queryset
 
 class UpdatePaymentOptionView(generics.UpdateAPIView):

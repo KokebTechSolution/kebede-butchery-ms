@@ -30,10 +30,11 @@ export const updatePaymentOption = async (orderId, paymentOption) => {
 
 export const getOrderById = async (orderId) => {
     try {
-        const response = await axiosInstance.get(`/orders/${orderId}/`);
+        const url = `/orders/${orderId}/`;
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
-        console.error('Failed to fetch order by ID:', error);
+        console.error(`Failed to fetch order ${orderId}:`, error);
         throw error;
     }
 };
@@ -47,7 +48,7 @@ export const getMyOrders = async (date) => {
         const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
-        console.error('Failed to fetch orders:', error);
+        console.error(`Failed to fetch orders:`, error);
         throw error;
     }
 };

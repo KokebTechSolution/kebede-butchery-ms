@@ -86,11 +86,16 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   }, [initialActiveTableId]);
 
   const setActiveTable = useCallback((tableId) => {
+    console.log('CartContext: setActiveTable called with tableId:', tableId);
     setActiveTableId(tableId);
-    setTableCarts(prev => ({
-      ...prev,
-      [tableId]: prev[tableId] || []
-    }));
+    setTableCarts(prev => {
+      const newTableCarts = {
+        ...prev,
+        [tableId]: prev[tableId] || []
+      };
+      console.log('CartContext: Updated tableCarts:', newTableCarts);
+      return newTableCarts;
+    });
     console.log('CartContext: Active table set to', tableId);
   }, []);
 
@@ -186,28 +191,23 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     try {
       const payload = {
         ...orderData,
-        table: activeTableId,
-        waiter_username: user?.username,
+        items: orderData.items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          item_type: item.item_type || 'beverage',
+          status: 'pending'
+        }))
       };
-      delete payload.table_number;
-      delete payload.branch;
 
       const response = await axiosInstance.post('/orders/order-list/', payload);
-      const newOrder = response.data;
-
-      setOrders(prevOrders => [...prevOrders, newOrder]);
-
-      if (activeTableId) {
-        setTableCarts(prev => ({
-          ...prev,
-          [activeTableId]: [],
-        }));
-      }
-
-      return newOrder.id;
+      
+      // Clear cart after successful order
+      clearCart();
+      return response.data.id;
     } catch (error) {
-      console.error('Failed to place order:', error);
-      return null;
+      console.error('Error placing order:', error);
+      throw error;
     }
   };
 

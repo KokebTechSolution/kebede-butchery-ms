@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../../components/Navbar.jsx';
+import ResponsiveLayout from '../../components/ResponsiveLayout';
+import ResponsiveNavbar from '../../components/ResponsiveNavbar';
 import TablesPage from './tables/TablesPage.jsx';
 import MenuPage from './menu/MenuPage.jsx';
 import Cart from '../../components/Cart/Cart.jsx';
@@ -11,6 +12,7 @@ import '../../App.css';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
+import { Utensils, ClipboardList, UserCircle, Menu as MenuIcon } from 'lucide-react';
 
 function mergeOrderItems(existingItems, cartItems) {
   const normalize = name => name.trim().toLowerCase();
@@ -52,7 +54,7 @@ const WaiterDashboard = () => {
   const params = new URLSearchParams(location.search);
   const startPage = params.get('start') || 'tables';
 
-  const [currentPage, setCurrentPage] = useState(startPage); // 'tables', 'menu', or 'orderDetails'
+  const [currentPage, setCurrentPage] = useState(startPage);
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -77,6 +79,11 @@ const WaiterDashboard = () => {
       setCurrentPage('orderDetails');
       return;
     }
+    if (page === 'orderDetails') {
+      // Allow navigation to orders without requiring table selection
+      setCurrentPage('orderDetails');
+      return;
+    }
     if (page === 'tables' || page === 'menu') {
       setSelectedOrderId(null);
       setEditingOrderId(null);
@@ -96,300 +103,220 @@ const WaiterDashboard = () => {
     setSelectedTable(table);
     setActiveTable(table.id);
     setCurrentPage('menu');
-    setMessage('');
-    setSelectedOrderId(null);
-    setEditingOrderId(null);
-
-    // Always check for open order for this table (not printed)
-    const tableOrders = (orders || []).filter(
-      o => (o.table === table.id || o.table_number === table.number)
-    );
-    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
-    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
-    if (openOrder) {
-      // Fetch the latest order from backend before editing
-      try {
-        const response = await axiosInstance.get(`/orders/${openOrder.id}/`);
-        const latestOrder = response.data;
-        clearCart();
-        loadCartForEditing(table.id, latestOrder.items);
-        setEditingOrderId(openOrder.id);
-        console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
-      } catch (error) {
-        console.error('Failed to fetch latest order for editing:', error);
-        // Fallback to cached items if fetch fails
-        clearCart();
-        loadCartForEditing(table.id, openOrder.items);
-        setEditingOrderId(openOrder.id);
-      }
-    } else {
-      clearCart();
-      setEditingOrderId(null);
-      if (lastOrder && lastOrder.cashier_status === 'printed') {
-        setMessage('Last order is printed. Creating a new order.');
-        console.log('[DEBUG] Last order is printed. New order will be created.');
-      }
-    }
   };
 
   const handleOrder = async () => {
-    if (!editingOrderId && (!selectedTable || !selectedTable.id)) {
-      setMessage('You must select a table before placing an order.');
-      setCurrentPage('tables');
-      return;
-    }
-    if (!activeTableId) {
-      setMessage('Please select a table first.');
-      return;
-    }
-
     if (cartItems.length === 0) {
-      if (editingOrderId) {
-        try {
-          await axiosInstance.delete(`/orders/${editingOrderId}/`);
-          deleteOrder(editingOrderId);
-          setMessage('Order cancelled and deleted.');
-        } catch (error) {
-          console.error('Error deleting order:', error);
-          setMessage('Failed to delete order from server.');
-        }
-        setEditingOrderId(null);
-        setCurrentPage('tables');
-        return;
-      }
-      setMessage('Your cart is empty.');
+      setMessage('Cart is empty');
       return;
     }
 
-    // Always check for open order before editing
-    const tableOrders = (orders || []).filter(
-      o => (o.table === selectedTable.id || o.table_number === selectedTable.number)
-    );
-    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
-    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
-    let editingOrder = null;
-    if (editingOrderId) {
-      editingOrder = orders.find(o => o.id === editingOrderId);
-      if (editingOrder && editingOrder.cashier_status === 'printed') {
-        setEditingOrderId(null);
-        clearCart();
-        setMessage('Last order is printed. Creating a new order.');
-        console.log('[DEBUG] Last order is printed. New order will be created.');
-      }
-    }
+    const orderData = {
+      table: selectedTable.id,
+      items: cartItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        item_type: item.item_type || 'beverage'
+      }))
+    };
 
-    // --- MERGE CART ITEMS BEFORE SENDING TO BACKEND ---
-    function mergeCartItems(items) {
-      const merged = [];
-      items.forEach(item => {
-        const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-        if (found) {
-          found.quantity += item.quantity;
-        } else {
-          merged.push({ ...item });
-        }
-      });
-      return merged;
+    try {
+      await placeOrder(orderData);
+      setMessage('Order placed successfully!');
+      clearCart();
+      setCurrentPage('tables');
+      setSelectedTable(null);
+    } catch (error) {
+      setMessage('Error placing order. Please try again.');
     }
-    const mergedCartItems = mergeCartItems(cartItems);
-    // --------------------------------------------------
+  };
 
-    if (openOrder && editingOrderId && editingOrder && editingOrder.cashier_status !== 'printed') {
-      // --- MERGE CART ITEMS WITH EXISTING ORDER ITEMS ---
-      // 1. Start with all existing items (from editingOrder.items)
-      // 2. For each item in existing items:
-      //    - If it is accepted/rejected and not in cartItems, KEEP it
-      //    - If it is pending and not in cartItems, REMOVE it
-      //    - If it is in cartItems, use the cart version (updated quantity/status)
-      // 3. For each item in cartItems not in existing items, ADD it
-      const mergedItems = [];
-      const cartMap = new Map();
-      cartItems.forEach(item => {
-        cartMap.set(item.id, item);
-      });
-      // Add/merge existing items
-      editingOrder.items.forEach(existingItem => {
-        const cartItem = cartMap.get(existingItem.id);
-        if (cartItem) {
-          // Use cart version (updated quantity/status)
-          if (cartItem.quantity > 0) {
-            mergedItems.push({ ...cartItem });
-          }
-          cartMap.delete(existingItem.id);
-        } else {
-          // Not in cart
-          if (existingItem.status === 'accepted' || existingItem.status === 'rejected') {
-            // Always keep accepted/rejected items, even if cart is empty
-            mergedItems.push({ ...existingItem });
-          }
-          // If pending and not in cart, remove (do not add)
-        }
-      });
-      // If cart is empty, still keep accepted/rejected items
-      if (cartItems.length === 0) {
-        editingOrder.items.forEach(existingItem => {
-          if ((existingItem.status === 'accepted' || existingItem.status === 'rejected') && !mergedItems.find(i => i.id === existingItem.id)) {
-            mergedItems.push({ ...existingItem });
-          }
-        });
-      }
-      // Add new items from cart that weren't in existing items
-      cartMap.forEach(item => {
-        if (item.quantity > 0) {
-          mergedItems.push({ ...item });
-        }
-      });
-      const updatedOrderData = {
-        items: mergedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          item_type: item.item_type || 'food',
-          status: item.status // preserve status
-        }))
-      };
-      console.log('PATCH payload (merged):', updatedOrderData);
-      try {
-        const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
-        const updatedOrder = response.data;
-        updateOrder(editingOrderId, updatedOrder.items);
-        setSelectedOrderId(editingOrderId);
-        setMessage('Order updated successfully!');
-        console.log('[DEBUG] Updated order:', editingOrderId);
-      } catch (error) {
-        console.error('Order update error:', error);
-        setMessage('There was an issue updating your order.');
-      }
-    } else {
-      // Logic for CREATING a new order
-      const newOrderData = {
-        table: selectedTable.id,
-        items: mergedCartItems.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          item_type: item.item_type || 'food',
-          status: item.status // <-- preserve status!
-        })),
-        waiter_username: user?.username,
-        waiter_table_number: selectedTable?.number
-      };
-      console.log('POST payload:', newOrderData); // <-- log payload
-      try {
-        const newOrderId = await placeOrder(newOrderData);
-        if (!newOrderId) {
-          throw new Error('Failed to place order.');
-        }
-        setSelectedOrderId(newOrderId);
-        setMessage('Order placed successfully!');
-        console.log('[DEBUG] Placed new order:', newOrderId);
-      } catch (error) {
-        console.error('Order submission error:', error);
-        setMessage(error.message || 'There was an issue placing your order.');
-      }
-    }
+  const handleEditOrder = (orderToEdit) => {
+      setEditingOrderId(orderToEdit.id);
+    setSelectedOrderId(orderToEdit.id);
+      setCurrentPage('menu');
+    
+    // Load cart with existing items - pass both tableId and items
+    const existingItems = orderToEdit.items || [];
+    const tableId = orderToEdit.table || activeTableId;
+    loadCartForEditing(tableId, existingItems);
+  };
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setCurrentPage('orderDetails');
+  };
+
+  const handleOrderDeleted = () => {
+    setSelectedOrderId(null);
     setEditingOrderId(null);
     setCurrentPage('orderDetails');
   };
 
   const handleBackFromMenu = () => {
     setCurrentPage('tables');
+    clearCart();
     setSelectedTable(null);
-    setEditingOrderId(null);
   };
 
   const handleClearCart = () => {
-    if (editingOrderId) {
-      deleteOrder(editingOrderId);
-      setSelectedOrderId(null);
-      setEditingOrderId(null);
-      setMessage('Order removed due to cart clear during edit.');
-      setCurrentPage('tables');
-    } else {
-      clearCart();
-      setMessage('Cart cleared.');
-    }
+    clearCart();
+    setMessage('Cart cleared');
   };
 
-  const handleEditOrder = (orderToEdit) => {
-    if (orderToEdit && orderToEdit.branch) {
-      const tableId = orderToEdit.branch;
-      clearCart();
-      loadCartForEditing(tableId, orderToEdit.items);
-      setSelectedTable(null);
-      setActiveTable(tableId);
-      setEditingOrderId(orderToEdit.id);
-      setSelectedOrderId(null);
-      setCurrentPage('menu');
-    } else {
-      console.error("Cannot edit order: order data is missing or has no branch.", orderToEdit);
-      setMessage("Could not edit the selected order.");
-    }
-  };
+  const navItems = [
+    { key: 'tables', label: 'Tables', icon: <Utensils size={20} /> },
+    { key: 'orderDetails', label: 'Orders', icon: <ClipboardList size={20} /> },
+    { key: 'profile', label: 'Profile', icon: <UserCircle size={20} /> },
+  ];
 
-  const handleSelectOrder = (orderId) => {
-    setSelectedOrderId(orderId);
-    setEditingOrderId(null);
-    setCurrentPage('orderDetails');
-  };
+  const header = (
+    <ResponsiveNavbar
+      title="Waiter Dashboard"
+      user={user}
+    />
+  );
 
-  const handleOrderDeleted = () => {
-    setCurrentPage('tables');
-    setSelectedTable(null);
-    setActiveTable(null);
-    setSelectedOrderId(null);
-    setEditingOrderId(null);
-    setMessage('Order deleted successfully.');
-  };
+  const sidebar = (
+    <div className="p-4">
+      <div className="space-y-2">
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => handleNavigate(item.key)}
+            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+              currentPage === item.key
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              {item.icon}
+              <span className="font-medium">{item.label}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'tables':
   return (
-    <div className="app-container">
-      <Navbar onNavigate={handleNavigate} />
-      <div className="main-content white-bg">
-        {message && (
-          <div className="app-message" style={{ color: 'red', textAlign: 'center', padding: '10px' }}>
-            {message}
-          </div>
-        )}
-        {currentPage === 'tables' && (
-          <TablesPage onSelectTable={handleTableSelect} />
-        )}
-        {currentPage === 'menu' && (
-          <div className="menu-cart-container">
-            <div className="menu-section">
-              <MenuPage table={selectedTable} onBack={handleBackFromMenu} onOrder={handleOrder} />
-            </div>
-            <div className="cart-section">
-              <Cart onOrder={handleOrder} onClearCart={handleClearCart} />
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <TablesPage onSelectTable={handleTableSelect} />
             </div>
           </div>
-        )}
-        {currentPage === 'orderDetails' && (
-          <div className="order-details-layout">
+        );
+      case 'menu':
+        return (
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <div className="mb-4">
+                <button
+                  onClick={handleBackFromMenu}
+                  className="mobile-button-secondary mb-4"
+                >
+                  ← Back to Tables
+                </button>
+                {selectedTable && (
+                  <h2 className="text-responsive-lg font-semibold mb-4">
+                    Table {selectedTable.number} - Menu
+                  </h2>
+                )}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <MenuPage 
+                    table={selectedTable}
+                    onBack={handleBackFromMenu}
+                    editingOrderId={editingOrderId}
+                    onOrder={handleOrder}
+                  />
+                </div>
+                <div className="lg:col-span-1">
+                  <Cart 
+                    onOrder={handleOrder}
+                    onClearCart={handleClearCart}
+                    editingOrderId={editingOrderId}
+                    onUpdateOrder={updateOrder}
+                  />
+                </div>
+            </div>
+            </div>
+          </div>
+        );
+      case 'orderDetails':
+        return (
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
             <OrderList
               onSelectOrder={handleSelectOrder}
               selectedOrderId={selectedOrderId}
             />
+                </div>
+                <div className="lg:col-span-2">
+                  {selectedOrderId ? (
             <OrderDetails
+                      selectedOrderId={selectedOrderId}
               onEditOrder={handleEditOrder}
-              selectedOrderId={selectedOrderId}
               onOrderDeleted={handleOrderDeleted}
             />
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">Select an order to view details</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        {currentPage === 'profile' && (
-          <WaiterProfile onBack={() => handleNavigate('tables')} />
-        )}
+        );
+      case 'profile':
+        return (
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <WaiterProfile />
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <TablesPage onSelectTable={handleTableSelect} />
       </div>
     </div>
+        );
+    }
+  };
+
+  return (
+    <ResponsiveLayout
+      header={header}
+      sidebar={sidebar}
+      showSidebar={true}
+      showHeader={true}
+    >
+      {message && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          {message}
+        </div>
+      )}
+      {renderContent()}
+    </ResponsiveLayout>
   );
 };
 
 const WaiterDashboardWrapper = () => (
-  
+  <CartProvider>
     <WaiterDashboard />
-  
+  </CartProvider>
 );
 
-export default WaiterDashboard;
+export default WaiterDashboardWrapper;

@@ -18,12 +18,37 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
   useEffect(() => {
     const fetchOrder = async () => {
+      console.log('OrderDetails: fetchOrder called with:', {
+        selectedOrderId,
+        activeTableId,
+        cartItemsLength: cartItems.length,
+        ordersLength: orders.length
+      });
+      
       if (selectedOrderId) {
         try {
+          console.log('OrderDetails: Attempting to fetch order with ID:', selectedOrderId);
           const order = await getOrderById(selectedOrderId);
+          console.log('OrderDetails: Successfully fetched order:', order);
           setCurrentOrder(order);
         } catch (error) {
+          console.error('OrderDetails: Error fetching order:', error);
+          console.error('OrderDetails: Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status
+          });
           setCurrentOrder(null);
+          // Show a more helpful error message
+          return (
+            <div className="order-details-container" style={{ textAlign: 'center', padding: '20px' }}>
+              <h2>Error Loading Order</h2>
+              <p>Failed to load order details. Please try again.</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Error: {error.response?.data?.detail || error.message}
+              </p>
+            </div>
+          );
         }
       } else if (activeTableId) {
         // If no specific order is selected, show the current active cart as a 'pending' order
@@ -33,8 +58,10 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           items: cartItems, // Use cartItems directly from context
           timestamp: new Date().toISOString(),
         };
+        console.log('OrderDetails: Created pending order:', currentPendingOrder);
         setCurrentOrder(currentPendingOrder);
       } else {
+        console.log('OrderDetails: No order selected and no active table');
         setCurrentOrder(null);
       }
     };
@@ -79,8 +106,14 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
       <div className="order-details-container" style={{ textAlign: 'center', padding: '20px' }}>
-        <h2>No items in this order.</h2>
-        <p>Please add items to the cart from the menu page or select an existing order.</p>
+        <h2>No Order Selected</h2>
+        <p>Please select an existing order from the list on the left to view its details.</p>
+        <div className="mt-4 space-y-2">
+          <p>To create a new order:</p>
+          <p>1. Go to <strong>Tables</strong> to select a table</p>
+          <p>2. Add items to cart from the <strong>Menu</strong></p>
+          <p>3. Place an order to see it here</p>
+        </div>
       </div>
     );
   }

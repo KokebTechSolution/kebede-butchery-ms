@@ -29,61 +29,73 @@ export default function SidebarNav() {
 
   return (
     <>
+      {/* Mobile Menu Button */}
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
-        className="fixed top-4 left-4 z-50 p-2 bg-indigo-600 text-white rounded-md md:hidden focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        className="fixed top-4 left-4 z-50 p-2 bg-indigo-600 text-white rounded-lg shadow-lg md:hidden focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors"
       >
-        {isOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
+        {isOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
       </button>
 
-      <aside
-        className={`fixed top-0 left-0 h-screen bg-white border-r shadow-lg w-64 p-6 flex flex-col
-        transform transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} z-40`}
-      >
-        <h1 className="text-3xl font-bold text-indigo-600 mb-10 text-center select-none">
-          🏢 {t("branch_panel")}
-        </h1>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
 
-        <nav className="flex flex-col space-y-2 flex-grow overflow-auto">
-          {navItems.map(({ label, icon, path }) => (
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-screen bg-white border-r border-gray-200 shadow-lg w-64 p-4 sm:p-6 flex flex-col
+        transform transition-transform duration-300 ease-in-out z-40
+        md:translate-x-0 md:static md:z-auto
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        {/* Logo/Brand */}
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-indigo-600 text-center select-none">
+            Kebede
+          </h1>
+          <p className="text-xs text-gray-500 text-center mt-1">Management System</p>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-2">
+          {navItems.map((item) => (
             <NavLink
-              key={path}
-              to={path}
+              key={item.path}
+              to={item.path}
+              onClick={() => setIsOpen(false)} // Close mobile menu on navigation
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-md text-base font-medium transition
-                 ${
-                   isActive
-                     ? "bg-indigo-100 text-indigo-700 shadow"
-                     : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
-                 }`
+                `flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                }`
               }
-              onClick={() => setIsOpen(false)}
             >
-              <span className="text-lg">{icon}</span>
-              {label}
+              <span className="text-lg">{item.icon}</span>
+              <span className="flex-1">{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <button
-          onClick={() => alert("Logging out...")}
-          className="mt-8 flex items-center gap-3 px-4 py-3 text-red-600 font-semibold rounded-md hover:bg-red-50 transition-colors text-base"
-        >
-          <FaSignOutAlt className="text-lg" />
-          {t("logout")}
-        </button>
+        {/* Logout Button */}
+        <div className="mt-auto pt-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              // Handle logout
+              window.location.href = "/logout";
+            }}
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
+          >
+            <FaSignOutAlt className="text-lg" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
-
-      {isOpen && (
-        <div
-          onClick={toggleSidebar}
-          className="fixed inset-0 bg-black bg-opacity-30 z-30 md:hidden"
-          aria-hidden="true"
-        />
-      )}
     </>
   );
 }

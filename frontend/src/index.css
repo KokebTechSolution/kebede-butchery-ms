@@ -1,17 +1,256 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base styles for mobile-first design */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
 body {
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on input focus for iOS */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Responsive layout utilities */
+@layer components {
+  .mobile-container {
+    @apply w-full max-w-full mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .mobile-card {
+    @apply bg-white rounded-xl shadow-mobile p-4 sm:p-6 transition-shadow hover:shadow-mobile-lg;
+  }
+  
+  .mobile-button {
+    @apply px-4 py-3 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .mobile-input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+  }
+  
+  .mobile-table {
+    @apply w-full border-collapse;
+  }
+  
+  .mobile-table th {
+    @apply px-3 py-3 text-left text-sm font-medium text-gray-900 border-b border-gray-200 bg-gray-50;
+  }
+  
+  .mobile-table td {
+    @apply px-3 py-3 text-sm text-gray-900 border-b border-gray-200;
+  }
+  
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50;
+  }
+  
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors;
+  }
+  
+  .mobile-nav-item.active {
+    @apply bg-primary-100 text-primary-700;
+  }
+  
+  .mobile-modal {
+    @apply fixed inset-0 z-50 overflow-y-auto;
+  }
+  
+  .mobile-modal-content {
+    @apply flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0;
+  }
+  
+  .mobile-overlay {
+    @apply fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity;
+  }
+  
+  .mobile-modal-panel {
+    @apply inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full;
+  }
+  
+  /* Tablet-specific utilities */
+  .tablet-container {
+    @apply max-w-4xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .tablet-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+  
+  .tablet-card {
+    @apply bg-white rounded-xl shadow-mobile p-4 sm:p-6 lg:p-8 transition-shadow hover:shadow-mobile-lg;
+  }
+  
+  .tablet-table {
+    @apply w-full border-collapse text-sm sm:text-base;
+  }
+  
+  .tablet-table th {
+    @apply px-2 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-medium text-gray-900 border-b border-gray-200 bg-gray-50;
+  }
+  
+  .tablet-table td {
+    @apply px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 border-b border-gray-200;
+  }
+  
+  /* Responsive dashboard layouts */
+  .dashboard-container {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .dashboard-content {
+    @apply space-y-6;
+  }
+  
+  .dashboard-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+  
+  .dashboard-card {
+    @apply bg-white rounded-xl shadow-mobile p-4 sm:p-6 transition-shadow hover:shadow-mobile-lg;
+  }
+  
+  /* Responsive sidebar */
+  .sidebar-responsive {
+    @apply fixed top-0 left-0 h-screen bg-white border-r border-gray-200 shadow-lg w-64 p-4 sm:p-6 flex flex-col transform transition-transform duration-300 ease-in-out z-40 md:translate-x-0 md:static md:z-auto;
+  }
+  
+  .sidebar-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden;
+  }
+}
+
+/* Utility classes for responsive design */
+@layer utilities {
+  .text-responsive-xs {
+    @apply text-xs sm:text-sm md:text-base;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm sm:text-base md:text-lg;
+  }
+  
+  .text-responsive-base {
+    @apply text-base sm:text-lg md:text-xl;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl md:text-2xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+  
+  .padding-responsive {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+  
+  .margin-responsive {
+    @apply m-4 sm:m-6 lg:m-8;
+  }
+  
+  .gap-responsive {
+    @apply gap-4 sm:gap-6 lg:gap-8;
+  }
+  
+  .space-responsive {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+  
+  /* Safe area utilities */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Touch manipulation */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Responsive shadows */
+  .shadow-mobile {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-mobile-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Responsive breakpoints for tablets */
+  .tablet-only {
+    @apply hidden sm:block lg:hidden;
+  }
+  
+  .mobile-only {
+    @apply block sm:hidden;
+  }
+  
+  .desktop-only {
+    @apply hidden lg:block;
+  }
+  
+  /* Responsive table utilities */
+  .table-responsive {
+    @apply overflow-x-auto;
+  }
+  
+  .table-min-width {
+    min-width: 640px;
+  }
+  
+  /* Responsive form utilities */
+  .form-responsive {
+    @apply space-y-4 sm:space-y-6;
+  }
+  
+  .input-responsive {
+    @apply w-full px-3 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+  }
+  
+  .button-responsive {
+    @apply px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
 }
 

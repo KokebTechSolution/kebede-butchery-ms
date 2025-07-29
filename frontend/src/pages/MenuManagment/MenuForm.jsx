@@ -37,16 +37,25 @@ const MenuForm = ({
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🔄 Loading menu form data...');
         await syncMenuCategoriesWithInventory();
+        console.log('✅ Synced categories with inventory');
+        
         const [categories, products, menuItems] = await Promise.all([
           fetchMenuCategories(),
           fetchAvailableProducts(),
           fetchMenuItems(),
         ]);
+        
+        console.log('📊 Categories loaded:', categories);
+        console.log('📊 Products loaded:', products.length);
+        console.log('📊 Menu items loaded:', menuItems.length);
+        
         setCategories(categories);
         setAvailableProducts(products);
         setExistingMenuItems(menuItems);
       } catch (error) {
+        console.error('❌ Error loading data:', error);
         setError('Failed to load data.');
       }
     };
