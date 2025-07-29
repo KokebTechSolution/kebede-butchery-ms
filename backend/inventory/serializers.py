@@ -133,20 +133,6 @@ class StockSerializer(serializers.ModelSerializer):
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(), source='branch', write_only=True
     )
-    original_unit = ProductUnitSerializer(read_only=True)
-    original_quantity_display = serializers.SerializerMethodField()
-
-    def get_original_quantity_display(self, obj):
-        display = obj.original_quantity_display
-        if display:
-            full_units = display['full_units']
-            original_unit = display['original_unit']
-            remainder = display['remainder']
-            base_unit = display['base_unit']
-            base_unit_str = base_unit if remainder == 1 else base_unit + 's'
-            original_unit_str = original_unit if full_units == 1 else original_unit + 's'
-            return f"{full_units} {original_unit_str} and {remainder} {base_unit_str}"
-        return None
 
     class Meta:
         model = Stock
@@ -159,10 +145,6 @@ class StockSerializer(serializers.ModelSerializer):
             'quantity_in_base_units',
             'minimum_threshold_base_units',
             'running_out',
-            'last_stock_update',
-            'original_quantity',
-            'original_unit',
-            'original_quantity_display',
         ]
 
 # Inventory Transaction

@@ -595,9 +595,21 @@ class InventoryTransaction(models.Model):
         is_addition = self.quantity_in_base_units > 0
         abs_quantity_in_base_units = abs(self.quantity_in_base_units)
         base_unit_obj = self.product.base_unit
+        
+        # Calculate original_quantity_delta for restock transactions
+        original_quantity_delta = None
+        if self.transaction_type in ['restock', 'adjustment_in']:
+            # For restock, the original_quantity_delta is the quantity in the transaction unit
+            original_quantity_delta = self.quantity
+        
         if self.transaction_type in ['restock', 'adjustment_in']:
             if self.to_stock_main:
-                self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
+                # Update the stock's original_unit to match the transaction unit for restock
+                if self.to_stock_main.original_unit != self.transaction_unit:
+                    self.to_stock_main.original_unit = self.transaction_unit
+                    self.to_stock_main.save(update_fields=['original_unit'])
+                
+                self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True, original_quantity_delta=original_quantity_delta)
             elif self.to_stock_barman:
                 self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
         elif self.transaction_type in ['sale', 'wastage', 'adjustment_out']:

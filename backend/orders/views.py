@@ -77,10 +77,18 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
         queryset = Order.objects.filter(food_status__in=['pending', 'preparing']).distinct()
+
+        # Show all orders that are not paid and have at least one item
+        queryset = Order.objects.filter(
+            food_status__in=['pending', 'preparing', 'completed'],
+            cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+            items__isnull=False
+        ).distinct()
         date = self.request.query_params.get('date')
         if date:
             queryset = queryset.filter(created_at__date=date)
@@ -90,6 +98,7 @@ class BeverageOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
@@ -113,6 +122,18 @@ class BeverageOrderListView(generics.ListAPIView):
             parsed_end = parse_date(end)
             if parsed_start and parsed_end:
                 queryset = queryset.filter(created_at__date__gte=parsed_start, created_at__date__lte=parsed_end)
+
+        queryset = Order.objects.filter(
+            beverage_status__in=['pending', 'preparing', 'completed'],
+            items__isnull=False
+        ).distinct()
+        date = self.request.query_params.get('date')
+        start = self.request.query_params.get('start')
+        end = self.request.query_params.get('end')
+        if date:
+            queryset = queryset.filter(created_at__date=parse_date(date))
+        elif start and end:
+            queryset = queryset.filter(created_at__date__gte=parse_date(start), created_at__date__lte=parse_date(end))
 
         return queryset
 

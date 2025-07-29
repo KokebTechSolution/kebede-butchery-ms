@@ -2,7 +2,7 @@
 
 
 // src/pages/Meat/MeatDashboard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaDrumstickBite,
   FaClipboardList,
@@ -16,27 +16,47 @@ import {
 import { Pending } from "./screens/Pending/Pending";
 import { Inventory } from "./screens/Inventory/Inventory";
 import { Reports } from "./screens/Reports/Reports";
+import { useOrders } from "./hooks/useOrders";
 
 export default function MeatDashboard() {
   const [activeSection, setActiveSection] = useState("Orders");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Get today's date in yyyy-mm-dd format
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const [filterDate, setFilterDate] = useState(getTodayDateString());
+  const { getActiveOrders, getClosedOrders } = useOrders(filterDate);
+  const activeOrdersCount = getActiveOrders().length;
+  const closedOrders = getClosedOrders();
+  const closedOrdersCount = closedOrders.length;
+  // Calculate total money by summing accepted items in closed orders
+  const totalMoney = closedOrders.reduce(
+    (sum, order) =>
+      sum + order.items
+        .filter(item => item.status === 'accepted')
+        .reduce((itemSum, item) => itemSum + item.price * item.quantity, 0),
+    0
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case "Inventory":
         return <Inventory />;
-      case "Reports":
-        return <Reports />;
       case "Orders":
       default:
-        return <Pending />;
+        return <Pending filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };
 
   const navItems = [
     { label: "Orders", icon: <FaClipboardList />, section: "Orders" },
     { label: "Inventory", icon: <FaBoxes />, section: "Inventory" },
-    { label: "Reports", icon: <FaChartBar />, section: "Reports" },
   ];
 
   return (
@@ -95,11 +115,24 @@ export default function MeatDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto">
-        {/* Main Content Area */}
+        {/* Quick Stats (moved to top) */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+        </div>
+        {/* Debug message if no closed orders */}
+        {closedOrdersCount === 0 && (
+          <div className="text-center text-orange-600 font-semibold mt-4">
+            No closed orders for the selected date.
+          </div>
+        )}
+
+        {/* Main Content Area (Orders section) */}
         <div className="bg-white rounded-lg shadow">{renderContent()}</div>
 
-        {/* Quick Stats (moved below main content) */}
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+        {/* Tip Banner */}
+        <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg text-orange-700 text-sm">
+          💡 <strong>Tip:</strong> Process orders in priority sequence. Check
+          inventory levels before starting new orders. Update order status
+          promptly to keep the system current.
         </div>
       </main>
     </div>

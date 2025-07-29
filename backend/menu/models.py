@@ -47,7 +47,6 @@ class MenuItem(models.Model):
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE)
     is_available = models.BooleanField(default=True)
     product = models.ForeignKey('inventory.Product', on_delete=models.SET_NULL, null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

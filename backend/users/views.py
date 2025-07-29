@@ -95,8 +95,10 @@ class UserViewSet(ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'manager':
-            return User.objects.filter(branch=user.branch).exclude(pk=user.pk)
+        if user.role == 'owner':
+            return User.objects.all()
+        elif user.role == 'manager':
+            return User.objects.filter(branch_id=user.branch_id)
         return User.objects.none()
 
     def get_object(self):

@@ -9,11 +9,16 @@ class MenuItemSerializer(serializers.ModelSerializer):
     stock_info = serializers.SerializerMethodField()
     is_running_out = serializers.SerializerMethodField()
     
+
     product = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),
         allow_null=True,
         required=False
     )
+
+    # Explicit foreign key field for product
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False, allow_null=True)
+
 
     class Meta:
         model = MenuItem

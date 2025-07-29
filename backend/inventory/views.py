@@ -604,26 +604,27 @@ class StockViewSet(viewsets.ModelViewSet):
             # REMOVED: stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
             # Let InventoryTransaction handle the stock adjustment
             
+            # REMOVED: Direct stock updates - let InventoryTransaction handle this
             # Update original_quantity - handle unit conversion properly
-            if stock.original_unit and stock.original_unit != restock_unit:
-                # Convert existing original_quantity to the new restock unit
-                try:
-                    existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
-                    converted_existing = stock.original_quantity * existing_conversion
-                    stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
-                    print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
-                except ValueError:
-                    # If conversion doesn't exist, just add the new quantity
-                    stock.original_quantity = restock_quantity
-                    print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
-            else:
-                # Same unit or no existing original_unit, just add
-                stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
-                print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
+            # if stock.original_unit and stock.original_unit != restock_unit:
+            #     # Convert existing original_quantity to the new restock unit
+            #     try:
+            #         existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
+            #         converted_existing = stock.original_quantity * existing_conversion
+            #         stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
+            #         print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
+            #     except ValueError:
+            #         # If conversion doesn't exist, just add the new quantity
+            #         stock.original_quantity = restock_quantity
+            #         print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
+            # else:
+            #     # Same unit or no existing original_unit, just add
+            #     stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
+            #     print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
             
-            stock.original_unit = restock_unit
-            stock.last_stock_update = timezone.now()
-            stock.save()
+            # stock.original_unit = restock_unit
+            # stock.last_stock_update = timezone.now()
+            # stock.save()
             
             print(f"[DEBUG] After restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
             
@@ -634,6 +635,12 @@ class StockViewSet(viewsets.ModelViewSet):
             transaction_notes = f"Restocked {restock_quantity} {restock_unit.unit_name}(s) by {username}"
             if receipt_file:
                 transaction_notes += f" - Receipt: {receipt_file.name}"
+            
+            # REMOVED: Update the stock's original_unit to match the restock unit
+            # Let the InventoryTransaction handle all stock updates
+            # if stock.original_unit != restock_unit:
+            #     stock.original_unit = restock_unit
+            #     stock.save(update_fields=['original_unit'])
             
             # Use constructor instead of create() to avoid double save
             transaction = InventoryTransaction(

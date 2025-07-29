@@ -7,7 +7,7 @@ export const useBeverages = (filterDate) => {
   const { user } = useAuth();
   const branchId = user?.branch;
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (date) => {
     try {
       const response = await axiosInstance.get(`/orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent
@@ -73,11 +73,15 @@ export const useBeverages = (filterDate) => {
       matchesFilterDate(order)
     );
 
-  const getActiveOrders = () =>
-    orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id) &&
-      matchesFilterDate(order)
+  const getActiveOrders = () => {
+    const active = orders.filter(order =>
+      !getClosedOrders().some(closed => closed.id === order.id)
     );
+    console.log('Orders:', orders);
+    console.log('Active Orders:', active);
+    console.log('Closed Orders:', getClosedOrders());
+    return active;
+  };
 
   // Item-level status update
   const updateOrderItemStatus = async (itemId, status) => {

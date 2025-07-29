@@ -9,7 +9,21 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
 
   if (!filteredOrders || filteredOrders.length === 0) {
     return (
-      <div className="text-gray-400 text-center">No closed orders</div>
+      <>
+        <div className="mb-6 flex items-center gap-4">
+          <label htmlFor="closed-order-date-filter" className="font-medium">Filter by Date:</label>
+          <input
+            id="closed-order-date-filter"
+            type="date"
+            value={filterDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => setFilterDate(e.target.value)}
+            className="p-2 border rounded"
+          />
+          <span className="text-xs text-gray-500">(Default: today)</span>
+        </div>
+        <div className="text-gray-400 text-center">No closed orders</div>
+      </>
     );
   }
 
@@ -21,6 +35,14 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
     return acc;
   }, {});
 
+  // Calculate total money for all filtered closed orders
+  const totalClosedMoney = filteredOrders.reduce((sum, order) => {
+    const orderTotal = order.total_money && Number(order.total_money) > 0
+      ? Number(order.total_money)
+      : order.items.filter(i => i.status === 'accepted').reduce((s, i) => s + i.price * i.quantity, 0);
+    return sum + orderTotal;
+  }, 0);
+
   return (
     <>
       <div className="mb-6 flex items-center gap-4">
@@ -29,11 +51,9 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
           id="closed-order-date-filter"
           type="date"
           value={filterDate}
-          max={new Date().toISOString().slice(0, 10)}
           onChange={e => setFilterDate(e.target.value)}
           className="p-2 border rounded"
         />
-        <span className="text-xs text-gray-500">(Default: today)</span>
       </div>
       <div className="space-y-8">
         {Object.entries(groupedByTable).map(([table, tableOrders]) => (
@@ -70,6 +90,9 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-8 text-right font-bold text-lg text-green-700">
+        Total Money (All Closed Orders): ${totalClosedMoney.toFixed(2)}
       </div>
     </>
   );

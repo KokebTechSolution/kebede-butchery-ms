@@ -38,7 +38,18 @@ const getFriendlyErrorMessage = (error) => {
 export const fetchStaffList = async () => {
   try {
     const response = await createAxiosInstance().get('/');
-    return response.data;
+    // Defensive: handle array or object
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    }
+    if (response.data && Array.isArray(response.data.users)) {
+      return response.data.users;
+    }
+    // If not an array, return empty array to avoid .map error
+    return [];
   } catch (error) {
     console.warn('Failed to fetch staff list:', error);
     throw new Error('Unable to load staff list. Please refresh or try again later.');

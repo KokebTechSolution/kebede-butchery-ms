@@ -80,6 +80,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        # Update order fields as needed
         instance.food_status = validated_data.get('food_status', instance.food_status)
         new_beverage_status = validated_data.get('beverage_status', instance.beverage_status)
         if instance.beverage_status != 'preparing':
@@ -89,35 +90,27 @@ class OrderSerializer(serializers.ModelSerializer):
 
         items_data = validated_data.get('items')
         if items_data is not None:
-            existing_items = {item.id: item for item in instance.items.all()}
+            print('DEBUG PATCH items_data:', items_data)  # <-- debug log
+            # Only delete and recreate items of the same type as the update (beverage or food)
+            item_types = set(item['item_type'] for item in items_data if 'item_type' in item)
+            if not item_types:
+                item_types = set(['beverage'])  # fallback for beverage serializer
+            instance.items.filter(item_type__in=item_types).delete()
+
             new_total = 0
             new_beverage_item_added = False
             new_food_item_added = False
 
             for item_data in items_data:
-                item_id = item_data.get('id')
-                if item_id and item_id in existing_items:
-                    item = existing_items[item_id]
-                    item.name = item_data.get('name', item.name)
-                    item.quantity = item_data.get('quantity', item.quantity)
-                    item.price = item_data.get('price', item.price)
-                    item.item_type = item_data.get('item_type', item.item_type)
-                    if 'status' in item_data:
-                        item.status = item_data['status']
-                    item.save()
-                    if item.status == 'accepted':
-                        new_total += item.price * item.quantity
-                    del existing_items[item_id]
-                else:
-                    if 'status' not in item_data:
-                        item_data['status'] = 'pending'
-                    item = OrderItem.objects.create(order=instance, **item_data)
-                    if item.status == 'accepted':
-                        new_total += item.price * item.quantity
-                    if item.item_type == 'beverage':
-                        new_beverage_item_added = True
-                    if item.item_type == 'food':
-                        new_food_item_added = True
+                if 'status' not in item_data:
+                    item_data['status'] = 'pending'
+                item = OrderItem.objects.create(order=instance, **item_data)
+                if item.status == 'accepted':
+                    new_total += item.price * item.quantity
+                if item.item_type == 'beverage':
+                    new_beverage_item_added = True
+                if item.item_type == 'food':
+                    new_food_item_added = True
 
             instance.total_money = new_total
             if new_beverage_item_added and instance.beverage_status != 'preparing':
