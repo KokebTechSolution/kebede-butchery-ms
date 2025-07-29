@@ -146,7 +146,7 @@ const ProductListPage = () => {
         {
           quantity: restockData.restock_quantity,
           type: restockData.restock_type,
-          price_at_transaction: restockData.restock_price,
+          price_per_unit: restockData.restock_price,
         },
         {
           withCredentials: true,

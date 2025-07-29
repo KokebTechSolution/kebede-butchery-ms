@@ -21,7 +21,8 @@ function StaffListPage() {
     role: '',
     first_name: '',
     last_name: '',
-    branch_id: '',
+    branch: '',
+    is_active: true,
   });
 
   const navigate = useNavigate();
@@ -47,7 +48,8 @@ function StaffListPage() {
       role: user.role,
       first_name: user.first_name,
       last_name: user.last_name,
-      branch_id: user.branch_id,
+      branch: user.branch,
+      is_active: user.is_active,
     });
   };
 
@@ -134,7 +136,7 @@ function StaffListPage() {
                     <td className="px-6 py-4">{user.last_name}</td>
                     <td className="px-6 py-4">{user.phone_number}</td>
                     <td className="px-6 py-4 capitalize">{t(`roles.${user.role}`)}</td>
-                    <td className="px-6 py-4">{user.branch_id}</td>
+                    <td className="px-6 py-4">{user.branch}</td>
                     <td className="px-6 py-4">{new Date(user.date_joined).toLocaleDateString()}</td>
                     <td className="px-6 py-4">{new Date(user.updated_at).toLocaleString()}</td>
                     <td className="px-6 py-4">
@@ -178,10 +180,10 @@ function StaffListPage() {
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">{t('edit_staff')}</h2>
-              {['username', 'first_name', 'last_name', 'phone_number', 'role', 'branch_id'].map((field) => (
+              {['username', 'first_name', 'last_name', 'phone_number', 'role', 'branch'].map((field) => (
                 <input
                   key={field}
-                  type={field === 'branch_id' ? 'number' : 'text'}
+                  type={field === 'branch' ? 'number' : 'text'}
                   name={field}
                   value={formData[field]}
                   onChange={handleEditChange}
@@ -189,6 +191,18 @@ function StaffListPage() {
                   className="w-full mb-3 border px-4 py-2 rounded"
                 />
               ))}
+              <div className="mb-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  {t('is_active')}
+                </label>
+              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setEditUser(null)}

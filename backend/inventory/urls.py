@@ -1,7 +1,7 @@
 # inventory/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, StockViewSet, InventoryRequestViewSet, BranchViewSet, BarmanStockViewSet, ItemTypeViewSet, CategoryViewSet, ProductUnitViewSet, ProductMeasurementViewSet
+from .views import ProductViewSet, StockViewSet, InventoryRequestViewSet, BranchViewSet, BarmanStockViewSet, ItemTypeViewSet, CategoryViewSet, ProductUnitViewSet, ProductMeasurementViewSet, InventoryTransactionViewSet
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet)
@@ -14,7 +14,9 @@ router.register(r'itemtypes', ItemTypeViewSet, basename='itemtype')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'productunits', ProductUnitViewSet, basename='productunit')
 router.register(r'productmeasurements', ProductMeasurementViewSet, basename='productmeasurement')
+router.register(r'transactions', InventoryTransactionViewSet, basename='transaction')
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
+

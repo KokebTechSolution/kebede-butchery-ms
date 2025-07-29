@@ -224,6 +224,7 @@
   "last_updated": "የመጨረሻ አሻሻይ",
 
   "active": "በስራ ላይ",
+  "is_active": "በስራ ላይ ነው",
   "inactive": "አያገለግልም",
 
   "reset_password": "የይለፍ ቃል እንደገና ማቀናበር",

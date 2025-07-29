@@ -66,14 +66,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             if stock.quantity_in_base_units < quantity_in_base_units:
                 return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Update stock quantities
-            stock.quantity_in_base_units = (stock.quantity_in_base_units - quantity_in_base_units).quantize(Decimal('0.01'))
-            stock.original_quantity = max(Decimal('0.00'), (stock.original_quantity - req.quantity).quantize(Decimal('0.01')))
-            stock.original_unit = req.request_unit
-            stock.last_stock_update = timezone.now()
-            stock.save()
-            
-            print(f"[DEBUG] Accepted request: Reduced stock by {quantity_in_base_units} base units, {req.quantity} {req.request_unit.unit_name}")
+            print(f"[DEBUG] Accepted request: Stock check passed - {quantity_in_base_units} base units available")
             
         except Stock.DoesNotExist:
             return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,6 +75,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             return Response({'detail': f'Error accepting request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         
         req.status = 'accepted'
+        req.responded_by = request.user
         req.save()
         return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
@@ -178,6 +172,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 original_unit_id = stock_data.get('original_unit_id')
                 provided_quantity_in_base_units = stock_data.get('quantity_in_base_units')
                 
+                print(f"[DEBUG] Stock data - original_quantity: {original_quantity} (type: {type(original_quantity)})")
+                
                 if not original_unit_id:
                     raise ValueError("original_unit_id is required in stock_data")
                 
@@ -186,14 +182,16 @@ class ProductViewSet(viewsets.ModelViewSet):
                 
                 # Use provided quantity_in_base_units if available, otherwise calculate
                 if provided_quantity_in_base_units is not None:
-                    quantity_in_base_units = Decimal(provided_quantity_in_base_units).quantize(Decimal('0.01'))
+                    quantity_in_base_units = Decimal(str(provided_quantity_in_base_units)).quantize(Decimal('0.01'))
                     print(f"Using provided quantity_in_base_units: {quantity_in_base_units}")
                 else:
                     # Calculate quantity in base units - now the conversion should exist
                     try:
+                        # Ensure original_quantity is properly converted to Decimal
+                        original_quantity_decimal = Decimal(str(original_quantity))
                         conversion_factor = product.get_conversion_factor(original_unit, product.base_unit)
-                        quantity_in_base_units = (Decimal(original_quantity) * conversion_factor).quantize(Decimal('0.01'))
-                        print(f"Calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity}, conversion: {conversion_factor})")
+                        quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
+                        print(f"Calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity_decimal}, conversion: {conversion_factor})")
                     except ValueError as e:
                         # If conversion doesn't exist, try to create it automatically
                         print(f"Missing conversion for {product.name}: {original_unit.unit_name} -> {product.base_unit.unit_name}")
@@ -208,8 +206,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                             )
                             print(f"Auto-created conversion: {original_unit.unit_name} -> {product.base_unit.unit_name} = {default_factor}")
                             conversion_factor = Decimal(str(default_factor))
-                            quantity_in_base_units = (Decimal(original_quantity) * conversion_factor).quantize(Decimal('0.01'))
-                            print(f"Auto-calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity}, conversion: {conversion_factor})")
+                            original_quantity_decimal = Decimal(str(original_quantity))
+                            quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
+                            print(f"Auto-calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity_decimal}, conversion: {conversion_factor})")
                         else:
                             raise ValueError(f"No conversion path found and no default available for {original_unit.unit_name} -> {product.base_unit.unit_name}")
                 
@@ -217,7 +216,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     product=product,
                     branch=branch,
                     quantity_in_base_units=quantity_in_base_units,
-                    original_quantity=original_quantity,
+                    original_quantity=Decimal(str(original_quantity)),
                     original_unit=original_unit,
                     minimum_threshold_base_units=stock_data.get('minimum_threshold_base_units', 0),
                 )
@@ -227,7 +226,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 InventoryTransaction.objects.create(
                     product=product,
                     transaction_type='restock',
-                    quantity=original_quantity,
+                    quantity=Decimal(str(original_quantity)),
                     transaction_unit=original_unit,
                     to_stock_main=stock,
                     branch=branch,
@@ -598,15 +597,37 @@ class StockViewSet(viewsets.ModelViewSet):
                         'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
                     }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Update stock quantities
-            stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
-            # Add the restock quantity to original_quantity (this is the actual quantity in original units)
-            stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
+            # Update stock quantities - REMOVE DIRECT MODIFICATION, let InventoryTransaction handle it
+            print(f"[DEBUG] Before restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
+            print(f"[DEBUG] Restock calculation - restock_quantity: {restock_quantity}, conversion_factor: {conversion_factor}, quantity_in_base_units: {quantity_in_base_units}")
+            
+            # REMOVED: stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
+            # Let InventoryTransaction handle the stock adjustment
+            
+            # Update original_quantity - handle unit conversion properly
+            if stock.original_unit and stock.original_unit != restock_unit:
+                # Convert existing original_quantity to the new restock unit
+                try:
+                    existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
+                    converted_existing = stock.original_quantity * existing_conversion
+                    stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
+                    print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
+                except ValueError:
+                    # If conversion doesn't exist, just add the new quantity
+                    stock.original_quantity = restock_quantity
+                    print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
+            else:
+                # Same unit or no existing original_unit, just add
+                stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
+                print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
+            
             stock.original_unit = restock_unit
             stock.last_stock_update = timezone.now()
             stock.save()
             
-            # Create inventory transaction
+            print(f"[DEBUG] After restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
+            
+            # Create inventory transaction - use constructor to avoid double save
             user = request.user if request.user.is_authenticated else None
             username = user.username if user else "API"
             
@@ -614,7 +635,8 @@ class StockViewSet(viewsets.ModelViewSet):
             if receipt_file:
                 transaction_notes += f" - Receipt: {receipt_file.name}"
             
-            InventoryTransaction.objects.create(
+            # Use constructor instead of create() to avoid double save
+            transaction = InventoryTransaction(
                 product=product,
                 transaction_type='restock',
                 quantity=restock_quantity,
@@ -623,8 +645,12 @@ class StockViewSet(viewsets.ModelViewSet):
                 branch=stock.branch,
                 initiated_by=user,
                 price_at_transaction=price_per_unit,
-                notes=transaction_notes
+                notes=transaction_notes,
             )
+            # Set the quantity_in_base_units directly to avoid double calculation
+            transaction.quantity_in_base_units = quantity_in_base_units
+            transaction._skip_quantity_calculation = True
+            transaction.save(skip_stock_adjustment=False)  # Single save call
             
             return Response({
                 'detail': 'Restocked successfully.',
@@ -674,6 +700,153 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return qs
         return qs.filter(bartender=user)
+
+    @action(detail=True, methods=['post'], url_path='restock')
+    @transaction.atomic
+    def restock(self, request, pk=None):
+        barman_stock = self.get_object()
+        product = barman_stock.stock.product
+        data = request.data
+        
+        # Debug logging
+        print(f"[DEBUG] BarmanStock restock request data: {data}")
+        print(f"[DEBUG] Files: {request.FILES}")
+        
+        try:
+            restock_quantity = data.get('quantity')
+            restock_type = data.get('type')  # 'carton', 'bottle', or 'unit'
+            price_per_unit = data.get('price_per_unit') or data.get('price_at_transaction')
+            total_amount = data.get('total_amount')
+            receipt_file = request.FILES.get('receipt')
+            
+            print(f"[DEBUG] Parsed values - quantity: {restock_quantity}, type: {restock_type}, price: {price_per_unit}")
+            
+            # Validate required fields
+            if not restock_quantity:
+                return Response({'detail': 'Quantity is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                restock_quantity = Decimal(restock_quantity)
+                if restock_quantity <= 0:
+                    return Response({'detail': 'Quantity must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
+            except (ValueError, TypeError):
+                return Response({'detail': 'Quantity must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not restock_type:
+                return Response({'detail': 'Restock type is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not price_per_unit:
+                return Response({'detail': 'Price per unit is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                price_per_unit = Decimal(price_per_unit)
+                if price_per_unit <= 0:
+                    return Response({'detail': 'Price per unit must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
+            except (ValueError, TypeError):
+                return Response({'detail': 'Price per unit must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get the restock unit
+            try:
+                restock_unit = ProductUnit.objects.get(unit_name=restock_type)
+            except ProductUnit.DoesNotExist:
+                return Response({'detail': f'Unit "{restock_type}" not found.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get conversion factor and validate
+            try:
+                conversion_factor = product.get_conversion_factor(restock_unit, product.base_unit)
+                quantity_in_base_units = (restock_quantity * conversion_factor).quantize(Decimal('0.01'))
+            except ValueError as e:
+                # Try to create missing conversion automatically
+                print(f"Missing conversion for {product.name}: {restock_type} -> {product.base_unit.unit_name}")
+                try:
+                    # Create a reasonable default conversion
+                    default_factor = self._get_default_conversion_factor(restock_type, product.base_unit.unit_name)
+                    if default_factor:
+                        ProductMeasurement.objects.create(
+                            product=product,
+                            from_unit=restock_unit,
+                            to_unit=product.base_unit,
+                            amount_per=Decimal(str(default_factor)),
+                            is_default_sales_unit=False
+                        )
+                        print(f"Auto-created conversion: {restock_type} -> {product.base_unit.unit_name} = {default_factor}")
+                        conversion_factor = Decimal(str(default_factor))
+                        quantity_in_base_units = (restock_quantity * conversion_factor).quantize(Decimal('0.01'))
+                    else:
+                        return Response({
+                            'detail': f'No conversion path found for Product "{product.name}" from "{restock_type}" to "{product.base_unit.unit_name}". Please configure unit conversions.',
+                            'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as auto_create_error:
+                    print(f"Failed to auto-create conversion: {auto_create_error}")
+                    return Response({
+                        'detail': f'No conversion path found for Product "{product.name}" from "{restock_type}" to "{product.base_unit.unit_name}". Please configure unit conversions.',
+                        'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update barman stock quantities - let InventoryTransaction handle this
+            # barman_stock.adjust_quantity(quantity_in_base_units, restock_unit, is_addition=True)  # REMOVED - causes double counting
+            
+            # Create inventory transaction - use constructor to avoid double save
+            user = request.user if request.user.is_authenticated else None
+            username = user.username if user else "API"
+            
+            transaction_notes = f"Barman restocked {restock_quantity} {restock_unit.unit_name}(s) by {username}"
+            if receipt_file:
+                transaction_notes += f" - Receipt: {receipt_file.name}"
+            
+            # Use constructor instead of create() to avoid double save
+            transaction = InventoryTransaction(
+                product=product,
+                transaction_type='restock',
+                quantity=restock_quantity,
+                transaction_unit=restock_unit,
+                to_stock_barman=barman_stock,
+                branch=barman_stock.branch,
+                initiated_by=user,
+                price_at_transaction=price_per_unit,
+                notes=transaction_notes,
+            )
+            # Set the quantity_in_base_units directly to avoid double calculation
+            transaction.quantity_in_base_units = quantity_in_base_units
+            transaction._skip_quantity_calculation = True
+            transaction.save(skip_stock_adjustment=False)  # Single save call
+            
+            return Response({
+                'detail': 'Barman stock restocked successfully.',
+                'quantity_added': float(quantity_in_base_units),
+                'base_unit': product.base_unit.unit_name,
+                'total_amount': float(total_amount) if total_amount else None
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"BarmanStock restock error: {str(e)}")
+            return Response({'detail': f'BarmanStock restock failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def _get_default_conversion_factor(self, from_unit_name, to_unit_name):
+        """Get default conversion factor for common unit combinations"""
+        default_conversions = {
+            'carton': {
+                'bottle': 24,
+                'shot': 480,
+                'unit': 24,
+            },
+            'bottle': {
+                'shot': 20,
+                'ml': 750,
+                'unit': 1,
+            },
+            'shot': {
+                'ml': 37.5,
+                'unit': 1,
+            },
+            'unit': {
+                'shot': 1,
+                'ml': 37.5,
+            }
+        }
+        
+        return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
 
 
 class ProductUnitViewSet(viewsets.ModelViewSet):

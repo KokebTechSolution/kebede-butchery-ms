@@ -198,6 +198,7 @@
  
     "password": "Jecha Dhuunfaa",
     "active": "Hojii irra jiru",
+    "is_active": "Hojii irra jiru",
 
     "adding": "Dabalamaa jira...",
     "add_staff": "Hojjetaa Dabaluu",

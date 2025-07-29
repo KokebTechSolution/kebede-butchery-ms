@@ -1,9 +1,10 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from orders.models import Order, OrderItem
-from inventory.models import Stock, InventoryTransaction, AuditLog
+from inventory.models import Stock, InventoryTransaction, AuditLog, ProductUnit
 from django.utils import timezone
 from django.db import transaction as db_transaction
+from django.contrib.contenttypes.models import ContentType
 
 @receiver(post_save, sender=Order)
 def handle_order_stock_and_logs(sender, instance, created, **kwargs):
@@ -27,43 +28,61 @@ def handle_order_stock_and_logs(sender, instance, created, **kwargs):
 
             deducted = False
 
-            # Deduct carton
-            if product.uses_carton:
-                if stock.carton_quantity >= quantity:
+            # Get the appropriate unit for this product
+            try:
+                transaction_unit = product.base_unit
+            except:
+                # Fallback to a default unit
+                transaction_unit = ProductUnit.objects.filter(unit_name='unit').first()
+                if not transaction_unit:
+                    transaction_unit = ProductUnit.objects.first()
+
+            # Deduct from stock based on product type
+            if hasattr(product, 'uses_carton') and product.uses_carton:
+                if hasattr(stock, 'carton_quantity') and stock.carton_quantity >= quantity:
                     stock.carton_quantity -= quantity
-                    unit_type = 'carton'
                     deducted = True
-                elif stock.quantity_in_base_units >= quantity * product.bottles_per_carton:
-                    stock.quantity_in_base_units -= quantity * product.bottles_per_carton
-                    unit_type = 'bottle'
+                elif stock.quantity_in_base_units >= quantity * getattr(product, 'bottles_per_carton', 1):
+                    # Calculate quantity in base units
+                    quantity_in_base_units = quantity * getattr(product, 'bottles_per_carton', 1)
                     deducted = True
             else:
-                if stock.unit_quantity >= quantity:
-                    stock.unit_quantity -= quantity
-                    unit_type = 'unit'
+                if stock.quantity_in_base_units >= quantity:
+                    quantity_in_base_units = quantity
                     deducted = True
 
             if deducted:
-                stock.save()
-
-                # Log InventoryTransaction
-                InventoryTransaction.objects.create(
+                # Create InventoryTransaction to handle stock adjustment properly
+                transaction = InventoryTransaction.objects.create(
                     product=product,
                     transaction_type='sale',
                     quantity=quantity,
-                    unit_type=unit_type,
-                    branch=branch
+                    transaction_unit=transaction_unit,
+                    from_stock_main=stock,
+                    initiated_by=user,
+                    branch=branch,
+                    notes=f"Sale from order #{instance.order_number}"
                 )
+                
+                # Set the quantity_in_base_units directly to avoid double calculation
+                transaction.quantity_in_base_units = -quantity_in_base_units  # Negative for sales
+                transaction._skip_quantity_calculation = True
+                transaction.save(skip_stock_adjustment=False)  # Let it handle stock adjustment
 
                 # Log Audit
                 AuditLog.objects.create(
-                    product=product,
-                    action_type='sale',
-                    quantity=quantity,
-                    unit_type=unit_type,
-                    action_by=user,
-                    branch=branch,
-                    note=f"Sale from order #{instance.order_number}"
+                    user=user,
+                    action='sale',
+                    object_id=product.id,
+                    content_type_id=ContentType.objects.get_for_model(product).id,
+                    details={
+                        'product_name': product.name,
+                        'quantity': str(quantity),
+                        'transaction_unit_name': transaction_unit.unit_name,
+                        'order_number': instance.order_number,
+                        'branch_name': branch.name
+                    },
+                    notes=f"Sale from order #{instance.order_number}"
                 )
             else:
                 print(f"🚫 Not enough stock for product: {product.name} at branch {branch.name}")

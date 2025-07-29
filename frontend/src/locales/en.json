@@ -215,6 +215,7 @@
       "owner": "Owner",
       "staff": "Staff",
     "active": "Active",
+    "is_active": "Is Active",
     "adding": "Adding...",
 
     "error_default": "Failed to add user. Please check your input.",
