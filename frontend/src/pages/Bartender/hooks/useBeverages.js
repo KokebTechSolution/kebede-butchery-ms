@@ -75,7 +75,8 @@ export const useBeverages = (filterDate) => {
 
   const getActiveOrders = () => {
     const active = orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id)
+      !getClosedOrders().some(closed => closed.id === order.id) &&
+      matchesFilterDate(order)
     );
     console.log('Orders:', orders);
     console.log('Active Orders:', active);

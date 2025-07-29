@@ -10,7 +10,16 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-import { useTranslation } from "react-i18next";
+
+const navItems = [
+  { label: "Dashboard", icon: <FaTachometerAlt />, path: "/branch-manager" },
+  { label: "Staff Management", icon: <FaUserFriends />, path: "/branch-manager/staff" },
+  { label: "Inventory", icon: <FaClipboardList />, path: "/branch-manager/inventory" },
+  { label: "Request", icon: <FaClipboardList />, path: "/branch-manager/request" },
+  { label: "Menu Management", icon: <FaUtensils />, path: "/branch-manager/menu" },
+  // Add Closed Orders for meat dashboard
+  { label: "Closed Orders", icon: <FaClipboardList />, path: "/meat/closed-orders" },
+];
 
 export default function SidebarNav() {
   const { t } = useTranslation();

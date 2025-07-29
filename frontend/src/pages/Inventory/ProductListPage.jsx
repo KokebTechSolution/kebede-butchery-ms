@@ -182,9 +182,21 @@ const ProductListPage = () => {
       <h1 className="text-2xl font-bold mb-4">{t('inventory_dashboard')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard title={t('total_products')} value={totalProducts} color="blue" />
-        <StatCard title={t('running_low')} value={runningLowProducts} color="yellow" />
-        <StatCard title={t('inventory_value')} value={`ETB ${totalInventoryValue.toFixed(2)}`} color="green" />
+        <StatCard
+          title={t('total_products')}
+          value={stocks.length}
+          color="blue"
+        />
+        <StatCard
+          title={t('running_out')}
+          value={stocks.filter(stock => stock.running_out).length}
+          color="red"
+        />
+        <StatCard
+          title={t('total_value')}
+          value={`ETB ${stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}`}
+          color="green"
+        />
       </div>
 
       <div className="mb-4 flex justify-end space-x-4">
@@ -256,7 +268,7 @@ const ProductListPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="10" className="border px-4 py-4 text-center text-gray-500">
+                <td colSpan="15" className="border px-4 py-4 text-center text-gray-500">
                   {t('no_products_found')}
                 </td>
               </tr>
@@ -264,11 +276,11 @@ const ProductListPage = () => {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="4" className="border px-4 py-2 font-bold text-right">{t('total_inventory_value')}:</td>
+              <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
               <td className="border px-4 py-2 font-bold">
-                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
               </td>
-              <td className="border px-4 py-2" colSpan="4"></td>
+              <td className="border px-4 py-2" colSpan="7"></td>
             </tr>
           </tfoot>
         </table>
@@ -300,48 +312,38 @@ const ProductListPage = () => {
         <Modal title={t('restock_product')} onClose={() => setShowRestockModal(false)}>
           <div className="space-y-4">
             <div>
-              <label className="block font-medium mb-1">Quantity</label>
+              <label className="block text-sm font-medium text-gray-700">{t('quantity')}</label>
               <input
                 type="number"
-                name="restock_quantity"
                 value={restockData.restock_quantity}
                 onChange={handleRestockChange}
-                className="border p-2 w-full rounded"
-                min="0"
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                min="1"
               />
             </div>
             <div>
-              <label className="block font-medium mb-1">Type</label>
-              <select
-                name="restock_type"
-                value={restockData.restock_type}
-                onChange={handleRestockChange}
-                className="border p-2 w-full rounded"
-              >
-                <option value="carton">Carton</option>
-                <option value="bottle">Bottle</option>
-                <option value="unit">Unit</option>
-              </select>
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Purchase Price</label>
+              <label className="block text-sm font-medium text-gray-700">{t('price_per_unit')}</label>
               <input
                 type="number"
-                name="restock_price"
                 value={restockData.restock_price}
                 onChange={handleRestockChange}
-                className="border p-2 w-full rounded"
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 min="0"
                 step="0.01"
               />
             </div>
-            {restockError && <p className="text-red-500 text-sm mb-2">{restockError}</p>}
             <div className="flex justify-end space-x-2">
-              <button onClick={handleRestockSubmit} className="bg-green-600 text-white px-4 py-2 rounded">
-                {t('restock')}
-              </button>
-              <button onClick={() => setShowRestockModal(false)} className="bg-gray-400 text-white px-4 py-2 rounded">
+              <button
+                onClick={() => setShowRestockModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
                 {t('cancel')}
+              </button>
+              <button
+                onClick={handleRestockSubmit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                {t('restock')}
               </button>
             </div>
           </div>

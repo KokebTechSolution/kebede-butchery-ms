@@ -144,6 +144,50 @@ console.log('Current branchId:', branchId);
     });
   }, [allOrders]);
 
+  // Helper to get update message
+  function getOrderUpdateMessage(prevItems, currItems) {
+    // Find added items
+    for (const item of currItems) {
+      if (!prevItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} added`;
+      }
+    }
+    // Find removed items
+    for (const item of prevItems) {
+      if (!currItems.some(i => i.name === item.name)) {
+        return `Updated: ${item.name} removed`;
+      }
+    }
+    // Find status/quantity changes
+    for (const item of currItems) {
+      const prev = prevItems.find(i => i.name === item.name);
+      if (prev) {
+        if (prev.status !== item.status) {
+          return `Updated: ${item.name} ${item.status}`;
+        }
+        if (prev.quantity !== item.quantity) {
+          return `Updated: ${item.name} quantity changed to ${item.quantity}`;
+        }
+      }
+    }
+    return '';
+  }
+
+  // Track previous items for each order
+  const prevOrderItemsMap = useRef({});
+
+  // After orders update, compare previous and current items for each order
+  useEffect(() => {
+    allOrders.forEach(order => {
+      const prevItems = prevOrderItemsMap.current[order.id] || [];
+      const msg = getOrderUpdateMessage(prevItems, order.items);
+      if (msg) {
+        setLastUpdate({ orderId: order.id, message: msg });
+      }
+      prevOrderItemsMap.current[order.id] = order.items;
+    });
+  }, [allOrders]);
+
   const handleEditOrder = (order) => {
     setEditingOrderId(order.id);
     setEditingItems(order.items.map(item => ({ ...item })));
@@ -167,6 +211,30 @@ console.log('Current branchId:', branchId);
       )
     );
   };
+
+  // Example: Call this function after an item is updated (accept, reject, quantity change, or remove)
+  const handleItemUpdate = (order, item, action) => {
+    let message = '';
+    if (action === 'quantity') {
+      message = `Updated: ${item.name} quantity changed to ${item.quantity}`;
+    } else if (action === 'remove') {
+      message = `Updated: ${item.name} removed`;
+    } else if (action === 'accept') {
+      message = `Updated: ${item.name} accepted`;
+    } else if (action === 'reject') {
+      message = `Updated: ${item.name} rejected`;
+    }
+    setLastUpdate({ orderId: order.id, message });
+  };
+
+  // In your item update handlers, call handleItemUpdate(order, item, action)
+  // For example, in acceptOrderItem:
+  const acceptOrderItemWithMsg = (itemId, order) => {
+    acceptOrderItem(itemId);
+    const item = order.items.find(i => i.id === itemId);
+    if (item) handleItemUpdate(order, item, 'accept');
+  };
+  // Similarly for reject, quantity, remove...
 
   // Example: Call this function after an item is updated (accept, reject, quantity change, or remove)
   const handleItemUpdate = (order, item, action) => {

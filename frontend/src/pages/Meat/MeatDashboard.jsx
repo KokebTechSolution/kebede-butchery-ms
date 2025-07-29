@@ -117,6 +117,51 @@ export default function MeatDashboard() {
       <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto">
         {/* Quick Stats (moved to top) */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          {/* Pending Orders */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaClipboardList className="text-2xl text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-700">
+                Pending Orders
+              </h3>
+            </div>
+            <p className="text-3xl font-bold text-blue-600">{activeOrdersCount}</p>
+            <p className="text-sm text-gray-500">Awaiting processing</p>
+          </div>
+
+          {/* Closed Orders */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaClipboardList className="text-2xl text-gray-600" />
+              <h3 className="text-lg font-semibold text-gray-700">
+                Closed Orders
+              </h3>
+            </div>
+            <p className="text-3xl font-bold text-gray-600">{closedOrdersCount}</p>
+            <p className="text-sm text-gray-500">Orders completed</p>
+          </div>
+
+          {/* Total Money (replaces Low Stock) */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaChartBar className="text-2xl text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-700">Total Money</h3>
+            </div>
+            <p className="text-3xl font-bold text-green-600">${totalMoney.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            <p className="text-sm text-gray-500">Total from closed orders</p>
+          </div>
+
+          {/* Staff Available */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUsers className="text-2xl text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-700">
+                Staff Available
+              </h3>
+            </div>
+            <p className="text-3xl font-bold text-purple-600">8</p>
+            <p className="text-sm text-gray-500">Processing staff</p>
+          </div>
         </div>
         {/* Debug message if no closed orders */}
         {closedOrdersCount === 0 && (

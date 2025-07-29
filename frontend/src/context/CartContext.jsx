@@ -103,7 +103,6 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       return;
     }
     const { icon, ...rest } = item;
-    const itemToAdd = rest;
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
       let found = false;

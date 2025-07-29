@@ -15,6 +15,7 @@ from rest_framework.exceptions import PermissionDenied
 from orders.models import Order
 from branches.models import Table
 from django.db.models import Q
+
 from .serializers import (
     UserListSerializer,
     UserCreateUpdateSerializer,
@@ -187,4 +188,4 @@ class WaiterUnsettledTablesView(APIView):
                 'orders': orders.count(),
             })
         return Response(result)
-
+# ✅ Custom User Login Serializer

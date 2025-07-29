@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 export default function BartenderDashboard() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('Orders');
+
   const userName = t("bartender"); // use translated name
   const { lastMessage } = useNotifications();
   // Move filterDate state above useBeverages
@@ -23,13 +24,17 @@ export default function BartenderDashboard() {
     const dd = String(today.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   });
+
   // Pass filterDate to useBeverages
   const { orders } = useBeverages(filterDate);
   const { user } = useAuth();
   const branchId = user?.branch;
 
   const [inventoryRequests, setInventoryRequests] = useState([]);
-
+  const userName = "Bartender"; 
+  const { lastMessage } = useNotifications();
+  const { orders } = useBeverages(filterDate);
+//  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
   useEffect(() => {
     if (lastMessage) {
       alert(lastMessage.message);
@@ -68,8 +73,10 @@ export default function BartenderDashboard() {
         return <Reports />;
       case 'Closed':
         return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
+        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
       case 'Orders':
       default:
+        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
         return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };

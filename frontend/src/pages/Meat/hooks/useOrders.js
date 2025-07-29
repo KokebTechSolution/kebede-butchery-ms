@@ -39,27 +39,33 @@ export const useOrders = (filterDate) => {
     }
   };
 
-  const acceptOrder = (orderId) => updateOrderStatus(orderId, 'preparing');
-  const rejectOrder = (orderId, reason) => updateOrderStatus(orderId, 'rejected', reason);
-
-  const getPendingOrders = () => orders.filter(order => order.food_status === 'pending');
-  const getPreparingOrders = () => orders.filter(order => order.food_status === 'preparing');
-  const getRejectedOrders = () => orders.filter(order => order.food_status === 'rejected');
+  const isFood = item => !item.item_type || item.item_type === 'food';
 
   const getClosedOrders = () =>
     orders.filter(order =>
       order.has_payment &&
-      order.items.length > 0 &&
-      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
+      order.items.some(isFood) &&
+      order.items
+        .filter(isFood)
+        .every(item => item.status === 'accepted' || item.status === 'rejected')
     );
 
   const getActiveOrders = () =>
     orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id)
+      !getClosedOrders().some(closed => closed.id === order.id) &&
+      order.items.some(isFood)
     );
 
-  const isFood = item => !item.item_type || item.item_type === 'food';
+  // Accept/reject order (updates status)
+  const acceptOrder = (orderId) => {
+    updateOrderStatus(orderId, 'preparing');
+  };
 
+  const rejectOrder = (orderId, reason) => {
+    updateOrderStatus(orderId, 'rejected', reason);
+  };
+
+  // Accept/reject order item (updates item status)
   const updateOrderItemStatus = async (itemId, status) => {
     try {
       const response = await axios.patch(
