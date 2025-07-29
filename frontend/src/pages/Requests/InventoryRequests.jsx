@@ -7,6 +7,7 @@ import {
   rejectRequest,
 } from '../../api/inventory'; // make sure these use axios withCredentials too
 import NewRequest from './NewRequest';
+import { useAuth } from '../../context/AuthContext';
 
 const InventoryRequestList = () => {
   const { t } = useTranslation();
@@ -26,6 +27,8 @@ const InventoryRequestList = () => {
     branch: '',
   });
   const [formMessage, setFormMessage] = useState('');
+
+  const { user } = useAuth();
 
   useEffect(() => {
     loadRequests();
@@ -48,7 +51,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/inventory/', {
+      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
         withCredentials: true,
       });
       setProducts(res.data);
@@ -68,14 +71,15 @@ const InventoryRequestList = () => {
     }
   };
 
+  // Accept and Reject handlers
   const handleAccept = async (id) => {
     setProcessingId(id);
     try {
       await acceptRequest(id);
       await loadRequests();
+      setFormMessage(t('request_accepted'));
     } catch (err) {
-      console.error(t('accept_failed'), err);
-      alert(t('accept_failed'));
+      setFormMessage(t('failed_to_accept_request'));
     } finally {
       setProcessingId(null);
     }
@@ -86,9 +90,61 @@ const InventoryRequestList = () => {
     try {
       await rejectRequest(id);
       await loadRequests();
+      setFormMessage(t('request_rejected'));
     } catch (err) {
-      console.error(t('reject_failed'), err);
-      alert(t('reject_failed'));
+      setFormMessage(t('failed_to_reject_request'));
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleEdit = async (id) => {
+    setProcessingId(id);
+    try {
+      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/edit/`, {}, { withCredentials: true });
+      await loadRequests();
+      setFormMessage('Request edited!');
+    } catch (err) {
+      setFormMessage('Failed to edit request.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleCancel = async (id) => {
+    setProcessingId(id);
+    try {
+      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/cancel/`, {}, { withCredentials: true });
+      await loadRequests();
+      setFormMessage('Request cancelled!');
+    } catch (err) {
+      setFormMessage('Failed to cancel request.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReach = async (id) => {
+    setProcessingId(id);
+    try {
+      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, { withCredentials: true });
+      await loadRequests();
+      setFormMessage('Request reached!');
+    } catch (err) {
+      setFormMessage('Failed to mark as reached.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleNotReach = async (id) => {
+    setProcessingId(id);
+    try {
+      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, { withCredentials: true });
+      await loadRequests();
+      setFormMessage('Request not reached!');
+    } catch (err) {
+      setFormMessage('Failed to mark as not reached.');
     } finally {
       setProcessingId(null);
     }
@@ -215,32 +271,76 @@ const InventoryRequestList = () => {
                       {t(req.status)}
                     </span>
                   </td>
+
+
                   <td className="border px-4 py-2 space-x-2">
-                    {req.status === 'pending' ? (
-                      <>
-                        <button
-                          onClick={() => handleAccept(req.id)}
-                          disabled={processingId === req.id}
-                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                        >
-                          {t('accept')}
-                        </button>
-                        <button
-                          onClick={() => handleReject(req.id)}
-                          disabled={processingId === req.id}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50"
-                        >
-                          {t('reject')}
-                        </button>
-                      </>
-                    ) : req.status === 'accepted' ? (
-                      <span className={`font-semibold ${req.reached_status ? 'text-green-600' : 'text-red-600'}`}>
-                        {req.reached_status ? t('reached') : t('not_reached')}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 italic">{t('no_actions')}</span>
-                    )}
-                  </td>
+  {req.status === 'pending' ? (
+    <>
+      <button
+        onClick={() => handleAccept(req.id)}
+        disabled={processingId === req.id}
+        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50 mr-2"
+      >
+        Accept
+      </button>
+      <button
+        onClick={() => handleReject(req.id)}
+        disabled={processingId === req.id}
+        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50"
+      >
+        Reject
+      </button>
+      {user.role === 'bartender' && req.requested_by === user.id && (
+        <>
+          <button
+            onClick={() => handleEdit(req.id)}
+            disabled={processingId === req.id}
+            className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 disabled:opacity-50 mr-2"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleCancel(req.id)}
+            disabled={processingId === req.id}
+            className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </>
+      )}
+    </>
+  ) : req.status === 'accepted' && user.role === 'bartender' && req.requested_by === user.id && !req.reached_status ? (
+    <>
+      <button
+        onClick={() => handleReach(req.id)}
+        disabled={processingId === req.id}
+        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50 mr-2"
+      >
+        Reached
+      </button>
+      <button
+        onClick={() => handleNotReach(req.id)}
+        disabled={processingId === req.id}
+        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 disabled:opacity-50"
+      >
+        Not Reached
+      </button>
+    </>
+  ) : req.status === 'accepted' && req.reached_status ? (
+    <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
+      {t('reached')}
+    </span>
+  ) : req.status === 'rejected' ? (
+    <span className="px-2 py-1 rounded bg-red-200 text-red-900 font-semibold">
+      {t('rejected')}
+    </span>
+  ) : req.reached_status ? (
+    <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
+  ) : (
+    <span className="text-gray-500 italic">{t('no_action_available')}</span>
+  )}
+</td>
+
                 </tr>
               ))}
             </tbody>

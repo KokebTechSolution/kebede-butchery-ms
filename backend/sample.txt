@@ -1,0 +1,36 @@
+INSERT INTO branches_branch (id, name, city, subcity, wereda, location)
+VALUES
+(1, 'Bole Branch', 'Addis Ababa', 'Bole', '04', 'Bole Medhanialem'),
+(2, 'CMC Branch', 'Addis Ababa', 'Yeka', '10', 'CMC Michael');
+
+
+
+INSERT INTO users_user (
+  id, password, last_login, is_superuser, username, first_name, last_name, email,
+  is_staff, is_active, date_joined, phone_number, role, updated_at, branch_id
+)
+VALUES
+(1, 'pbkdf2_sha256$260000$demo1', NULL, FALSE, 'waiter_user1', 'Ali', 'Waiter', 'waiter1@example.com',
+ TRUE, TRUE, NOW(), '0911111111', 'waiter', NOW(), 1),
+(2, 'pbkdf2_sha256$260000$demo2', NULL, FALSE, 'bartender_user1', 'Beka', 'Bartender', 'bartender1@example.com',
+ TRUE, TRUE, NOW(), '0922222222', 'bartender', NOW(), 1),
+(3, 'pbkdf2_sha256$260000$demo3', NULL, FALSE, 'meat_user1', 'Cala', 'Meat', 'meat1@example.com',
+ TRUE, TRUE, NOW(), '0933333333', 'meat', NOW(), 1),
+(4, 'pbkdf2_sha256$260000$demo4', NULL, FALSE, 'cashier_user1', 'Dani', 'Cashier', 'cashier1@example.com',
+ TRUE, TRUE, NOW(), '0944444444', 'cashier', NOW(), 1),
+(5, 'pbkdf2_sha256$260000$demo5', NULL, FALSE, 'manager_user1', 'Eli', 'Manager', 'manager1@example.com',
+ TRUE, TRUE, NOW(), '0955555555', 'manager', NOW(), 1),
+(6, 'pbkdf2_sha256$260000$demo6', NULL, TRUE, 'owner_user1', 'Feysel', 'Owner', 'owner1@example.com',
+ TRUE, TRUE, NOW(), '0966666666', 'owner', NOW(), 1),
+(7, 'pbkdf2_sha256$260000$demo7', NULL, FALSE, 'waiter_user2', 'Ali', 'Waiter', 'waiter2@example.com',
+ TRUE, TRUE, NOW(), '0911111112', 'waiter', NOW(), 2),
+(8, 'pbkdf2_sha256$260000$demo8', NULL, FALSE, 'bartender_user2', 'Beka', 'Bartender', 'bartender2@example.com',
+ TRUE, TRUE, NOW(), '0922222223', 'bartender', NOW(), 2),
+(9, 'pbkdf2_sha256$260000$demo9', NULL, FALSE, 'meat_user2', 'Cala', 'Meat', 'meat2@example.com',
+ TRUE, TRUE, NOW(), '0933333334', 'meat', NOW(), 2),
+(10, 'pbkdf2_sha256$260000$demo10', NULL, FALSE, 'cashier_user2', 'Dani', 'Cashier', 'cashier2@example.com',
+ TRUE, TRUE, NOW(), '0944444445', 'cashier', NOW(), 2),
+(11, 'pbkdf2_sha256$260000$demo11', NULL, FALSE, 'manager_user2', 'Eli', 'Manager', 'manager2@example.com',
+ TRUE, TRUE, NOW(), '0955555556', 'manager', NOW(), 2),
+(12, 'pbkdf2_sha256$260000$demo12', NULL, TRUE, 'owner_user2', 'Feysel', 'Owner', 'owner2@example.com',
+ TRUE, TRUE, NOW(), '0966666667', 'owner', NOW(), 2);

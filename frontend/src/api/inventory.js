@@ -38,25 +38,25 @@ const modifyConfig = {
 
 // Fetch all inventory items
 export const fetchInventory = async () => {
-  const response = await axios.get(`${BASE_URL}inventory/`, getConfig);
+  const response = await axios.get(`${BASE_URL}products/`, getConfig);
   return response.data;
 };
 
 // Fetch single inventory item by ID
 export const fetchInventoryById = async (id) => {
-  const response = await axios.get(`${BASE_URL}inventory/${id}/`, getConfig);
+  const response = await axios.get(`${BASE_URL}products/${id}/`, getConfig);
   return response.data;
 };
 
 // Restock an inventory item
 export const restockInventory = async (id, restockData) => {
-  const response = await axios.post(`${BASE_URL}inventory/${id}/restock/`, restockData, modifyConfig);
+  const response = await axios.post(`${BASE_URL}products/${id}/restock/`, restockData, modifyConfig);
   return response.data;
 };
 
 // Record a sale for an inventory item
 export const sellInventory = async (id, saleData) => {
-  const response = await axios.post(`${BASE_URL}inventory/${id}/sale/`, saleData, modifyConfig);
+  const response = await axios.post(`${BASE_URL}products/${id}/sale/`, saleData, modifyConfig);
   return response.data;
 };
 
@@ -101,6 +101,41 @@ export const rejectRequest = async (requestId) => {
   return response.data;
 };
 
+// Cancel inventory request
+export const cancelRequest = async (requestId) => {
+  // If you have a cancel endpoint, use it. Otherwise, fallback to PATCH status.
+  try {
+    // Try POST to /requests/<id>/cancel/
+    const response = await axios.post(
+      `${BASE_URL}requests/${requestId}/cancel/`,
+      {},
+      modifyConfig
+    );
+    return response.data;
+  } catch (err) {
+    // If 404, fallback to PATCH status: 'cancelled'
+    if (err.response && err.response.status === 404) {
+      const patchRes = await axios.patch(
+        `${BASE_URL}requests/${requestId}/`,
+        { status: 'cancelled' },
+        modifyConfig
+      );
+      return patchRes.data;
+    }
+    throw err;
+  }
+};
+
+// Update inventory request (e.g., change quantity, unit, etc.)
+export const updateRequest = async (requestId, updateData) => {
+  const response = await axios.patch(
+    `${BASE_URL}requests/${requestId}/`,
+    updateData,
+    modifyConfig
+  );
+  return response.data;
+};
+
 // Fetch stocks
 export const fetchStocks = async () => {
   const response = await axios.get(`${BASE_URL}stocks/`, getConfig);
@@ -136,4 +171,9 @@ const addNewCategory = async (categoryName, itemTypeId) => {
     console.error('❌ Error creating category:', error.response?.data || error.message);
     throw error;
   }
+};
+
+export const fetchProductMeasurements = async (productId) => {
+  const response = await axios.get(`${BASE_URL}productmeasurements/?product=${productId}`, getConfig);
+  return response.data;
 };

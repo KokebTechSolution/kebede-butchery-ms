@@ -4,12 +4,18 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
-  const { login, user } = useAuth();
+  const { login, user, logout } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Always clear user state and localStorage on login page load
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+    }
+    // Optionally, if setUser is available:
+    // setUser && setUser(null);
     // Fetch CSRF cookie
     fetch('http://localhost:8000/api/users/csrf/', {
       credentials: 'include',

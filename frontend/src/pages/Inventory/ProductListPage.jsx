@@ -11,6 +11,7 @@ import {
 import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
+import axios from 'axios';
 
 const ProductListPage = () => {
   const { t } = useTranslation();
@@ -28,6 +29,10 @@ const ProductListPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [restockingStock, setRestockingStock] = useState(null);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockData, setRestockData] = useState({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+  const [restockError, setRestockError] = useState('');
 
   useEffect(() => {
     loadData();
@@ -68,20 +73,31 @@ const ProductListPage = () => {
     return stocks.filter((stock) => stock.branch?.id === branchManagerBranchId);
   }, [stocks, branchManagerBranchId]);
 
+  // Calculate running low products based on stocks for the branch
+  const runningLowProducts = filteredStocksByBranch.filter((stock) => stock.running_out).length;
+
   const totalProducts = products.length;
-  const runningLowProducts = products.filter((p) => p.running_out).length;
-  const totalInventoryValue = products.reduce((sum, product) => {
+  // Calculate inventory value based on actual stock and product base_unit_price
+  const totalInventoryValue = stocks.reduce((sum, stock) => {
+    const price = parseFloat(stock.product?.base_unit_price || 0);
+    const qty = parseFloat(stock.quantity_in_base_units || 0);
+    return sum + price * qty;
+  }, 0);
+
+  // Calculate weekly inventory value
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weeklyInventoryValue = products.reduce((sum, product) => {
     const stock = stocks.find((s) => s.product?.id === product.id);
     if (!stock) return sum;
-
+    const updatedAt = product.updated_at ? new Date(product.updated_at) : null;
+    if (!updatedAt || updatedAt < oneWeekAgo) return sum;
     const cartonQty = stock.carton_quantity || 0;
     const bottleQty = stock.bottle_quantity || 0;
     const unitQty = stock.unit_quantity || 0;
-
     const pricePerUnit = parseFloat(product.price_per_unit || 0);
     const bottlesPerCarton = product.bottles_per_carton || 1;
     const totalBottles = cartonQty * bottlesPerCarton + bottleQty + unitQty;
-
     return sum + pricePerUnit * totalBottles;
   }, 0);
 
@@ -104,10 +120,57 @@ const ProductListPage = () => {
     setEditingProduct(null);
   };
 
-  const handleDelete = (productId) => {
-    if (window.confirm(t('confirm_delete_product'))) {
-      alert(`${t('delete')} ID: ${productId}`);
-      // TODO: implement delete logic
+  const handleRestockClick = (stock) => {
+    setRestockingStock(stock);
+    setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+    setRestockError('');
+    setShowRestockModal(true);
+  };
+  const handleRestockChange = (e) => {
+    const { name, value } = e.target;
+    setRestockData((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleRestockSubmit = async () => {
+    setRestockError('');
+    if (!restockData.restock_quantity || Number(restockData.restock_quantity) <= 0) {
+      setRestockError('Enter a valid restock quantity.');
+      return;
+    }
+    if (!restockData.restock_price || Number(restockData.restock_price) <= 0) {
+      setRestockError('Enter a valid purchase price.');
+      return;
+    }
+    try {
+      await axios.post(
+        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        {
+          quantity: restockData.restock_quantity,
+          type: restockData.restock_type,
+          price_per_unit: restockData.restock_price,
+        },
+        {
+          withCredentials: true,
+          headers: { 'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] },
+        }
+      );
+      setShowRestockModal(false);
+      setRestockingStock(null);
+      setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
+      loadData();
+    } catch (err) {
+      setRestockError('Restock failed: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+  const handleDelete = async (productId, stockId) => {
+    if (!window.confirm(t('confirm_delete_product'))) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
+      if (stockId) {
+        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
+      }
+      loadData();
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -137,7 +200,23 @@ const ProductListPage = () => {
         <table className="min-w-full border">
           <thead className="bg-gray-100">
             <tr>
-<<<<<<< HEAD
+
+              <th className="border px-4 py-2">{t('name')}</th>
+              <th className="border px-4 py-2">{t('description')}</th>
+              <th className="border px-4 py-2">{t('category')}</th>
+              <th className="border px-4 py-2">{t('item_type')}</th>
+              <th className="border px-4 py-2">{t('branch')}</th>
+              <th className="border px-4 py-2">{t('branch_location')}</th>
+              <th className="border px-4 py-2">{t('quantity_in_base_units')}</th>
+              <th className="border px-4 py-2">{t('original_quantity')}</th>
+              <th className="border px-4 py-2">{t('minimum_threshold_base_units')}</th>
+              <th className="border px-4 py-2">{t('base_unit_price')}</th>
+              <th className="border px-4 py-2">{t('running_out')}</th>
+              <th className="border px-4 py-2">{t('last_stock_update')}</th>
+              <th className="border px-4 py-2">{t('product_created_at')}</th>
+              <th className="border px-4 py-2">{t('product_updated_at')}</th>
+              <th className="border px-4 py-2">{t('actions')}</th>
+
               <th className="border px-4 py-2">Name</th>
               <th className="border px-4 py-2">Category</th>
               <th className="border px-4 py-2">Item Type</th>
@@ -201,67 +280,85 @@ const ProductListPage = () => {
                       className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
                     >
                       Delete
-=======
+
               {[
                 'name', 'category', 'item_type', 'uses_carton', 'bottles_per_carton',
                 'carton_qty', 'bottle_qty', 'unit_qty', 'branch', 'running_out', 'actions'
               ].map((key) => (
                 <th key={key} className="border px-4 py-2">{t(key)}</th>
               ))}
+
             </tr>
           </thead>
           <tbody>
             {filteredStocksByBranch.length > 0 ? (
               filteredStocksByBranch.map((stock) => (
                 <tr key={stock.id} className="text-center">
-                  <td className="border px-4 py-2">{stock.product?.name}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.category_name}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name}</td>
-                  <td className="border px-4 py-2">{stock.product?.uses_carton ? t('yes') : t('no')}</td>
-                  <td className="border px-4 py-2">{stock.product?.bottles_per_carton}</td>
-                  <td className="border px-4 py-2">{stock.carton_quantity}</td>
-                  <td className="border px-4 py-2">{stock.bottle_quantity}</td>
-                  <td className="border px-4 py-2">{stock.unit_quantity}</td>
+                  <td className="border px-4 py-2">{stock.product?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.description || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.category_name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.branch?.location || 'N/A'}</td>
+                  <td className="border px-4 py-2">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2">
+                    {stock.original_quantity_display || 'N/A'}
+                  </td>
+                  <td className="border px-4 py-2">{(stock.minimum_threshold_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2">{stock.product?.base_unit_price ? `ETB ${stock.product.base_unit_price}` : 'N/A'}</td>
                   <td className="border px-4 py-2">
                     <span className={`font-semibold ${stock.running_out ? 'text-red-500' : 'text-green-500'}`}>
                       {stock.running_out ? t('running_out') : t('in_stock')}
                     </span>
                   </td>
+                  <td className="border px-4 py-2">{stock.last_stock_update ? new Date(stock.last_stock_update).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.created_at ? new Date(stock.product.created_at).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2">{stock.product?.updated_at ? new Date(stock.product.updated_at).toLocaleString() : 'N/A'}</td>
                   <td className="border px-4 py-2 space-x-2">
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}
                     </button>
-                    <button onClick={() => handleDelete(stock.product?.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
+                    <button onClick={() => handleRestockClick(stock)} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">
+                      {t('restock')}
+                    </button>
+                    <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
                       {t('delete')}
->>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
+
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-<<<<<<< HEAD
+
+                <td colSpan="10" className="border px-4 py-4 text-center text-gray-500">
+
                 <td className="border px-4 py-4 text-center text-gray-500" colSpan="12">
                   No stock found.
-=======
+
                 <td colSpan="11" className="border px-4 py-4 text-center text-gray-500">
+
                   {t('no_products_found')}
->>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
+
                 </td>
               </tr>
             )}
           </tbody>
           <tfoot>
             <tr>
-<<<<<<< HEAD
+
+              <td colSpan="4" className="border px-4 py-2 font-bold text-right">{t('total_inventory_value')}:</td>
+              <td className="border px-4 py-2 font-bold">
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}
+
               <td className="border px-4 py-2 font-bold text-right" colSpan="7">Total Money (All Cartons):</td>
               <td className="border px-4 py-2 font-bold" colSpan="1">
-=======
+
               <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
               <td className="border px-4 py-2 font-bold">
->>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
+
                 ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+
               </td>
               <td className="border px-4 py-2" colSpan="4"></td>
             </tr>
@@ -289,6 +386,57 @@ const ProductListPage = () => {
             onClose={handleEditClose}
             onSuccess={loadData}
           />
+        </Modal>
+      )}
+      {showRestockModal && restockingStock && (
+        <Modal title={t('restock_product')} onClose={() => setShowRestockModal(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="block font-medium mb-1">Quantity</label>
+              <input
+                type="number"
+                name="restock_quantity"
+                value={restockData.restock_quantity}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Type</label>
+              <select
+                name="restock_type"
+                value={restockData.restock_type}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+              >
+                <option value="carton">Carton</option>
+                <option value="bottle">Bottle</option>
+                <option value="unit">Unit</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Purchase Price</label>
+              <input
+                type="number"
+                name="restock_price"
+                value={restockData.restock_price}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            {restockError && <p className="text-red-500 text-sm mb-2">{restockError}</p>}
+            <div className="flex justify-end space-x-2">
+              <button onClick={handleRestockSubmit} className="bg-green-600 text-white px-4 py-2 rounded">
+                {t('restock')}
+              </button>
+              <button onClick={() => setShowRestockModal(false)} className="bg-gray-400 text-white px-4 py-2 rounded">
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

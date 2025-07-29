@@ -25,9 +25,12 @@ class OrderListView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
-        queryset = Order.objects.filter(created_by=self.request.user)
+        queryset = Order.objects.filter(created_by=user)
         if table_number:
             queryset = queryset.filter(table_number=table_number)
         if date:
@@ -74,6 +77,10 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
+        queryset = Order.objects.filter(food_status__in=['pending', 'preparing']).distinct()
         # Show all orders that are not paid and have at least one item
         queryset = Order.objects.filter(
             food_status__in=['pending', 'preparing', 'completed'],
@@ -89,10 +96,18 @@ class BeverageOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
+        queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
+
+        branch_id = self.request.query_params.get('branch_id')
         queryset = Order.objects.filter(
             beverage_status__in=['pending', 'preparing', 'completed'],
             items__isnull=False
         ).distinct()
+
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')
         end = self.request.query_params.get('end')
@@ -120,19 +135,9 @@ class PrintedOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        queryset = Order.objects.filter(cashier_status='printed')
-        date = self.request.query_params.get('date')
-        start = self.request.query_params.get('start')
-        end = self.request.query_params.get('end')
-        if date:
-            parsed_date = parse_date(date)
-            queryset = queryset.filter(
-                Q(payment__processed_at__date=parsed_date) |
-                Q(payment__isnull=True, created_at__date=parsed_date)
-            )
-        if start and end:
-            queryset = queryset.filter(payment__processed_at__date__range=[parse_date(start), parse_date(end)])
-        return queryset
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
         queryset = Order.objects.filter(cashier_status='printed')
         date = self.request.query_params.get('date')
         start = self.request.query_params.get('start')
@@ -271,6 +276,8 @@ from orders.serializers import OrderItemSerializer
 from rest_framework.permissions import AllowAny
 from inventory.models import BarmanStock
 from django.db import transaction
+from decimal import Decimal
+
 
 class OrderItemStatusUpdateView(APIView):
     permission_classes = [AllowAny]
@@ -286,11 +293,10 @@ class OrderItemStatusUpdateView(APIView):
         if status_value not in ['pending', 'accepted', 'rejected']:
             return Response({'error': 'Invalid status value'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Beverage stock logic
+        # Handle beverage stock deduction
         if status_value == 'accepted' and item.item_type == 'beverage':
             bartender = request.user
             try:
-                # Match by item name and branch
                 barman_stock = BarmanStock.objects.select_related('stock__product').get(
                     bartender=bartender,
                     stock__product__name__iexact=item.name,
@@ -302,39 +308,52 @@ class OrderItemStatusUpdateView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if barman_stock.bottle_quantity < item.quantity:
+            if barman_stock.quantity_in_base_units < item.quantity:
                 return Response(
-                    {'error': f"Not enough bottles. Available: {barman_stock.bottle_quantity}, Required: {item.quantity}"},
+                    {
+                        'error': (
+                            f"Not enough stock. Available: {barman_stock.quantity_in_base_units}, "
+                            f"Required: {item.quantity}"
+                        )
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Deduct quantity
-            barman_stock.bottle_quantity -= item.quantity
+            product = barman_stock.stock.product
+            try:
+                # Assuming you have a method to get conversion factor from base unit to original unit
+                conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
+                original_quantity_delta = item.quantity / conversion_factor
+            except Exception:
+                # Fallback: treat original quantity same as base units if conversion unavailable
+                original_quantity_delta = item.quantity
 
-            # Get original bottle capacity from inventory_stock
-            original_bottle_capacity = barman_stock.stock.bottle_quantity
-            twenty_percent = original_bottle_capacity * 0.2
+            # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
+            try:
+                barman_stock.adjust_quantity(
+                    quantity=item.quantity,
+                    unit=product.base_unit,
+                    is_addition=False
+                )
+            except Exception as e:
+                return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if running low
-            if barman_stock.bottle_quantity < twenty_percent:
-                barman_stock.running_out = True
-            else:
-                barman_stock.running_out = False
-
-            barman_stock.save()
-
+        # Update item status
         item.status = status_value
         item.save()
 
-        # Update order total
+        # Update order total money based on accepted items
         order = item.order
-        order.total_money = sum(i.price * i.quantity for i in order.items.filter(status='accepted'))
+        accepted_items = order.items.filter(status='accepted')
+        order.total_money = sum(i.price * i.quantity for i in accepted_items)
 
-        all_statuses = order.items.values_list('status', flat=True)
+        # Update order cashier status
+        all_statuses = list(order.items.values_list('status', flat=True))
         if all(s in ['accepted', 'rejected'] for s in all_statuses):
             order.cashier_status = 'ready_for_payment'
         else:
             order.cashier_status = 'pending'
+
         order.save()
 
         return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)
