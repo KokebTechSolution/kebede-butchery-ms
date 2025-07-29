@@ -6,13 +6,8 @@ from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, tes
 from .views import WaiterUnsettledTablesView
 from .views import session_logout
 
-<<<<<<< HEAD
-from .views import CustomTokenObtainPairView, UserViewSet, LoginView
-from .views import WaiterUnsettledTablesView
-
 # DRF router for CRUD operations
-=======
->>>>>>> 93538555aea552d247ce892fe0eaffe5c45d9d56
+
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 

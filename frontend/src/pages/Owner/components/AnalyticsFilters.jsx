@@ -1,8 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin } from 'lucide-react';
+import axiosInstance from '../../../api/axiosInstance';
+import { useAuth } from '../../../context/AuthContext';
 
-const AnalyticsFilters = ({ dateRange, setDateRange }) => {
-  const [branch, setBranch] = useState('All Branches');
+const AnalyticsFilters = ({ dateRange, setDateRange, selectedBranch, setSelectedBranch }) => {
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Fetch branches from backend
+    const fetchBranches = async () => {
+      try {
+        const response = await axiosInstance.get('/owner/branches/');
+        setBranches(response.data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch branches:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, [user]);
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
@@ -36,15 +56,19 @@ const AnalyticsFilters = ({ dateRange, setDateRange }) => {
         </label>
         <select
           id="branch"
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          className="ml-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+          value={selectedBranch}
+          onChange={(e) => setSelectedBranch(e.target.value)}
+          disabled={loading}
+          className="ml-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
-          <option value="All Branches">All Branches</option>
-          <option value="Downtown Branch">Downtown Branch</option>
-          <option value="Westside Branch">Westside Branch</option>
-          <option value="Eastside Branch">Eastside Branch</option>
+          <option value="all">All Branches</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
+          ))}
         </select>
+        {loading && <span className="text-xs text-gray-500">Loading branches...</span>}
       </div>
     </div>
   );

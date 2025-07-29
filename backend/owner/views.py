@@ -5,6 +5,7 @@ from users.permissions import IsOwner
 from payments.models import Payment
 from orders.models import Order, OrderItem
 from branches.models import Branch
+from branches.serializers import BranchSerializer
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from datetime import datetime, timedelta
 from django.utils import timezone
@@ -20,6 +21,7 @@ class OwnerDashboardView(APIView):
         # Get date range from query params
         start_str = request.query_params.get('start')
         end_str = request.query_params.get('end')
+        branch_id = request.query_params.get('branch')
         today = timezone.now().date()
         if start_str and end_str:
             start_date = parse_date(start_str)
@@ -29,7 +31,13 @@ class OwnerDashboardView(APIView):
             start_date = today.replace(day=1)
             end_date = today
 
+        # Build base queryset for payments
         payments = Payment.objects.filter(processed_at__date__gte=start_date, processed_at__date__lte=end_date, is_completed=True)
+        
+        # Apply branch filter if specified
+        if branch_id:
+            payments = payments.filter(order__branch_id=branch_id)
+        
         total_orders = payments.count()
         total_sales = sum(p.amount for p in payments)
         cash_sales = sum(p.amount for p in payments if p.payment_method == 'cash')
@@ -81,13 +89,17 @@ class OwnerDashboardView(APIView):
 
         # Calculate total inventory value (cost of inventory)
         stocks = Stock.objects.select_related('product').all()
+        
+        # Apply branch filter to stocks if specified
+        if branch_id:
+            stocks = stocks.filter(branch_id=branch_id)
+        
         total_inventory_value = 0
         for stock in stocks:
             product = stock.product
-            if product.uses_carton and product.bottles_per_carton and product.price_per_unit:
-                total_inventory_value += float(stock.carton_quantity * product.bottles_per_carton * product.price_per_unit)
-            elif not product.uses_carton and product.price_per_unit:
-                total_inventory_value += float(stock.bottle_quantity * product.price_per_unit)
+            if product.base_unit_price:
+                # Use quantity_in_base_units and base_unit_price for calculation
+                total_inventory_value += float(stock.quantity_in_base_units * product.base_unit_price)
 
         # Calculate profit of inventory: sum of closed (paid) orders by waiters in the date range
         waiter_ids = User.objects.filter(role='waiter').values_list('id', flat=True)
@@ -98,6 +110,11 @@ class OwnerDashboardView(APIView):
             created_at__date__lte=end_date,
             payment__is_completed=True
         ).distinct()
+        
+        # Apply branch filter to orders if specified
+        if branch_id:
+            closed_orders = closed_orders.filter(branch_id=branch_id)
+        
         profit_of_inventory = 0
         for order in closed_orders:
             beverage_items = order.items.filter(item_type__in=['beverage', 'drink'], status='accepted')
@@ -112,6 +129,11 @@ class OwnerDashboardView(APIView):
             created_at__date__lte=end_date,
             payment__is_completed=True
         ).distinct()
+        
+        # Apply branch filter to orders if specified
+        if branch_id:
+            closed_orders = closed_orders.filter(branch_id=branch_id)
+        
         food_income = 0
         for order in closed_orders:
             food_items = order.items.filter(item_type='food', status='accepted')
@@ -199,4 +221,13 @@ class StaffPerformanceView(APIView):
                 'totalOrders': total_orders,
                 'totalSales': float(total_sales)
             })
-        return Response({'waiters': data}) 
+        return Response({'waiters': data})
+
+class BranchesListView(APIView):
+    permission_classes = [IsAuthenticated, IsOwner]
+
+    def get(self, request):
+        """Fetch all branches for the owner dashboard"""
+        branches = Branch.objects.all()
+        serializer = BranchSerializer(branches, many=True)
+        return Response(serializer.data) 

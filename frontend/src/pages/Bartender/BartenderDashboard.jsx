@@ -31,9 +31,6 @@ export default function BartenderDashboard() {
   const branchId = user?.branch;
 
   const [inventoryRequests, setInventoryRequests] = useState([]);
-  const userName = "Bartender"; 
-  const { lastMessage } = useNotifications();
-  const { orders } = useBeverages(filterDate);
 //  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
   useEffect(() => {
     if (lastMessage) {
@@ -73,10 +70,8 @@ export default function BartenderDashboard() {
         return <Reports />;
       case 'Closed':
         return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
-        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
       case 'Orders':
       default:
-        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
         return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
     }
   };

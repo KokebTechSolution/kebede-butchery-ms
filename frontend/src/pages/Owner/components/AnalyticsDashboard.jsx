@@ -53,12 +53,20 @@ const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState('This Month');
+  const [selectedBranch, setSelectedBranch] = useState('all');
 
   useEffect(() => {
     const { start, end } = getDateRange(dateRange);
     setLoading(true);
+    
+    // Build the API URL with branch filter
+    let apiUrl = `/owner/dashboard/?start=${start}&end=${end}`;
+    if (selectedBranch !== 'all') {
+      apiUrl += `&branch=${selectedBranch}`;
+    }
+    
     // Fetch current period
-    axiosInstance.get(`/owner/dashboard/?start=${start}&end=${end}`)
+    axiosInstance.get(apiUrl)
       .then(response => {
         setAnalyticsData(response.data);
         // Fetch previous period for revenue growth
@@ -77,7 +85,14 @@ const AnalyticsDashboard = () => {
           prevStart = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1).toISOString().slice(0, 10);
           prevEnd = new Date(startDate.getFullYear(), startDate.getMonth(), 0).toISOString().slice(0, 10);
         }
-        return axiosInstance.get(`/owner/dashboard/?start=${prevStart}&end=${prevEnd}`);
+        
+        // Build previous period API URL with branch filter
+        let prevApiUrl = `/owner/dashboard/?start=${prevStart}&end=${prevEnd}`;
+        if (selectedBranch !== 'all') {
+          prevApiUrl += `&branch=${selectedBranch}`;
+        }
+        
+        return axiosInstance.get(prevApiUrl);
       })
       .then(prevResponse => {
         setPrevAnalyticsData(prevResponse.data);
@@ -87,7 +102,7 @@ const AnalyticsDashboard = () => {
         setError('Failed to fetch analytics data');
         setLoading(false);
       });
-  }, [dateRange]);
+  }, [dateRange, selectedBranch]);
 
   if (loading) return <div>Loading analytics...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
@@ -112,7 +127,7 @@ const AnalyticsDashboard = () => {
         </div>
 
         {/* Filters */}
-        <AnalyticsFilters dateRange={dateRange} setDateRange={setDateRange} />
+        <AnalyticsFilters dateRange={dateRange} setDateRange={setDateRange} selectedBranch={selectedBranch} setSelectedBranch={setSelectedBranch} />
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">

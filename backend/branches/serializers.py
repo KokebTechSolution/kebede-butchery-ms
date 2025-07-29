@@ -18,6 +18,7 @@ class BranchSerializer(serializers.ModelSerializer):
             'city',
             'subcity',
             'wereda',
+            'display_name',
         ]
 
     def get_display_name(self, obj):
