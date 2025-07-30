@@ -122,17 +122,22 @@ class SessionLoginView(APIView):
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 @ensure_csrf_cookie
 def get_csrf(request):
+    csrf_token = request.META.get('CSRF_COOKIE', '')
+    print(f"[DEBUG] CSRF endpoint called")
+    print(f"[DEBUG] CSRF_COOKIE from META: {csrf_token[:10] if csrf_token else 'None'}...")
+    print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
+    
     response = JsonResponse({"message": "CSRF cookie set"})
     # Ensure CSRF cookie is set with proper attributes for cross-origin
     response.set_cookie(
         'csrftoken',
-        request.META.get('CSRF_COOKIE', ''),
+        csrf_token,
         max_age=31449600,  # 1 year
         secure=True,
         samesite='None',
         httponly=False
     )
-    print(f"[DEBUG] CSRF endpoint called, cookie set: {request.META.get('CSRF_COOKIE', '')[:10]}...")
+    print(f"[DEBUG] CSRF cookie set in response: {csrf_token[:10] if csrf_token else 'None'}...")
     return response
 
 class DebugAuthView(APIView):
@@ -379,4 +384,18 @@ class CSRFDebugView(APIView):
             "message": "CSRF POST test successful",
             "csrf_token_received": bool(request.META.get('CSRF_COOKIE')),
             "headers": dict(request.headers),
+        })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CSRFExemptTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        return Response({
+            "message": "CSRF exempt test successful",
+            "data": request.data,
+            "method": request.method,
+            "headers": dict(request.headers),
+            "csrf_token_in_header": request.headers.get('X-CSRFToken', 'not found'),
+            "csrf_token_in_cookie": request.COOKIES.get('csrftoken', 'not found'),
         })
