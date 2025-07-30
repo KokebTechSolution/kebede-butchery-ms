@@ -77,6 +77,7 @@ class SessionLoginView(APIView):
         
         print(f"[DEBUG] Login attempt for user: {username}")
         print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
+        print(f"[DEBUG] Request headers: {dict(request.headers)}")
         
         user = authenticate(request, username=username, password=password)
 
@@ -89,7 +90,21 @@ class SessionLoginView(APIView):
             # Force session save
             request.session.save()
             
-            return Response(UserLoginSerializer(user).data)
+            # Create response with user data
+            response = Response(UserLoginSerializer(user).data)
+            
+            # Set session cookie explicitly
+            response.set_cookie(
+                'sessionid',
+                request.session.session_key,
+                max_age=86400,  # 24 hours
+                secure=True,
+                samesite='None',
+                httponly=False
+            )
+            
+            print(f"[DEBUG] Response cookies: {dict(response.cookies)}")
+            return response
         
         print(f"[DEBUG] Authentication failed for user: {username}")
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -226,13 +241,18 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
-        print("CurrentUserView: cookies=", request.COOKIES)
-        print("CurrentUserView: headers=", dict(request.headers))
+        print(f"[DEBUG] CurrentUserView called")
+        print(f"[DEBUG] Session key: {request.session.session_key}")
+        print(f"[DEBUG] User: {request.user}")
+        print(f"[DEBUG] Is authenticated: {request.user.is_authenticated}")
+        print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
+        print(f"[DEBUG] Headers: {dict(request.headers)}")
         
         if not request.user.is_authenticated:
+            print(f"[DEBUG] User not authenticated, returning 401")
             return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
         
+        print(f"[DEBUG] User authenticated, returning user data")
         serializer = UserLoginSerializer(request.user)
         return Response(serializer.data)
 

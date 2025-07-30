@@ -193,6 +193,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 #CORS_ALLOW_ALL_ORIGINS = True
+# CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     "https://kebede-butchery-ms.vercel.app",     # React frontend on Vercel
     "http://localhost:3000",                      # Local development
@@ -233,6 +234,7 @@ SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
 SESSION_COOKIE_SECURE = True       # Use HTTPS in production
 SESSION_COOKIE_HTTPONLY = False    # Allow JavaScript access
 SESSION_COOKIE_DOMAIN = None       # Allow all domains
+SESSION_COOKIE_AGE = 86400         # 24 hours
 
 CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
 CSRF_COOKIE_SECURE = True          # Use HTTPS in production
