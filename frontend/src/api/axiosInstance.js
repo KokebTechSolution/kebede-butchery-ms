@@ -67,9 +67,9 @@ axiosInstance.interceptors.request.use(
       console.warn('[DEBUG] No CSRF token available for request');
     }
     
-    // Ensure we don't send any CORS-related headers in requests
-    // These should only be in response headers from the server
-    const headersToRemove = [
+    // CRITICAL: Remove any CORS-related headers from requests
+    // These headers should ONLY be in response headers from the server
+    const corsHeadersToRemove = [
       'access-control-allow-credentials',
       'Access-Control-Allow-Credentials',
       'access-control-allow-origin',
@@ -82,11 +82,14 @@ axiosInstance.interceptors.request.use(
       'access-control-expose-headers'
     ];
     
-    headersToRemove.forEach(header => {
-      delete config.headers[header];
+    corsHeadersToRemove.forEach(header => {
+      if (config.headers[header]) {
+        console.warn(`[DEBUG] Removing problematic header: ${header}`);
+        delete config.headers[header];
+      }
     });
     
-    // Ensure we have the correct content type
+    // Ensure proper content type for non-GET requests
     if (config.method !== 'get' && !config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';
     }
@@ -94,7 +97,7 @@ axiosInstance.interceptors.request.use(
     console.log('[DEBUG] Request config:', {
       url: config.url,
       method: config.method,
-      headers: config.headers,
+      headers: Object.keys(config.headers),
       withCredentials: config.withCredentials,
       hasCSRF: !!csrfToken,
       csrfToken: csrfToken ? csrfToken.substring(0, 10) + '...' : 'none'
