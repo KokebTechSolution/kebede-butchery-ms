@@ -95,6 +95,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://your-frontend-name.vercel.app",
 ]
+]
 ROOT_URLCONF = 'kebede_pos.urls'
 
 TEMPLATES = [
@@ -178,7 +179,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://kebede-butchery-ms.vercel.app",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 SIMPLE_JWT = {
@@ -243,6 +248,12 @@ STATICFILES_DIRS = [
 # Optionally, if you want to collect static files for production:
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 """
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://kebede-butchery-ms.onrender.com",   # Django backend on Render
+    "https://kebede-butchery-ms.vercel.app"      # React frontend on Vercel
+]
+
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
