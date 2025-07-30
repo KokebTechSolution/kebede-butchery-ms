@@ -24,6 +24,10 @@ axiosInstance.interceptors.request.use(
       config.headers['X-CSRFToken'] = csrfToken;
     }
     
+    // Ensure we don't send problematic headers
+    delete config.headers['access-control-allow-credentials'];
+    delete config.headers['Access-Control-Allow-Credentials'];
+    
     console.log('[DEBUG] Request config:', {
       url: config.url,
       method: config.method,
