@@ -126,8 +126,10 @@ def get_csrf(request):
     print(f"[DEBUG] CSRF endpoint called")
     print(f"[DEBUG] CSRF_COOKIE from META: {csrf_token[:10] if csrf_token else 'None'}...")
     print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
+    print(f"[DEBUG] Request headers: {dict(request.headers)}")
     
-    response = JsonResponse({"message": "CSRF cookie set"})
+    response = JsonResponse({"message": "CSRF cookie set", "csrf_token": csrf_token})
+    
     # Ensure CSRF cookie is set with proper attributes for cross-origin
     response.set_cookie(
         'csrftoken',
@@ -135,9 +137,16 @@ def get_csrf(request):
         max_age=31449600,  # 1 year
         secure=True,
         samesite='None',
-        httponly=False
+        httponly=False,
+        path='/'
     )
+    
+    # Also set additional headers for debugging
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    
     print(f"[DEBUG] CSRF cookie set in response: {csrf_token[:10] if csrf_token else 'None'}...")
+    print(f"[DEBUG] Response headers: {dict(response.headers)}")
     return response
 
 class DebugAuthView(APIView):
