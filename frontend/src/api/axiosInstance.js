@@ -67,15 +67,29 @@ axiosInstance.interceptors.request.use(
       console.warn('[DEBUG] No CSRF token available for request');
     }
     
-    // Remove any problematic headers that might cause CORS issues
-    delete config.headers['access-control-allow-credentials'];
-    delete config.headers['Access-Control-Allow-Credentials'];
-    delete config.headers['access-control-allow-origin'];
-    delete config.headers['Access-Control-Allow-Origin'];
-    delete config.headers['access-control-allow-methods'];
-    delete config.headers['Access-Control-Allow-Methods'];
-    delete config.headers['access-control-allow-headers'];
-    delete config.headers['Access-Control-Allow-Headers'];
+    // Ensure we don't send any CORS-related headers in requests
+    // These should only be in response headers from the server
+    const headersToRemove = [
+      'access-control-allow-credentials',
+      'Access-Control-Allow-Credentials',
+      'access-control-allow-origin',
+      'Access-Control-Allow-Origin',
+      'access-control-allow-methods',
+      'Access-Control-Allow-Methods',
+      'access-control-allow-headers',
+      'Access-Control-Allow-Headers',
+      'Access-Control-Expose-Headers',
+      'access-control-expose-headers'
+    ];
+    
+    headersToRemove.forEach(header => {
+      delete config.headers[header];
+    });
+    
+    // Ensure we have the correct content type
+    if (config.method !== 'get' && !config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
+    }
     
     console.log('[DEBUG] Request config:', {
       url: config.url,
