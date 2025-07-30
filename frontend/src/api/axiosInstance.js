@@ -67,9 +67,15 @@ axiosInstance.interceptors.request.use(
       console.warn('[DEBUG] No CSRF token available for request');
     }
     
-    // Ensure we don't send problematic headers
+    // Remove any problematic headers that might cause CORS issues
     delete config.headers['access-control-allow-credentials'];
     delete config.headers['Access-Control-Allow-Credentials'];
+    delete config.headers['access-control-allow-origin'];
+    delete config.headers['Access-Control-Allow-Origin'];
+    delete config.headers['access-control-allow-methods'];
+    delete config.headers['Access-Control-Allow-Methods'];
+    delete config.headers['access-control-allow-headers'];
+    delete config.headers['Access-Control-Allow-Headers'];
     
     console.log('[DEBUG] Request config:', {
       url: config.url,

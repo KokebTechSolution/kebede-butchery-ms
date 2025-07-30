@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../../api/config';
+import axiosInstance from '../../api/axiosInstance';
 
 const LoginPage = () => {
   const { login, user, logout } = useAuth();
@@ -15,18 +15,11 @@ const LoginPage = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user');
     }
-    // Optionally, if setUser is available:
-    // setUser && setUser(null);
-    // Fetch CSRF cookie
-    fetch(`${API_BASE_URL}/api/users/csrf/`, {
-      credentials: 'include',
+    // Fetch CSRF cookie using axiosInstance
+    axiosInstance.get('users/csrf/').catch(err => {
+      console.error('Failed to fetch CSRF token:', err);
     });
   }, []);
-
-  const getCSRFToken = () => {
-    const match = document.cookie.match(/csrftoken=([\w-]+)/);
-    return match ? match[1] : null;
-  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -37,29 +30,18 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Login failed');
-      }
-
-      const userData = await res.json();
-      login(userData); // Call AuthContext login
+      console.log('[DEBUG] Attempting login...');
+      const response = await axiosInstance.post('users/login/', formData);
+      const userData = response.data;
+      console.log('[DEBUG] Login successful:', userData);
+      
+      await login(); // Call AuthContext login
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Something went wrong');
+      console.error('[DEBUG] Login error:', err);
+      setError(err.response?.data?.error || err.message || 'Something went wrong');
     }
   };
 
