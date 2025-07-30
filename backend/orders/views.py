@@ -297,6 +297,8 @@ class OrderItemStatusUpdateView(APIView):
 
     @transaction.atomic
     def patch(self, request, pk):
+        if not (request.user.is_authenticated and getattr(request.user, 'role', None) in ['meat', 'manager', 'owner', 'waiter', 'bartender']):
+            return Response({'error': 'Forbidden'}, status=403)
         try:
             item = OrderItem.objects.select_related('order').get(pk=pk)
         except OrderItem.DoesNotExist:
@@ -307,49 +309,49 @@ class OrderItemStatusUpdateView(APIView):
             return Response({'error': 'Invalid status value'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Handle beverage stock deduction
-        if status_value == 'accepted' and item.item_type == 'beverage':
-            bartender = request.user
-            try:
-                barman_stock = BarmanStock.objects.select_related('stock__product').get(
-                    bartender=bartender,
-                    stock__product__name__iexact=item.name,
-                    stock__branch=item.order.branch
-                )
-            except BarmanStock.DoesNotExist:
-                return Response(
-                    {'error': f"No barman stock found for '{item.name}'"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        # if status_value == 'accepted' and item.item_type == 'beverage':
+        #     bartender = request.user
+        #     try:
+        #         barman_stock = BarmanStock.objects.select_related('stock__product').get(
+        #             bartender=bartender,
+        #             stock__product__name__iexact=item.name,
+        #             stock__branch=item.order.branch
+        #         )
+        #     except BarmanStock.DoesNotExist:
+        #         return Response(
+        #             {'error': f"No barman stock found for '{item.name}'"},
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
 
-            if barman_stock.quantity_in_base_units < item.quantity:
-                return Response(
-                    {
-                        'error': (
-                            f"Not enough stock. Available: {barman_stock.quantity_in_base_units}, "
-                            f"Required: {item.quantity}"
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        #     if barman_stock.quantity_in_base_units < item.quantity:
+        #         return Response(
+        #             {
+        #                 'error': (
+        #                     f"Not enough stock. Available: {barman_stock.quantity_in_base_units}, "
+        #                     f"Required: {item.quantity}"
+        #                 )
+        #             },
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
 
-            product = barman_stock.stock.product
-            try:
-                # Assuming you have a method to get conversion factor from base unit to original unit
-                conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
-                original_quantity_delta = item.quantity / conversion_factor
-            except Exception:
-                # Fallback: treat original quantity same as base units if conversion unavailable
-                original_quantity_delta = item.quantity
+        #     product = barman_stock.stock.product
+        #     try:
+        #         # Assuming you have a method to get conversion factor from base unit to original unit
+        #         conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
+        #         original_quantity_delta = item.quantity / conversion_factor
+        #     except Exception:
+        #         # Fallback: treat original quantity same as base units if conversion unavailable
+        #         original_quantity_delta = item.quantity
 
-            # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
-            try:
-                barman_stock.adjust_quantity(
-                    quantity=item.quantity,
-                    unit=product.base_unit,
-                    is_addition=False
-                )
-            except Exception as e:
-                return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        #     # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
+        #     try:
+        #         barman_stock.adjust_quantity(
+        #             quantity=item.quantity,
+        #             unit=product.base_unit,
+        #             is_addition=False
+        #         )
+        #     except Exception as e:
+        #         return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update item status
         item.status = status_value
@@ -359,6 +361,36 @@ class OrderItemStatusUpdateView(APIView):
         order = item.order
         accepted_items = order.items.filter(status='accepted')
         order.total_money = sum(i.price * i.quantity for i in accepted_items)
+
+        # Update order status based on item types
+        food_items = order.items.filter(item_type='food')
+        beverage_items = order.items.filter(item_type='beverage')
+        
+        # Update food_status
+        if food_items.exists():
+            food_statuses = list(food_items.values_list('status', flat=True))
+            if all(s in ['accepted', 'rejected'] for s in food_statuses):
+                if any(s == 'accepted' for s in food_statuses):
+                    order.food_status = 'completed'
+                else:
+                    order.food_status = 'rejected'
+            elif any(s == 'accepted' for s in food_statuses):
+                order.food_status = 'preparing'
+            else:
+                order.food_status = 'pending'
+        
+        # Update beverage_status
+        if beverage_items.exists():
+            beverage_statuses = list(beverage_items.values_list('status', flat=True))
+            if all(s in ['accepted', 'rejected'] for s in beverage_statuses):
+                if any(s == 'accepted' for s in beverage_statuses):
+                    order.beverage_status = 'completed'
+                else:
+                    order.beverage_status = 'rejected'
+            elif any(s == 'accepted' for s in beverage_statuses):
+                order.beverage_status = 'preparing'
+            else:
+                order.beverage_status = 'pending'
 
         # Update order cashier status
         all_statuses = list(order.items.values_list('status', flat=True))
