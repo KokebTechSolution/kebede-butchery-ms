@@ -24,11 +24,6 @@ axiosInstance.interceptors.request.use(
       config.headers['X-CSRFToken'] = csrfToken;
     }
     
-    // Add CORS headers for production
-    if (process.env.NODE_ENV === 'production') {
-      config.headers['Access-Control-Allow-Credentials'] = 'true';
-    }
-    
     console.log('[DEBUG] Request config:', {
       url: config.url,
       method: config.method,
