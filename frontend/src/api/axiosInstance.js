@@ -12,7 +12,6 @@ const axiosInstance = axios.create({
   withCredentials: true, // IMPORTANT: send cookies on cross-origin requests
   headers: {
     'Content-Type': 'application/json',
-    'X-CSRFToken': getCookie('csrftoken'), // attach CSRF token header
   },
 });
 
@@ -20,16 +19,27 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     // Update CSRF token for each request
-    config.headers['X-CSRFToken'] = getCookie('csrftoken');
+    const csrfToken = getCookie('csrftoken');
+    if (csrfToken) {
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
     
     // Add CORS headers for production
     if (process.env.NODE_ENV === 'production') {
       config.headers['Access-Control-Allow-Credentials'] = 'true';
     }
     
+    console.log('[DEBUG] Request config:', {
+      url: config.url,
+      method: config.method,
+      headers: config.headers,
+      withCredentials: config.withCredentials
+    });
+    
     return config;
   },
   (error) => {
+    console.error('[DEBUG] Request error:', error);
     return Promise.reject(error);
   }
 );
@@ -37,9 +47,21 @@ axiosInstance.interceptors.request.use(
 // Add response interceptor for error handling
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log('[DEBUG] Response:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
     return response;
   },
   (error) => {
+    console.error('[DEBUG] Response error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      message: error.message,
+      data: error.response?.data
+    });
+    
     // Handle authentication errors
     if (error.response?.status === 401) {
       // Redirect to login or refresh token

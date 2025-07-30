@@ -1,32 +1,45 @@
-import axios from 'axios';
-import { API_BASE_URL } from './config';
+import axiosInstance from './axiosInstance';
 
+// Fetch all branches
 export const fetchBranches = async () => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/api/branches/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching branches:', error);
-        throw error;
-    }
+  try {
+    const response = await axiosInstance.get('branches/tables/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching branches:', error);
+    throw error;
+  }
 };
 
-export const fetchTables = async () => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/api/branches/tables/`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching tables:', error);
-        throw error;
-    }
+// Create a new branch
+export const createBranch = async (branchData) => {
+  try {
+    const response = await axiosInstance.post('branches/tables/', branchData);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error creating branch:', error);
+    throw error;
+  }
 };
 
-export const createTable = async (tableData) => {
-    try {
-        const response = await axios.post(`${API_BASE_URL}/api/branches/tables/`, tableData);
-        return response.data;
-    } catch (error) {
-        console.error('Error creating table:', error);
-        throw error;
-    }
+// Update a branch
+export const updateBranch = async (id, branchData) => {
+  try {
+    const response = await axiosInstance.patch(`branches/tables/${id}/`, branchData);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error updating branch with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+// Delete a branch
+export const deleteBranch = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`branches/tables/${id}/`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error deleting branch with ID ${id}:`, error);
+    throw error;
+  }
 };
