@@ -245,12 +245,18 @@ CSRF_TRUSTED_ORIGINS = [
 # Disable referer checking for cross-origin requests
 CSRF_USE_REFERER = False
 
+# CSRF Configuration
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_DOMAIN = None
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
+
+# For development, set secure cookies to False
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # Session Configuration
 SESSION_COOKIE_SAMESITE = 'None'
