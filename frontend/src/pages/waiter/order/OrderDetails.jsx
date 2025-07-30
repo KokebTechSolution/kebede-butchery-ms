@@ -132,7 +132,10 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                     throw new Error('Failed to update cashier status');
                   }
                   setPrintedOrders(prev => [...prev, currentOrder.id]);
-                  window.location.href = window.location.href; // Reload but stay on the same page
+                  // Store the current page state before reload
+                  localStorage.setItem('waiterCurrentPage', 'orderDetails');
+                  // Force a refresh of the orders list without navigating away
+                  window.location.reload();
                 } catch (error) {
                   console.error('Error updating cashier status:', error);
                 }

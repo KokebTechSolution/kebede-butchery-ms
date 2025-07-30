@@ -25,7 +25,10 @@ const ClosedOrders = ({ orders }) => {
             {tableOrders.map(order => (
               <div key={order.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-gray-900">Order #{order.order_number}</span>
+                  <span className="font-semibold text-gray-900">
+                    Order #{order.order_number} 
+                    <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
+                  </span>
                   <span className="text-xs text-gray-500">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
                 </div>
                 <div className="space-y-1 mb-2">

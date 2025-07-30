@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../../components/ui/table";
-import { getPrintedOrders } from "../../../../../../api/cashier";
+import { getMyOrders } from "../../../../../../api/cashier";
 import axiosInstance from "../../../../../../api/axiosInstance";
 
 // Helper to get today's date in yyyy-mm-dd format
@@ -25,21 +25,23 @@ export const SidebarSection = () => {
   const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
   const [filterDate, setFilterDate] = useState(getTodayDateString());
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  const fetchOrders = async (date) => {
+  const fetchOrders = async (date, status = null) => {
     try {
-      const printedOrders = await getPrintedOrders(date);
-      setOrders(printedOrders);
+      const ordersData = await getMyOrders(date, status);
+      setOrders(ordersData);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     }
   };
 
   useEffect(() => {
-    const interval = setInterval(() => fetchOrders(filterDate), 5000); // Fetch every 5 seconds
-    fetchOrders(filterDate); // Initial fetch
+    const status = filterStatus === 'all' ? null : filterStatus;
+    const interval = setInterval(() => fetchOrders(filterDate, status), 5000); // Fetch every 5 seconds
+    fetchOrders(filterDate, status); // Initial fetch
     return () => clearInterval(interval); // Cleanup on unmount
-  }, [filterDate]);
+  }, [filterDate, filterStatus]);
 
   const handleProcessPayment = async (order, index) => {
     setClickedIndex(index);

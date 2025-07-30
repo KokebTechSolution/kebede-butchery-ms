@@ -38,10 +38,17 @@ export const getOrderById = async (orderId) => {
     }
 };
 
-export const getMyOrders = async (date) => {
+export const getMyOrders = async (date, cashierStatus = null) => {
     let url = '/orders/order-list/';
+    const params = [];
     if (date) {
-        url += `?date=${date}`;
+        params.push(`date=${date}`);
+    }
+    if (cashierStatus) {
+        params.push(`cashier_status=${cashierStatus}`);
+    }
+    if (params.length) {
+        url += '?' + params.join('&');
     }
     try {
         const response = await axiosInstance.get(url);

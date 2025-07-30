@@ -30,12 +30,34 @@ class OrderListView(generics.ListCreateAPIView):
             return Order.objects.none()
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
-        queryset = Order.objects.filter(created_by=user)
+        cashier_status = self.request.query_params.get('cashier_status')
+        
+        print(f"DEBUG: User role: {user.role}")
+        print(f"DEBUG: Cashier status filter: {cashier_status}")
+        print(f"DEBUG: Date filter: {date}")
+        
+        # For cashier dashboard, show all orders (not just user's orders)
+        if user.role == 'cashier':
+            queryset = Order.objects.all()
+        else:
+            queryset = Order.objects.filter(created_by=user)
+            
         if table_number:
             queryset = queryset.filter(table_number=table_number)
         if date:
             parsed_date = parse_date(date)
             queryset = queryset.filter(created_at__date=parsed_date)
+        if cashier_status:
+            if cashier_status == 'pending':
+                # For 'pending' filter, show both 'pending' and 'ready_for_payment' orders
+                queryset = queryset.filter(cashier_status__in=['pending', 'ready_for_payment'])
+                print(f"DEBUG: Applied pending filter (pending + ready_for_payment)")
+            else:
+                queryset = queryset.filter(cashier_status=cashier_status)
+                print(f"DEBUG: Applied cashier_status filter: {cashier_status}")
+            print(f"DEBUG: Query count after filter: {queryset.count()}")
+        
+        print(f"DEBUG: Final query count: {queryset.count()}")
         return queryset
 
     def perform_create(self, serializer):

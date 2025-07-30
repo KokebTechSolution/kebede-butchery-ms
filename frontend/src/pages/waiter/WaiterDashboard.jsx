@@ -52,7 +52,15 @@ const WaiterDashboard = () => {
   const params = new URLSearchParams(location.search);
   const startPage = params.get('start') || 'tables';
 
-  const [currentPage, setCurrentPage] = useState(startPage); // 'tables', 'menu', or 'orderDetails'
+  const [currentPage, setCurrentPage] = useState(() => {
+    // Check if there's a saved page state from reload
+    const savedPage = localStorage.getItem('waiterCurrentPage');
+    if (savedPage) {
+      localStorage.removeItem('waiterCurrentPage'); // Clear it after use
+      return savedPage;
+    }
+    return startPage;
+  }); // 'tables', 'menu', or 'orderDetails'
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);

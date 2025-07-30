@@ -27,17 +27,25 @@ const getStatusLabel = (status) => {
 
 const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [orders, setOrders] = useState([]);
-  const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'printed'
+  const [filterDate, setFilterDate] = useState(() => {
+    // Load saved date filter from localStorage
+    const saved = localStorage.getItem('waiterOrderDateFilter');
+    return saved || getTodayDateString();
+  });
+  const [statusFilter, setStatusFilter] = useState(() => {
+    // Load saved status filter from localStorage
+    const saved = localStorage.getItem('waiterOrderStatusFilter');
+    return saved || 'all';
+  });
   const [manualRefreshKey, setManualRefreshKey] = useState(0); // for manual refresh
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
   const prevOrderIdsRef = useRef([]);
   const pollingRef = useRef(null);
 
-  const fetchOrders = async (date) => {
+  const fetchOrders = async (date, status = null) => {
     try {
-      const data = await getMyOrders(date);
+      const data = await getMyOrders(date, status);
       setOrders(data);
       return data;
     } catch (error) {
@@ -46,18 +54,32 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
     }
   };
 
+  // Save status filter to localStorage when it changes
+  const handleStatusFilterChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    localStorage.setItem('waiterOrderStatusFilter', newStatus);
+  };
+
+  // Save date filter to localStorage when it changes
+  const handleDateFilterChange = (newDate) => {
+    setFilterDate(newDate);
+    localStorage.setItem('waiterOrderDateFilter', newDate);
+  };
+
   // Initial fetch and on filter change
   useEffect(() => {
-    fetchOrders(filterDate).then((data) => {
+    const status = statusFilter === 'all' ? null : statusFilter;
+    fetchOrders(filterDate, status).then((data) => {
       prevOrderIdsRef.current = data.map(order => order.id);
     });
     // eslint-disable-next-line
-  }, [filterDate, refreshKey, manualRefreshKey]);
+  }, [filterDate, statusFilter, refreshKey, manualRefreshKey]);
 
   // Polling for new orders
   useEffect(() => {
     pollingRef.current = setInterval(async () => {
-      const data = await fetchOrders(filterDate);
+      const status = statusFilter === 'all' ? null : statusFilter;
+      const data = await fetchOrders(filterDate, status);
       const currentIds = data.map(order => order.id);
       const prevIds = prevOrderIdsRef.current;
       // Find new order IDs
@@ -71,7 +93,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       prevOrderIdsRef.current = currentIds;
     }, 5000); // 5 seconds
     return () => clearInterval(pollingRef.current);
-  }, [filterDate]);
+  }, [filterDate, statusFilter]);
 
   // Sort orders descending by order_number (or created_at if available)
   const sortedOrders = [...orders].sort((a, b) => {
@@ -82,15 +104,6 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       return new Date(b.created_at) - new Date(a.created_at);
     }
     return 0;
-  });
-
-  // Filter orders by status
-  const filteredOrders = sortedOrders.filter(order => {
-    if (!order.order_number) return false;
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'pending') return order.cashier_status !== 'printed';
-    if (statusFilter === 'printed') return order.cashier_status === 'printed';
-    return true;
   });
 
   return (
@@ -111,7 +124,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
             id="order-date-filter"
             type="date"
             value={filterDate}
-            onChange={e => setFilterDate(e.target.value)}
+            onChange={e => handleDateFilterChange(e.target.value)}
           />
         </div>
         <div className="order-filter-status">
@@ -119,7 +132,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
           <select
             id="order-status-filter"
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
+            onChange={e => handleStatusFilterChange(e.target.value)}
           >
             <option value="all">All</option>
             <option value="pending">Pending</option>
@@ -128,11 +141,11 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
         </div>
       </div>
       <h2>Orders</h2>
-      {filteredOrders.length === 0 ? (
+      {sortedOrders.length === 0 ? (
         <p className="no-orders-message">No orders placed yet.</p>
       ) : (
         <div className="order-list">
-          {filteredOrders.map(order => (
+          {sortedOrders.map(order => (
             <div
               key={order.id}
               className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
