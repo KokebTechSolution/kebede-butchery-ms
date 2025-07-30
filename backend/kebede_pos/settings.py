@@ -93,7 +93,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'core.middleware.CustomCsrfMiddleware',  # Custom CSRF middleware
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -242,10 +242,17 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
-# Disable referer checking for cross-origin requests
+# CSRF Configuration for cross-origin requests
 CSRF_USE_REFERER = False
+CSRF_TRUSTED_ORIGINS = [
+    "https://kebede-butchery-ms.onrender.com",
+    "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
-# CSRF Configuration
+# CSRF Cookie settings
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
@@ -257,6 +264,10 @@ CSRF_COOKIE_AGE = 31449600
 if DEBUG:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+
+# Additional CSRF settings for cross-origin
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 
 # Session Configuration
 SESSION_COOKIE_SAMESITE = 'None'
