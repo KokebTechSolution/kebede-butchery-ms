@@ -1,7 +1,5 @@
 import axios from 'axios';
-import axiosInstance from './axiosInstance';
-// Base URL for inventory API
-const BASE_URL = 'http://localhost:8000/api/inventory/';
+import { API_BASE_URL } from './config';
 
 // Utility to read cookie by name (for CSRF token)
 function getCookie(name) {
@@ -38,66 +36,65 @@ const modifyConfig = {
 
 // Fetch all inventory items
 export const fetchInventory = async () => {
-  const response = await axios.get(`${BASE_URL}products/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/products/`, getConfig);
   return response.data;
 };
 
 // Fetch single inventory item by ID
 export const fetchInventoryById = async (id) => {
-  const response = await axios.get(`${BASE_URL}products/${id}/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/products/${id}/`, getConfig);
   return response.data;
 };
 
 // Restock an inventory item
 export const restockInventory = async (id, restockData) => {
-  const response = await axios.post(`${BASE_URL}products/${id}/restock/`, restockData, modifyConfig);
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/products/${id}/restock/`, restockData, modifyConfig);
   return response.data;
 };
 
 // Record a sale for an inventory item
 export const sellInventory = async (id, saleData) => {
-  const response = await axios.post(`${BASE_URL}products/${id}/sale/`, saleData, modifyConfig);
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/products/${id}/sale/`, saleData, modifyConfig);
   return response.data;
 };
 
 // Fetch item types
 export const fetchItemTypes = async () => {
-  const response = await axios.get(`${BASE_URL}itemtypes/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/itemtypes/`, getConfig);
   return response.data;
 };
 
 // Fetch categories
 export const fetchCategories = async () => {
-  const response = await axios.get(`${BASE_URL}categories/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/categories/`, getConfig);
   return response.data;
 };
 
 // Fetch branches
 export const fetchBranches = async () => {
-  const response = await axios.get(`${BASE_URL}branches/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/branches/`, getConfig);
   return response.data;
 };
 
 // Fetch inventory requests
 export const fetchRequests = async () => {
-  const response = await axios.get(`${BASE_URL}requests/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/requests/`, getConfig);
   return response.data;
 };
 
 // Accept inventory request
 export const acceptRequest = async (requestId, amount) => {
   const response = await axios.post(
-    `${BASE_URL}requests/${requestId}/accept/`,
+    `${API_BASE_URL}/api/inventory/requests/${requestId}/accept/`,
     { amount },  // ✅ Send amount in request body
     modifyConfig
   );
   return response.data;
 };
 
-
 // Reject inventory request
 export const rejectRequest = async (requestId) => {
-  const response = await axios.post(`${BASE_URL}requests/${requestId}/reject/`, {}, modifyConfig);
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/requests/${requestId}/reject/`, {}, modifyConfig);
   return response.data;
 };
 
@@ -107,7 +104,7 @@ export const cancelRequest = async (requestId) => {
   try {
     // Try POST to /requests/<id>/cancel/
     const response = await axios.post(
-      `${BASE_URL}requests/${requestId}/cancel/`,
+      `${API_BASE_URL}/api/inventory/requests/${requestId}/cancel/`,
       {},
       modifyConfig
     );
@@ -116,7 +113,7 @@ export const cancelRequest = async (requestId) => {
     // If 404, fallback to PATCH status: 'cancelled'
     if (err.response && err.response.status === 404) {
       const patchRes = await axios.patch(
-        `${BASE_URL}requests/${requestId}/`,
+        `${API_BASE_URL}/api/inventory/requests/${requestId}/`,
         { status: 'cancelled' },
         modifyConfig
       );
@@ -129,7 +126,7 @@ export const cancelRequest = async (requestId) => {
 // Update inventory request (e.g., change quantity, unit, etc.)
 export const updateRequest = async (requestId, updateData) => {
   const response = await axios.patch(
-    `${BASE_URL}requests/${requestId}/`,
+    `${API_BASE_URL}/api/inventory/requests/${requestId}/`,
     updateData,
     modifyConfig
   );
@@ -138,34 +135,34 @@ export const updateRequest = async (requestId, updateData) => {
 
 // Fetch stocks
 export const fetchStocks = async () => {
-  const response = await axios.get(`${BASE_URL}stocks/`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}/api/inventory/stocks/`, getConfig);
   return response.data;
 };
 
 // Mark request as reached
 export const ReachRequest = async (id) => {
-  const response = await axios.post(`${BASE_URL}requests/${id}/reach/`, null, modifyConfig);
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/requests/${id}/reach/`, null, modifyConfig);
   return response.data;
 };
 
 // Mark request as not reached
 export const NotReachRequest = async (id) => {
-  const response = await axios.post(`${BASE_URL}requests/${id}/not_reach/`, null, modifyConfig);
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/requests/${id}/not_reach/`, null, modifyConfig);
   return response.data;
 };
 export const createItemType = async (typeName) => {
-  const response = await axiosInstance.post('/api/inventory/itemtypes/', {
+  const response = await axios.post(`${API_BASE_URL}/api/inventory/itemtypes/`, {
     type_name: typeName,
-  });
+  }, modifyConfig);
   return response.data;
 };
 
 const addNewCategory = async (categoryName, itemTypeId) => {
   try {
-    const response = await axiosInstance.post('/inventory/categories/', {
+    const response = await axios.post(`${API_BASE_URL}/inventory/categories/`, {
       category_name: categoryName,
       item_type: itemTypeId,
-    });
+    }, modifyConfig);
     return response.data;
   } catch (error) {
     console.error('❌ Error creating category:', error.response?.data || error.message);
@@ -174,6 +171,6 @@ const addNewCategory = async (categoryName, itemTypeId) => {
 };
 
 export const fetchProductMeasurements = async (productId) => {
-  const response = await axios.get(`${BASE_URL}productmeasurements/?product=${productId}`, getConfig);
+  const response = await axios.get(`${API_BASE_URL}productmeasurements/?product=${productId}`, getConfig);
   return response.data;
 };

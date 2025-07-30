@@ -42,10 +42,10 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:prod": "set NODE_ENV=production && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  "proxy": "http://127.0.0.1:8000",
   "eslintConfig": {
     "extends": [
       "react-app",

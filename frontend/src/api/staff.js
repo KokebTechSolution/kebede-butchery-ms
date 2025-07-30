@@ -1,32 +1,42 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
-const API_URL = 'http://localhost:8000/api/users/users/';
-
-// Helper to get CSRF token from cookie
-function getCSRFToken() {
-  const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
-  return match ? match[2] : null;
-}
-
-// Common Axios config with CSRF and cookies enabled
-const axiosConfig = {
-  headers: {
-    'Content-Type': 'application/json',
-    'X-CSRFToken': getCSRFToken(),
-  },
-  withCredentials: true,
+export const fetchStaff = async () => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/users/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching staff:', error);
+        throw error;
+    }
 };
 
-export const fetchStaffList = async () => {
-  const response = await axios.get(API_URL, axiosConfig);
-  return response.data;
+export const createStaff = async (staffData) => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/users/`, staffData);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating staff:', error);
+        throw error;
+    }
 };
 
-export const updateUser = async (id, formData) => {
-  const response = await axios.put(`${API_URL}${id}/`, formData, axiosConfig);
-  return response.data;
+export const updateStaff = async (id, staffData) => {
+    try {
+        const response = await axios.patch(`${API_BASE_URL}/api/users/${id}/`, staffData);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating staff:', error);
+        throw error;
+    }
 };
 
-export const deleteUser = async (id) => {
-  await axios.delete(`${API_URL}${id}/`, axiosConfig);
+export const deleteStaff = async (id) => {
+    try {
+        const response = await axios.delete(`${API_BASE_URL}/api/users/${id}/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting staff:', error);
+        throw error;
+    }
 };

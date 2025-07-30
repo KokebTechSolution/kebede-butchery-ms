@@ -114,16 +114,16 @@ const WaiterDashboard = () => {
     const orderData = {
       table: selectedTable.id,
       items: cartItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
         item_type: item.item_type || 'beverage'
-      }))
-    };
+        }))
+      };
 
     try {
       await placeOrder(orderData);
-      setMessage('Order placed successfully!');
+        setMessage('Order placed successfully!');
       clearCart();
       setCurrentPage('tables');
       setSelectedTable(null);
