@@ -90,10 +90,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-   'corsheaders.middleware.CorsMiddleware' 
+   'corsheaders.middleware.CorsMiddleware' ,
    
 CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-name.vercel.app",
+    "https://kebede-pos-ms.vercel.app",
 ]
 ]
 ROOT_URLCONF = 'kebede_pos.urls'
