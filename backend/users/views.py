@@ -132,6 +132,7 @@ def get_csrf(request):
         samesite='None',
         httponly=False
     )
+    print(f"[DEBUG] CSRF endpoint called, cookie set: {request.META.get('CSRF_COOKIE', '')[:10]}...")
     return response
 
 class DebugAuthView(APIView):
@@ -358,4 +359,24 @@ class HealthCheckView(APIView):
             "status": "healthy",
             "message": "Backend is running",
             "timestamp": timezone.now().isoformat(),
+        })
+
+class CSRFDebugView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        csrf_token = request.META.get('CSRF_COOKIE', '')
+        return Response({
+            "message": "CSRF Debug",
+            "csrf_token_available": bool(csrf_token),
+            "csrf_token_length": len(csrf_token),
+            "csrf_token_preview": csrf_token[:10] + "..." if csrf_token else "None",
+            "cookies": dict(request.COOKIES),
+        })
+    
+    def post(self, request):
+        return Response({
+            "message": "CSRF POST test successful",
+            "csrf_token_received": bool(request.META.get('CSRF_COOKIE')),
+            "headers": dict(request.headers),
         })

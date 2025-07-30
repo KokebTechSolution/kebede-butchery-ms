@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, test_logout, DebugAuthView, TestSessionView, TestLoginView, CORSTestView, HealthCheckView
+from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, test_logout, DebugAuthView, TestSessionView, TestLoginView, CORSTestView, HealthCheckView, CSRFDebugView
 from .views import WaiterUnsettledTablesView
 from .views import session_logout
 
@@ -16,6 +16,7 @@ urlpatterns = [
     path('test-login/', TestLoginView.as_view(), name='test-login'),
     path('cors-test/', CORSTestView.as_view(), name='cors-test'),
     path('health/', HealthCheckView.as_view(), name='health-check'),
+    path('csrf-debug/', CSRFDebugView.as_view(), name='csrf-debug'),
     path('logout/', session_logout, name='session-logout'),
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path('debug-auth/', DebugAuthView.as_view(), name='debug-auth'),
