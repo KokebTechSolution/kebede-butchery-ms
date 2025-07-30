@@ -128,9 +128,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'kebede_pos_db',
-        'USER': 'postgres',
-        'PASSWORD': 'kokeb',
-        'HOST': '127.0.0.1',
+        'USER': 'kebede_pos_db_user',
+        'PASSWORD': 'wyadtFAGj6D4nn8cVDeOOKU5NjmHueoc',
+        'HOST': 'dpg-d24uc9ili9vc73en6c40-a',
         'PORT': '5432',
     }
 }
