@@ -1,74 +1,60 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../../api/axiosInstance';
 
-export const useReports = (date) => {
-  const [reportData, setReportData] = useState({
-    totalSold: 0,
-    totalRejected: 0,
-    yesterdayTotalSold: 0,
-    yesterdayTotalRejected: 0,
-    dailySales: [],
-  });
+export const useReports = (filterDate) => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchReports = async (date) => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get(`reports/dashboard-report/?date=${date}`);
+      setReports(res.data);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const res = await axios.get(`/api/reports/dashboard-report/?date=${date}`);
-        setReportData({
-          totalSold: res.data.totalSold || 0,
-          totalRejected: res.data.totalRejected || 0,
-          yesterdayTotalSold: res.data.yesterdayTotalSold || 0,
-          yesterdayTotalRejected: res.data.yesterdayTotalRejected || 0,
-          dailySales: res.data.dailySales || [],
-        });
-      } catch (err) {
-        setReportData({
-          totalSold: 0,
-          totalRejected: 0,
-          yesterdayTotalSold: 0,
-          yesterdayTotalRejected: 0,
-          dailySales: [],
-        });
-      }
-    };
-    if (date) fetchReport();
-  }, [date]);
+    if (filterDate) {
+      fetchReports(filterDate);
+    }
+  }, [filterDate]);
 
-  return { reportData };
+  return {
+    reports,
+    loading,
+    fetchReports
+  };
 };
 
-export const useFoodReports = (date) => {
-  const [reportData, setReportData] = useState({
-    totalSold: 0,
-    totalRejected: 0,
-    yesterdayTotalSold: 0,
-    yesterdayTotalRejected: 0,
-    dailySales: [],
-  });
+export const useFoodReports = (filterDate) => {
+  const [foodReports, setFoodReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchFoodReports = async (date) => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get(`reports/food-dashboard-report/?date=${date}`);
+      setFoodReports(res.data);
+    } catch (error) {
+      console.error("Error fetching food reports:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        const res = await axios.get(`/api/reports/food-dashboard-report/?date=${date}`);
-        setReportData({
-          totalSold: res.data.totalSold || 0,
-          totalRejected: res.data.totalRejected || 0,
-          yesterdayTotalSold: res.data.yesterdayTotalSold || 0,
-          yesterdayTotalRejected: res.data.yesterdayTotalRejected || 0,
-          dailySales: res.data.dailySales || [],
-        });
-      } catch (err) {
-        setReportData({
-          totalSold: 0,
-          totalRejected: 0,
-          yesterdayTotalSold: 0,
-          yesterdayTotalRejected: 0,
-          dailySales: [],
-        });
-      }
-    };
-    if (date) fetchReport();
-  }, [date]);
+    if (filterDate) {
+      fetchFoodReports(filterDate);
+    }
+  }, [filterDate]);
 
-  return { reportData };
+  return {
+    foodReports,
+    loading,
+    fetchFoodReports
+  };
 };

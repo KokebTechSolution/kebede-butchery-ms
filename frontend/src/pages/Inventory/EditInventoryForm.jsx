@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -65,9 +65,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     setLoadingValidUnits(true);
     try {
       // Use the new valid_units endpoint
-      const res = await axios.get(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${product.id}/valid_units/`, {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get(`inventory/products/${product.id}/valid_units/`);
       
       if (res.data.valid_units && res.data.valid_units.length > 0) {
         setValidRestockUnits(res.data.valid_units);
@@ -97,9 +95,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   useEffect(() => {
     const fetchStock = async () => {
       try {
-        const res = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/stocks/', {
-          withCredentials: true,
-        });
+        const res = await axiosInstance.get('inventory/stocks/');
         const branchStock = res.data.find(
           (stock) => stock.product.id === product.id && stock.branch.id === branchId
         );
@@ -239,13 +235,9 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     };
     const csrfToken = getCookie('csrftoken');
     try {
-      await axios.put(
-        `https://kebede-butchery-ms.onrender.com/api/inventory/products/${product.id}/`,
-        updatedProduct,
-        {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': csrfToken },
-        }
+      await axiosInstance.put(
+        `inventory/products/${product.id}/`,
+        updatedProduct
       );
       alert(t('inventory_updated'));
       onSuccess();
@@ -299,8 +291,8 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         console.log(`${key}:`, value, typeof value);
       }
 
-      await axios.post(
-        `https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${stockId}/restock/`,
+      await axiosInstance.post(
+        `inventory/stocks/${stockId}/restock/`,
         formDataToSend,
         {
           withCredentials: true,
@@ -340,15 +332,9 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     if (!window.confirm('Are you sure you want to delete this product and its stock?')) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${product.id}/`, {
-        withCredentials: true,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-      });
+      await axiosInstance.delete(`inventory/products/${product.id}/`);
       if (stockId) {
-        await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${stockId}/`, {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': getCookie('csrftoken') },
-        });
+        await axiosInstance.delete(`inventory/stocks/${stockId}/`);
       }
       alert('Product and stock deleted.');
       onSuccess();
@@ -765,8 +751,8 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                     }
                     
                     try {
-                      await axios.post(
-                        `https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${stockId}/restock/`,
+                      await axiosInstance.post(
+                        `inventory/stocks/${stockId}/restock/`,
                         testFormData,
                         {
                           withCredentials: true,

@@ -11,7 +11,7 @@ import {
 import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 
 const ProductListPage = () => {
   const { t } = useTranslation();
@@ -157,8 +157,8 @@ const ProductListPage = () => {
       };
       console.log('Restock payload:', payload);
       
-      const response = await axios.post(
-        `https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${restockingStock.id}/restock/`,
+      const response = await axiosInstance.post(
+        `inventory/stocks/${restockingStock.id}/restock/`,
         payload,
         {
           withCredentials: true,
@@ -178,9 +178,9 @@ const ProductListPage = () => {
   const handleDelete = async (productId, stockId) => {
     if (!window.confirm(t('confirm_delete_product'))) return;
     try {
-      await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${productId}/`, { withCredentials: true });
+      await axiosInstance.delete(`inventory/products/${productId}/`);
       if (stockId) {
-        await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${stockId}/`, { withCredentials: true });
+        await axiosInstance.delete(`inventory/stocks/${stockId}/`);
       }
       loadData();
     } catch (err) {

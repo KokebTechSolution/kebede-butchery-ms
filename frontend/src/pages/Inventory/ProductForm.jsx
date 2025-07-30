@@ -1,25 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-
-// Helper to get CSRF token from cookies
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let c of cookies) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
 
 const initialFormData = {
   name: '',
@@ -63,8 +47,8 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes, productRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/productunits/', { withCredentials: true }),
-          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', { withCredentials: true }),
+          axiosInstance.get('inventory/productunits/'),
+          axiosInstance.get('inventory/products/'),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -98,404 +82,240 @@ const AddProductForm = () => {
   const isDuplicateName = (name) => {
     if (!name || !name.trim()) return false;
     const trimmedName = name.trim().toLowerCase();
-    return products.some((p) => p.name.trim().toLowerCase() === trimmedName);
+    return products.some(product => 
+      product.name.trim().toLowerCase() === trimmedName
+    );
   };
 
-  // Get duplicate product info for better error messages
   const getDuplicateProductInfo = (name) => {
     if (!name || !name.trim()) return null;
     const trimmedName = name.trim().toLowerCase();
-    return products.find((p) => p.name.trim().toLowerCase() === trimmedName);
+    return products.find(product => 
+      product.name.trim().toLowerCase() === trimmedName
+    );
   };
 
   const validateForm = () => {
-    let err = {};
-    if (!formData.item_type) err.item_type = t('item_type_required') || 'Item type is required';
-    if (!formData.name.trim()) err.name = t('product_name_required');
-    if (isNewProduct && isDuplicateName(formData.name)) {
-      const duplicateProduct = getDuplicateProductInfo(formData.name);
-      err.name = duplicateProduct 
-        ? `Product "${formData.name}" already exists (ID: ${duplicateProduct.id}). Please use a different name.`
-        : t('duplicate_product_name');
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Product name is required';
+    } else if (isDuplicateName(formData.name)) {
+      newErrors.name = 'Product name already exists';
     }
-    if (!formData.category) err.category = t('category_required');
-    if (!formData.base_unit_price) err.base_unit_price = t('price_required');
-    else if (isNaN(Number(formData.base_unit_price)) || Number(formData.base_unit_price) < 0)
-      err.base_unit_price = t('price_must_be_positive');
-    if (!formData.base_unit) err.base_unit = t('unit_required');
-    if (!formData.input_unit) err.input_unit = t('input_unit_required');
-    if (!formData.input_quantity) err.input_quantity = t('input_quantity_required');
-    if (!formData.conversion_amount) err.conversion_amount = t('conversion_amount_required');
-    if (!formData.minimum_threshold_base_units) err.minimum_threshold_base_units = t('minimum_threshold_required');
-    setErrors(err);
-    console.log('Validation errors:', err, 'Form data:', formData); // <-- Debug log
-    return Object.keys(err).length === 0;
+
+    if (!formData.category) {
+      newErrors.category = 'Category is required';
+    }
+
+    if (!formData.base_unit_price || parseFloat(formData.base_unit_price) <= 0) {
+      newErrors.base_unit_price = 'Valid base unit price is required';
+    }
+
+    if (!formData.base_unit) {
+      newErrors.base_unit = 'Base unit is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Helper to reload products after adding
   const reloadProducts = async () => {
     try {
-      const productRes = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', { withCredentials: true });
+      const productRes = await axiosInstance.get('inventory/products/');
       setProducts(productRes.data);
-      console.log('Products reloaded from /api/inventory/products/', productRes.data);
     } catch (error) {
       console.error('Error reloading products:', error);
     }
   };
 
   const handleSubmit = async (e) => {
-    console.log('Submit button clicked');
     e.preventDefault();
-    setErrors({});
-    setSubmitMessage('');
-    setSubmitError('');
-    const valid = validateForm();
-    console.log('Validation result:', valid, errors, formData);
-    if (!valid) return;
-    console.log('Validation passed, showing modal');
-    setShowConfirmModal(true);
-  };
+    if (!validateForm()) return;
 
-  // Check for duplicates within the batch
-  const checkBatchDuplicates = (productName) => {
-    return batchProducts.some((p) => p.name.trim().toLowerCase() === productName.trim().toLowerCase());
-  };
-
-  // Check for duplicates between batch and existing products
-  const checkExistingDuplicates = (productName) => {
-    return products.some((p) => p.name.trim().toLowerCase() === productName.trim().toLowerCase());
-  };
-
-  // Add product to batch
-  const handleAddToBatch = (e) => {
-    e.preventDefault();
-    setErrors({});
-    setSubmitMessage('');
-    setSubmitError('');
-    const valid = validateForm();
-    if (!valid) return;
-
-    // Check for duplicates within batch
-    if (checkBatchDuplicates(formData.name)) {
-      setSubmitError(`Product "${formData.name}" is already in the batch. Please use a different name.`);
-      return;
-    }
-
-    // Check for duplicates with existing products
-    if (checkExistingDuplicates(formData.name)) {
-      const duplicateProduct = getDuplicateProductInfo(formData.name);
-      setSubmitError(`Product "${formData.name}" already exists in inventory (ID: ${duplicateProduct?.id || 'unknown'}). Please use a different name.`);
-      return;
-    }
-
-    setBatchProducts((prev) => [
-      ...prev,
-      {
-        ...formData, // include all UI fields for display
-        base_unit_id: formData.base_unit,
-        category_id: formData.category,
-        stock: {
-          branch_id: branchId,
-          quantity_in_base_units: calculatedBaseUnits,
-          minimum_threshold_base_units: formData.minimum_threshold_base_units,
-        },
-        measurement: {
-          from_unit_id: formData.input_unit,
-          to_unit_id: formData.base_unit,
-          amount_per: formData.conversion_amount,
-          is_default_sales_unit: true,
-        },
-      },
-    ]);
-    setFormData(initialFormData);
-    setCalculatedBaseUnits('');
-    setIsNewProduct(true);
-    setSubmitMessage(`✅ "${formData.name}" added to batch successfully!`);
-    setTimeout(() => {
-      const batchSection = document.getElementById('batch-list-section');
-      if (batchSection) batchSection.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
-
-  // Remove product from batch
-  const handleRemoveFromBatch = (idx) => {
-    setBatchProducts((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // Clear all products from batch
-  const handleClearBatch = () => {
-    setBatchProducts([]);
-  };
-
-  // Confirmation dialog state
-  const [showBatchConfirm, setShowBatchConfirm] = useState(false);
-
-  // Submit all products in batch
-  const handleBatchSubmit = async () => {
-    setShowBatchConfirm(false);
     setIsSubmitting(true);
     setSubmitMessage('');
     setSubmitError('');
-    const csrfToken = getCookie('csrftoken');
-    try {
-      const productsPayload = batchProducts.map((p) => ({
-        name: p.name,
-        description: p.description,
-        base_unit_price: p.base_unit_price,
-        base_unit_id: p.base_unit_id || p.base_unit,
-        category_id: p.category_id || p.category,
-        stock: {
-          branch_id: branchId,
-          quantity_in_base_units: p.stock.quantity_in_base_units,
-          minimum_threshold_base_units: p.stock.minimum_threshold_base_units,
-          original_quantity: p.input_quantity,
-          original_unit_id: p.input_unit,
-        },
-        measurement: {
-          from_unit_id: p.measurement.from_unit_id,
-          to_unit_id: p.measurement.to_unit_id,
-          amount_per: p.measurement.amount_per,
-          is_default_sales_unit: p.measurement.is_default_sales_unit,
-        },
-      }));
-      
-      console.log('[FRONTEND DEBUG] Batch products payload:');
-      productsPayload.forEach((p, idx) => {
-        console.log(`  Product ${idx + 1}: ${p.name}`);
-        console.log(`    - original_quantity: ${p.stock.original_quantity}`);
-        console.log(`    - quantity_in_base_units: ${p.stock.quantity_in_base_units}`);
-        console.log(`    - conversion_amount: ${p.measurement.amount_per}`);
-      });
-      
-      console.log('Submitting batch products:', productsPayload);
-      const response = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/products/bulk_create/',
-        { products: productsPayload },
-        {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': csrfToken },
-        }
-      );
-      console.log('Batch submit response:', response.data);
-      
-      if (response.status === 207) {
-        // Partial success - some products created, some failed
-        const successCount = response.data.created?.length || 0;
-        const errorCount = response.data.errors?.length || 0;
-        setSubmitMessage(`${successCount} products created successfully. ${errorCount} failed.`);
-        if (response.data.errors) {
-          console.error('Errors:', response.data.errors);
-          const errorMessages = response.data.errors.map(err => 
-            `${err.product}: ${err.error}`
-          ).join('\n');
-          setSubmitError(`Some products failed to create:\n${errorMessages}`);
-        }
-      } else {
-        setSubmitMessage(`✅ All ${batchProducts.length} products created successfully!`);
-      }
-      
-      setBatchProducts([]);
-      setFormData(initialFormData);
-      setCalculatedBaseUnits('');
-      setIsNewProduct(true);
-      await reloadProducts();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setSubmitMessage(''), 5000);
-    } catch (err) {
-      console.error('Batch submit error:', err.response?.data || err.message);
-      let errorMessage = t('submit_error') + ': ';
-      
-      if (err.response?.data?.errors) {
-        // Handle backend validation errors
-        const errorMessages = err.response.data.errors.map(err => {
-          let message = `${err.product}: ${err.error}`;
-          
-          // Add helpful suggestions for conversion errors
-          if (err.error.includes('No conversion path found')) {
-            const match = err.error.match(/from '([^']+)' to '([^']+)'/);
-            if (match) {
-              const [, fromUnit, toUnit] = match;
-              message += `\n💡 Suggestion: Add conversion 1 ${fromUnit} = X ${toUnit}`;
-            }
-          }
-          
-          return message;
-        }).join('\n');
-        errorMessage += `\n${errorMessages}`;
-      } else if (err.response?.data?.detail) {
-        errorMessage += err.response.data.detail;
-      } else {
-        errorMessage += JSON.stringify(err.response?.data || err.message);
-      }
-      
-      setSubmitError(errorMessage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  // 1. Add live validation on input change
-  const handleInputChange = (e) => {
-    const { name, value, files } = e.target;
-    let newValue = files ? files[0] : value;
-    console.log('handleInputChange:', name, newValue); // Debug log
-    setFormData((prev) => ({ ...prev, [name]: newValue }));
-    // Validate this field only
-    let err = { ...errors };
-    switch (name) {
-      case 'item_type':
-        if (!value) err.item_type = t('item_type_required') || 'Item type is required';
-        else delete err.item_type;
-        break;
-      case 'name':
-        if (!value.trim()) err.name = t('product_name_required');
-        else if (isNewProduct && isDuplicateName(value)) {
-          const duplicateProduct = getDuplicateProductInfo(value);
-          err.name = duplicateProduct 
-            ? `Product "${value}" already exists (ID: ${duplicateProduct.id}). Please use a different name.`
-            : t('duplicate_product_name');
-        }
-        else delete err.name;
-        break;
-      case 'category':
-        if (!value) err.category = t('category_required');
-        else delete err.category;
-        break;
-      case 'base_unit_price':
-        if (!value) err.base_unit_price = t('price_required');
-        else if (isNaN(Number(value)) || Number(value) < 0) err.base_unit_price = t('price_must_be_positive');
-        else delete err.base_unit_price;
-        break;
-      case 'base_unit':
-        if (!value) err.base_unit = t('unit_required');
-        else delete err.base_unit;
-        break;
-      case 'input_unit':
-        if (!value) err.input_unit = t('input_unit_required');
-        else delete err.input_unit;
-        break;
-      case 'input_quantity':
-        if (!value) err.input_quantity = t('input_quantity_required');
-        else delete err.input_quantity;
-        break;
-      case 'conversion_amount':
-        if (!value) err.conversion_amount = t('conversion_amount_required');
-        else delete err.conversion_amount;
-        break;
-      case 'minimum_threshold_base_units':
-        if (!value) err.minimum_threshold_base_units = t('minimum_threshold_required');
-        else delete err.minimum_threshold_base_units;
-        break;
-      default:
-        break;
-    }
-    setErrors(err);
-  };
-
-  // Actual API submission logic, extracted from handleSubmit
-  const handleConfirmedSubmit = async () => {
-    setIsSubmitting(true);
-    const csrfToken = getCookie('csrftoken');
     try {
-      // Create Product
-      const productFormData = new FormData();
-      productFormData.append('name', formData.name);
-      productFormData.append('category_id', parseInt(formData.category)); // use 'category_id' and ensure integer
-      productFormData.append('base_unit_id', parseInt(formData.base_unit)); // use 'base_unit_id' and ensure integer
-      productFormData.append('base_unit_price', formData.base_unit_price);
-      productFormData.append('description', formData.description);
-      if (formData.receipt_image) {
-        productFormData.append('receipt_image', formData.receipt_image);
-      }
-      const productResponse = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/products/',
-        productFormData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      const productRes = await axiosInstance.get('inventory/products/');
+      setProducts(productRes.data);
+      console.log('Products loaded from /api/inventory/products/', productRes.data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+
+    // Check for duplicates in existing products
+    const checkBatchDuplicates = (productName) => {
+      return batchProducts.some(product => 
+        product.name.trim().toLowerCase() === productName.trim().toLowerCase()
       );
-      const createdProduct = productResponse.data;
-      console.log('Created product:', createdProduct);
-      if (!createdProduct.id) {
-        setSubmitError('Product creation failed: No product ID returned.');
-        setIsSubmitting(false);
-        setShowConfirmModal(false);
+    };
+
+    const checkExistingDuplicates = (productName) => {
+      return products.some(product => 
+        product.name.trim().toLowerCase() === productName.trim().toLowerCase()
+      );
+    };
+
+    const handleAddToBatch = (e) => {
+      e.preventDefault();
+      if (!validateForm()) return;
+
+      const productName = formData.name.trim();
+      
+      // Check for duplicates in batch
+      if (checkBatchDuplicates(productName)) {
+        setSubmitError('This product is already in the batch');
         return;
-    }
-      // Defensive check for required measurement fields
-      const measurementPayload = {
-        product_id: createdProduct.id,
-        from_unit_id: formData.input_unit,
-        to_unit_id: formData.base_unit,
-        amount_per: formData.conversion_amount,
-        is_default_sales_unit: true,
+      }
+
+      // Check for duplicates in existing products
+      if (checkExistingDuplicates(productName)) {
+        setSubmitError('This product already exists in the system');
+        return;
+      }
+
+      const newProduct = {
+        ...formData,
+        name: productName,
+        calculated_base_units: calculatedBaseUnits,
+        branch_id: branchId
       };
-      console.log('Created product:', createdProduct);
-      console.log('About to create ProductMeasurement with:', measurementPayload);
-      if (!measurementPayload.product_id || isNaN(Number(measurementPayload.product_id)) || Number(measurementPayload.product_id) <= 0) {
-        setSubmitError('Invalid or missing product_id for product measurement.');
-        setIsSubmitting(false);
-        setShowConfirmModal(false);
-        return;
-      }
-      if (!measurementPayload.from_unit_id || !measurementPayload.to_unit_id || !measurementPayload.amount_per) {
-        setSubmitError('Missing required fields for product measurement (check product_id, from_unit_id, to_unit_id, amount_per).');
-        setIsSubmitting(false);
-        setShowConfirmModal(false);
-        return;
-      }
-      // Create ProductMeasurement (conversion)
-      await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/productmeasurements/',
-        measurementPayload,
-        {
-          withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
-        }
-      );
-      // Create Stock
-      await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/stocks/',
-        {
-          product_id: createdProduct.id,
-          branch_id: branchId,
-          quantity_in_base_units: calculatedBaseUnits,
-          minimum_threshold_base_units: formData.minimum_threshold_base_units,
-        },
-        {
-          withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
-        }
-      );
-      alert(t('submit_success'));
-      setSubmitMessage(t('submit_success'));
-      setFormData(initialFormData);
+
+      setBatchProducts(prev => [...prev, newProduct]);
+      setFormData({
+        ...initialFormData,
+        category: formData.category,
+        base_unit: formData.base_unit,
+        input_unit: formData.input_unit,
+        conversion_amount: formData.conversion_amount,
+        minimum_threshold_base_units: formData.minimum_threshold_base_units,
+      });
       setCalculatedBaseUnits('');
-      setIsNewProduct(true);
-      await reloadProducts();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => {
-        setSubmitMessage('');
-        navigate('/branch-manager/inventory');
-      }, 2000);
-    } catch (err) {
-      console.error('Submit error', err.response?.data || err.message);
-      setSubmitError(t('submit_error') + ': ' + JSON.stringify(err.response?.data || err.message));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } finally {
-      setIsSubmitting(false);
-      setShowConfirmModal(false);
-    }
-  };
+      setSubmitMessage('Product added to batch');
+      setSubmitError('');
+    };
+
+    const handleRemoveFromBatch = (idx) => {
+      setBatchProducts(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const handleClearBatch = () => {
+      setBatchProducts([]);
+      setSubmitMessage('Batch cleared');
+    };
+
+    const handleBatchSubmit = async () => {
+      if (batchProducts.length === 0) {
+        setSubmitError('No products in batch to submit');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setSubmitMessage('');
+      setSubmitError('');
+
+      try {
+        const promises = batchProducts.map(product => 
+          axiosInstance.post('inventory/products/', {
+            name: product.name,
+            category: product.category,
+            base_unit_price: parseFloat(product.base_unit_price),
+            base_unit: product.base_unit,
+            input_unit: product.input_unit,
+            input_quantity: parseFloat(product.input_quantity),
+            conversion_amount: parseFloat(product.conversion_amount),
+            minimum_threshold_base_units: parseFloat(product.minimum_threshold_base_units),
+            description: product.description,
+            branch_id: branchId,
+            calculated_base_units: product.calculated_base_units
+          })
+        );
+
+        await Promise.all(promises);
+        
+        setSubmitMessage(`Successfully created ${batchProducts.length} products`);
+        setBatchProducts([]);
+        await reloadProducts();
+        
+        // Reset form
+        setFormData(initialFormData);
+        setCalculatedBaseUnits('');
+        
+      } catch (error) {
+        console.error('Error creating products:', error);
+        setSubmitError(error.response?.data?.message || 'Failed to create products');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleInputChange = (e) => {
+      const { name, value, type, files } = e.target;
+      
+      if (type === 'file') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: files[0]
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
+
+      // Clear error for this field
+      if (errors[name]) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: ''
+        }));
+      }
+    };
+
+    const handleConfirmedSubmit = async () => {
+      setIsSubmitting(true);
+      setSubmitMessage('');
+      setSubmitError('');
+
+      try {
+        const response = await axiosInstance.post(
+          'inventory/products/',
+          {
+            name: formData.name.trim(),
+            category: formData.category,
+            base_unit_price: parseFloat(formData.base_unit_price),
+            base_unit: formData.base_unit,
+            input_unit: formData.input_unit,
+            input_quantity: parseFloat(formData.input_quantity),
+            conversion_amount: parseFloat(formData.conversion_amount),
+            minimum_threshold_base_units: parseFloat(formData.minimum_threshold_base_units),
+            description: formData.description,
+            branch_id: branchId,
+            calculated_base_units: calculatedBaseUnits
+          }
+        );
+
+        setSubmitMessage('Product created successfully!');
+        setFormData(initialFormData);
+        setCalculatedBaseUnits('');
+        await reloadProducts();
+        
+        // Navigate to product list after successful creation
+        setTimeout(() => {
+          navigate('/inventory');
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error creating product:', error);
+        setSubmitError(error.response?.data?.message || 'Failed to create product');
+      } finally {
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+      }
+    };
 
   // After loading categories, itemTypes, and units, add debug logs
   useEffect(() => {
