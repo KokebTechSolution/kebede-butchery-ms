@@ -92,9 +92,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
    'corsheaders.middleware.CorsMiddleware' ,
    
-CORS_ALLOWED_ORIGINS = [
-    "https://kebede-pos-ms.vercel.app",
-]
+
 ]
 ROOT_URLCONF = 'kebede_pos.urls'
 
@@ -183,6 +181,7 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = [
     "https://kebede-butchery-ms.vercel.app",
 ]
+
 
 CORS_ALLOW_CREDENTIALS = True
 
