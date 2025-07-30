@@ -218,14 +218,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Additional CORS settings
-CORS_EXPOSE_HEADERS = [
-    'access-control-allow-credentials',
-    'access-control-allow-origin',
-    'access-control-allow-methods',
-    'access-control-allow-headers',
-]
-
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
     "https://kebede-butchery-ms.onrender.com",   # Django backend on Render
