@@ -103,7 +103,7 @@ ROOT_URLCONF = 'kebede_pos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -193,6 +193,7 @@ AUTH_USER_MODEL = 'users.User'
 # CORS Configuration - Fixed version
 CORS_ALLOWED_ORIGINS = [
     "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
@@ -232,6 +233,7 @@ CORS_ALLOW_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://kebede-butchery-ms.onrender.com",
     "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
