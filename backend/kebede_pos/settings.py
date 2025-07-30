@@ -229,17 +229,19 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",                     # Local development
 ]
 
+CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
+CSRF_COOKIE_SECURE = True          # Use HTTPS in production
+CSRF_COOKIE_HTTPONLY = False       # Allow JavaScript access
+CSRF_COOKIE_DOMAIN = None          # Allow all domains
+CSRF_USE_SESSIONS = True           # Use sessions for CSRF
+CSRF_COOKIE_AGE = 31449600         # 1 year
+
 # Session and Cookie Configuration for Cross-Origin Authentication
 SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
 SESSION_COOKIE_SECURE = True       # Use HTTPS in production
 SESSION_COOKIE_HTTPONLY = False    # Allow JavaScript access
 SESSION_COOKIE_DOMAIN = None       # Allow all domains
 SESSION_COOKIE_AGE = 86400         # 24 hours
-
-CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
-CSRF_COOKIE_SECURE = True          # Use HTTPS in production
-CSRF_COOKIE_HTTPONLY = False       # Allow JavaScript access
-CSRF_COOKIE_DOMAIN = None          # Allow all domains
 
 # For development, you might need to set these to False
 if DEBUG:

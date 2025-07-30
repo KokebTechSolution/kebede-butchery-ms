@@ -103,6 +103,17 @@ class SessionLoginView(APIView):
                 httponly=False
             )
             
+            # Set CSRF cookie if not already set
+            if 'csrftoken' not in request.COOKIES:
+                response.set_cookie(
+                    'csrftoken',
+                    request.META.get('CSRF_COOKIE', ''),
+                    max_age=31449600,  # 1 year
+                    secure=True,
+                    samesite='None',
+                    httponly=False
+                )
+            
             print(f"[DEBUG] Response cookies: {dict(response.cookies)}")
             return response
         
@@ -110,7 +121,17 @@ class SessionLoginView(APIView):
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 @ensure_csrf_cookie
 def get_csrf(request):
-    return JsonResponse({"message": "CSRF cookie set"})
+    response = JsonResponse({"message": "CSRF cookie set"})
+    # Ensure CSRF cookie is set with proper attributes for cross-origin
+    response.set_cookie(
+        'csrftoken',
+        request.META.get('CSRF_COOKIE', ''),
+        max_age=31449600,  # 1 year
+        secure=True,
+        samesite='None',
+        httponly=False
+    )
+    return response
 
 class DebugAuthView(APIView):
     permission_classes = [AllowAny]
@@ -282,3 +303,27 @@ class WaiterUnsettledTablesView(APIView):
             })
         return Response(result)
 # ✅ Custom User Login Serializer
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TestLoginView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        
+        print(f"[DEBUG] Test login attempt for user: {username}")
+        
+        user = authenticate(request, username=username, password=password)
+
+        if user:
+            login(request, user)
+            print(f"[DEBUG] Test login successful for: {user.username}")
+            return Response({
+                "message": "Login successful",
+                "user": UserLoginSerializer(user).data,
+                "session_key": request.session.session_key
+            })
+        
+        print(f"[DEBUG] Test login failed for user: {username}")
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
