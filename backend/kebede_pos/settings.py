@@ -219,15 +219,19 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'access-control-allow-credentials',
+    'access-control-allow-origin',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
 ]
 
-# REMOVE THIS SECTION - It's causing the CORS preflight failures
-# CORS_EXPOSE_HEADERS = [
-#     'access-control-allow-credentials',
-#     'access-control-allow-origin',
-#     'access-control-allow-methods',
-#     'access-control-allow-headers',
-# ]
+# CORS Expose Headers - Allow these headers to be exposed to the client
+CORS_EXPOSE_HEADERS = [
+    'access-control-allow-credentials',
+    'access-control-allow-origin',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
+]
 
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
