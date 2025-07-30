@@ -5,7 +5,7 @@ export const useOrders = (filterDate) => {
 
   const fetchOrders = async (date) => {
     try {
-      let url = 'http://localhost:8000/api/orders/food/';
+      let url = 'https://kebede-butchery-ms.onrender.com/api/orders/food/';
       if (date) url += `?date=${date}`;
       const response = await axios.get(url, { withCredentials: true });
       setOrders(response.data);
@@ -25,7 +25,7 @@ export const useOrders = (filterDate) => {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
       await axios.patch(
-        `http://localhost:8000/api/orders/${orderId}/`,
+        `https://kebede-butchery-ms.onrender.com/api/orders/${orderId}/`,
         payload,
         { withCredentials: true }
       );
@@ -69,7 +69,7 @@ export const useOrders = (filterDate) => {
   const updateOrderItemStatus = async (itemId, status) => {
     try {
       const response = await axios.patch(
-        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
+        `https://kebede-butchery-ms.onrender.com/api/orders/order-item/${itemId}/update-status/`,
         { status },
         { withCredentials: true }
       );
@@ -92,7 +92,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axios.patch(`http://localhost:8000/api/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axios.patch(`https://kebede-butchery-ms.onrender.com/api/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {

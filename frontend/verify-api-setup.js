@@ -62,7 +62,7 @@ if (fs.existsSync(packagePath)) {
 }
 
 console.log('\n🎯 Configuration Summary:');
-console.log('- Development: http://localhost:8000');
+console.log('- Development: https://kebede-butchery-ms.onrender.com');
 console.log('- Production: https://kebede-butchery-ms.onrender.com');
 console.log('- Environment detection: process.env.NODE_ENV');
 console.log('\n🚀 Ready for deployment!'); 

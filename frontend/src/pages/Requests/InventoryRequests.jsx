@@ -51,7 +51,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
+      const res = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', {
         withCredentials: true,
       });
       setProducts(res.data);
@@ -62,7 +62,7 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
+      const res = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/branches/', {
         withCredentials: true,
       });
       setBranches(res.data);
@@ -101,7 +101,7 @@ const InventoryRequestList = () => {
   const handleEdit = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/edit/`, {}, { withCredentials: true });
+      await axios.post(`https://kebede-butchery-ms.onrender.com/api/inventory/requests/${id}/edit/`, {}, { withCredentials: true });
       await loadRequests();
       setFormMessage('Request edited!');
     } catch (err) {
@@ -114,7 +114,7 @@ const InventoryRequestList = () => {
   const handleCancel = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/cancel/`, {}, { withCredentials: true });
+      await axios.post(`https://kebede-butchery-ms.onrender.com/api/inventory/requests/${id}/cancel/`, {}, { withCredentials: true });
       await loadRequests();
       setFormMessage('Request cancelled!');
     } catch (err) {
@@ -127,7 +127,7 @@ const InventoryRequestList = () => {
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, { withCredentials: true });
+      await axios.post(`https://kebede-butchery-ms.onrender.com/api/inventory/requests/${id}/reach/`, {}, { withCredentials: true });
       await loadRequests();
       setFormMessage('Request reached!');
     } catch (err) {
@@ -140,7 +140,7 @@ const InventoryRequestList = () => {
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, { withCredentials: true });
+      await axios.post(`https://kebede-butchery-ms.onrender.com/api/inventory/requests/${id}/not_reach/`, {}, { withCredentials: true });
       await loadRequests();
       setFormMessage('Request not reached!');
     } catch (err) {
@@ -168,7 +168,7 @@ const InventoryRequestList = () => {
 
     try {
       await axios.post(
-        'http://localhost:8000/api/inventory/requests/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/requests/',
         {
           product_id: parseInt(formData.product),
           quantity: parseFloat(formData.quantity),

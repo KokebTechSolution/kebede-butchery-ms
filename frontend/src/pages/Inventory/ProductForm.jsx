@@ -63,8 +63,8 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes, productRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true }),
+          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/productunits/', { withCredentials: true }),
+          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -135,7 +135,7 @@ const AddProductForm = () => {
   // Helper to reload products after adding
   const reloadProducts = async () => {
     try {
-      const productRes = await axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true });
+      const productRes = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', { withCredentials: true });
       setProducts(productRes.data);
       console.log('Products reloaded from /api/inventory/products/', productRes.data);
     } catch (error) {
@@ -269,7 +269,7 @@ const AddProductForm = () => {
       
       console.log('Submitting batch products:', productsPayload);
       const response = await axios.post(
-        'http://localhost:8000/api/inventory/products/bulk_create/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/products/bulk_create/',
         { products: productsPayload },
         {
           withCredentials: true,
@@ -409,7 +409,7 @@ const AddProductForm = () => {
         productFormData.append('receipt_image', formData.receipt_image);
       }
       const productResponse = await axios.post(
-        'http://localhost:8000/api/inventory/products/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/products/',
         productFormData,
         {
           withCredentials: true,
@@ -451,7 +451,7 @@ const AddProductForm = () => {
       }
       // Create ProductMeasurement (conversion)
       await axios.post(
-        'http://localhost:8000/api/inventory/productmeasurements/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/productmeasurements/',
         measurementPayload,
         {
           withCredentials: true,
@@ -462,7 +462,7 @@ const AddProductForm = () => {
       );
       // Create Stock
       await axios.post(
-        'http://localhost:8000/api/inventory/stocks/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/stocks/',
         {
           product_id: createdProduct.id,
           branch_id: branchId,

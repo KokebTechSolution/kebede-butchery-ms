@@ -17,7 +17,7 @@ const LoginPage = () => {
     // Optionally, if setUser is available:
     // setUser && setUser(null);
     // Fetch CSRF cookie
-    fetch('http://localhost:8000/api/users/csrf/', {
+    fetch('https://kebede-butchery-ms.onrender.com/api/users/csrf/', {
       credentials: 'include',
     });
   }, []);
@@ -39,7 +39,7 @@ const LoginPage = () => {
     const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/login/', {
+      const res = await fetch('https://kebede-butchery-ms.onrender.com/api/users/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

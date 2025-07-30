@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api/users/users/';
+const API_BASE_URL = 'https://kebede-butchery-ms.onrender.com/api/users/users/';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken() {

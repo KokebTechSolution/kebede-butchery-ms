@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api/products/products/';
+const API_BASE_URL = 'https://kebede-butchery-ms.onrender.com/api/products/products/';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken() {
@@ -73,7 +73,7 @@ export const deleteProduct = async (id) => {
 
 export const fetchItemTypes = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/products/item-types/', axiosConfig());
+    const response = await axios.get('https://kebede-butchery-ms.onrender.com/api/products/item-types/', axiosConfig());
     return response.data;
   } catch (error) {
     console.error('Error fetching item types:', error);

@@ -158,7 +158,7 @@ const ProductListPage = () => {
       console.log('Restock payload:', payload);
       
       const response = await axios.post(
-        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        `https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${restockingStock.id}/restock/`,
         payload,
         {
           withCredentials: true,
@@ -178,9 +178,9 @@ const ProductListPage = () => {
   const handleDelete = async (productId, stockId) => {
     if (!window.confirm(t('confirm_delete_product'))) return;
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
+      await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${productId}/`, { withCredentials: true });
       if (stockId) {
-        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
+        await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/stocks/${stockId}/`, { withCredentials: true });
       }
       loadData();
     } catch (err) {

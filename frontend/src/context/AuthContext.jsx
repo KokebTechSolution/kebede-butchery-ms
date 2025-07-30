@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/me/', {
+      const res = await fetch('https://kebede-butchery-ms.onrender.com/api/users/me/', {
         credentials: 'include', // important to send cookies
       });
       if (!res.ok) throw new Error('Not authenticated');
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/api/users/logout/', {
+      await fetch('https://kebede-butchery-ms.onrender.com/api/users/logout/', {
         method: 'POST',
         credentials: 'include',
       });

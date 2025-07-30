@@ -41,7 +41,7 @@ export default function BartenderDashboard() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await axios.get("http://localhost:8000/api/inventory/requests/", {
+        const res = await axios.get("https://kebede-butchery-ms.onrender.com/api/inventory/requests/", {
           withCredentials: true,  // send session cookies
         });
         setInventoryRequests(

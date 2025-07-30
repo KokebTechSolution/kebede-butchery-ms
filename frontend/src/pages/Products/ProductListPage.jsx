@@ -43,7 +43,7 @@ function ProductListPage() {
     // Use the correct inventory API endpoint
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/inventory/products/', {
+        const response = await axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/products/', {
           withCredentials: true,
         });
         console.log('[DEBUG] Products API response:', response.data);
@@ -93,7 +93,7 @@ function ProductListPage() {
   const handleEditSubmit = async () => {
     try {
       const response = await axios.patch(
-        `http://localhost:8000/api/inventory/products/${editProduct.id}/`,
+        `https://kebede-butchery-ms.onrender.com/api/inventory/products/${editProduct.id}/`,
         formData,
         {
           withCredentials: true,
@@ -118,7 +118,7 @@ function ProductListPage() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${deleteProductId}/`, {
+      await axios.delete(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${deleteProductId}/`, {
         withCredentials: true,
         headers: {
           'X-CSRFToken': getCookie('csrftoken'),
@@ -204,7 +204,7 @@ function ProductListPage() {
                       <button
                         onClick={async () => {
                           try {
-                            const response = await axios.get(`http://localhost:8000/api/inventory/products/${product.id}/debug_values/`, {
+                            const response = await axios.get(`https://kebede-butchery-ms.onrender.com/api/inventory/products/${product.id}/debug_values/`, {
                               withCredentials: true,
                             });
                             console.log(`[DEBUG] Product ${product.name} debug values:`, response.data);

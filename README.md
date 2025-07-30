@@ -206,8 +206,8 @@ npm start
 
 ### Access the Application
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **Admin Panel**: http://localhost:8000/admin
+- **Backend API**: https://kebede-butchery-ms.onrender.com
+- **Admin Panel**: https://kebede-butchery-ms.onrender.com/admin
 
 ## 📚 API Documentation
 
