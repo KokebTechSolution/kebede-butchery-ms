@@ -4,20 +4,19 @@ import { API_BASE_URL } from './config';
 // Helper to read CSRF token from cookie
 function getCookie(name) {
   const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return match ? match.pop() : '';
+  const value = match ? match.pop() : '';
+  console.log(`[DEBUG] getCookie('${name}'): ${value ? value.substring(0, 10) + '...' : 'not found'}`);
+  return value;
 }
 
-// Helper to fetch CSRF token from server
-async function fetchCSRFToken() {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/users/csrf/`, {
-      withCredentials: true
-    });
-    return getCookie('csrftoken');
-  } catch (error) {
-    console.error('Failed to fetch CSRF token:', error);
-    return null;
-  }
+// Test function to verify CSRF token
+export function testCSRFToken() {
+  const token = getCookie('csrftoken');
+  console.log('[DEBUG] CSRF Token Test:');
+  console.log('[DEBUG] - Token found:', !!token);
+  console.log('[DEBUG] - Token value:', token ? token.substring(0, 10) + '...' : 'none');
+  console.log('[DEBUG] - All cookies:', document.cookie);
+  return token;
 }
 
 const axiosInstance = axios.create({
@@ -30,20 +29,14 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to update CSRF token on each request
 axiosInstance.interceptors.request.use(
-  async (config) => {
+  (config) => {
     // Get CSRF token from cookie
-    let csrfToken = getCookie('csrftoken');
-    
-    // If no CSRF token and this is a POST/PUT/PATCH/DELETE request, fetch it
-    if (!csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
-      console.log('[DEBUG] No CSRF token found, fetching...');
-      csrfToken = await fetchCSRFToken();
-    }
+    const csrfToken = getCookie('csrftoken');
     
     // Set CSRF token if available
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
-      console.log('[DEBUG] CSRF token set:', csrfToken.substring(0, 10) + '...');
+      console.log('[DEBUG] CSRF token set in header:', csrfToken.substring(0, 10) + '...');
     } else {
       console.warn('[DEBUG] No CSRF token available for request');
     }
@@ -57,7 +50,8 @@ axiosInstance.interceptors.request.use(
       method: config.method,
       headers: config.headers,
       withCredentials: config.withCredentials,
-      hasCSRF: !!csrfToken
+      hasCSRF: !!csrfToken,
+      csrfToken: csrfToken ? csrfToken.substring(0, 10) + '...' : 'none'
     });
     
     return config;
@@ -88,9 +82,12 @@ axiosInstance.interceptors.response.use(
     
     // Handle CSRF errors
     if (error.response?.status === 403 && error.response?.data?.detail?.includes('CSRF')) {
-      console.log('[DEBUG] CSRF error detected, fetching new token...');
-      // Fetch new CSRF token and retry
-      fetchCSRFToken().then(() => {
+      console.log('[DEBUG] CSRF error detected');
+      // Try to fetch new CSRF token
+      fetch(`${API_BASE_URL}/api/users/csrf/`, {
+        method: 'GET',
+        credentials: 'include'
+      }).then(() => {
         console.log('[DEBUG] New CSRF token fetched, you may need to retry the request');
       });
     }
