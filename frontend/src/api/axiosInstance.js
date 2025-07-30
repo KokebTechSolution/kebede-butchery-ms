@@ -21,6 +21,12 @@ axiosInstance.interceptors.request.use(
   (config) => {
     // Update CSRF token for each request
     config.headers['X-CSRFToken'] = getCookie('csrftoken');
+    
+    // Add CORS headers for production
+    if (process.env.NODE_ENV === 'production') {
+      config.headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+    
     return config;
   },
   (error) => {
@@ -40,6 +46,12 @@ axiosInstance.interceptors.response.use(
       console.log('Authentication error, redirecting to login...');
       window.location.href = '/login';
     }
+    
+    // Handle CORS errors
+    if (error.message === 'Network Error') {
+      console.error('CORS Error: Check if the backend is running and CORS is configured properly');
+    }
+    
     return Promise.reject(error);
   }
 );

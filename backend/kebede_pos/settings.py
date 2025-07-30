@@ -26,7 +26,14 @@ SECRET_KEY = 'django-insecure-m18^jf)3nv*sx4l945otnd+0x*8#6myq(_ah78t!2+yw22j8&1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'kebede-butchery-ms.onrender.com',
+    'kebede-butchery-ms.vercel.app',
+    '.onrender.com',
+    '.vercel.app',
+]
 
 
 # Application definition
@@ -256,13 +263,45 @@ STATICFILES_DIRS = [
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 """
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://kebede-butchery-ms.onrender.com",   # Django backend on Render
-    "https://kebede-butchery-ms.vercel.app"      # React frontend on Vercel
+# CORS Configuration
+CORS_ALLOW_ALL_ORIGINS = True  # For development - you can restrict this later
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    "https://kebede-butchery-ms.onrender.com",   # Django backend on Render
+    "https://kebede-butchery-ms.vercel.app",     # React frontend on Vercel
+    "http://localhost:3000",                      # Local development
+    "http://127.0.0.1:3000",                     # Local development
+]
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# Session and Cookie Configuration
+SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
+SESSION_COOKIE_SECURE = True       # Use HTTPS in production
+CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
+CSRF_COOKIE_SECURE = True          # Use HTTPS in production
+CSRF_COOKIE_HTTPONLY = False       # Allow JavaScript access
 
-ALLOWED_HOSTS = ['kebede-butchery-ms.onrender.com']  # replace later
+# For development, you might need to set these to False
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
