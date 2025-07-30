@@ -190,14 +190,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
 #CORS_ALLOW_ALL_ORIGINS = True
-# CORS Configuration
+# CORS Configuration - Fixed version
 CORS_ALLOWED_ORIGINS = [
-    "https://kebede-butchery-ms.vercel.app",     # React frontend on Vercel
-    "http://localhost:3000",                      # Local development
-    "http://127.0.0.1:3000",                     # Local development
+    "https://kebede-butchery-ms.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -206,6 +207,7 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -218,29 +220,37 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# REMOVE THIS SECTION - It's causing the CORS preflight failures
+# CORS_EXPOSE_HEADERS = [
+#     'access-control-allow-credentials',
+#     'access-control-allow-origin',
+#     'access-control-allow-methods',
+#     'access-control-allow-headers',
+# ]
+
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
-    "https://kebede-butchery-ms.onrender.com",   # Django backend on Render
-    "https://kebede-butchery-ms.vercel.app",     # React frontend on Vercel
-    "http://localhost:3000",                      # Local development
-    "http://127.0.0.1:3000",                     # Local development
+    "https://kebede-butchery-ms.onrender.com",
+    "https://kebede-butchery-ms.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
-CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
-CSRF_COOKIE_SECURE = True          # Use HTTPS in production
-CSRF_COOKIE_HTTPONLY = False       # Allow JavaScript access
-CSRF_COOKIE_DOMAIN = None          # Allow all domains
-CSRF_USE_SESSIONS = True           # Use sessions for CSRF
-CSRF_COOKIE_AGE = 31449600         # 1 year
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_DOMAIN = None
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_AGE = 31449600
 
-# Session and Cookie Configuration for Cross-Origin Authentication
-SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
-SESSION_COOKIE_SECURE = True       # Use HTTPS in production
-SESSION_COOKIE_HTTPONLY = False    # Allow JavaScript access
-SESSION_COOKIE_DOMAIN = None       # Allow all domains
-SESSION_COOKIE_AGE = 86400         # 24 hours
+# Session Configuration
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = False
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_AGE = 86400
 
-# For development, you might need to set these to False
+# For development, set secure cookies to False
 if DEBUG:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
