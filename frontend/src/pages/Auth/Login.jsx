@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../api/config';
 
 const LoginPage = () => {
   const { login, user, logout } = useAuth();
@@ -17,7 +18,7 @@ const LoginPage = () => {
     // Optionally, if setUser is available:
     // setUser && setUser(null);
     // Fetch CSRF cookie
-    fetch('https://kebede-butchery-ms.onrender.com/api/users/csrf/', {
+    fetch(`${API_BASE_URL}/api/users/csrf/`, {
       credentials: 'include',
     });
   }, []);
@@ -39,7 +40,7 @@ const LoginPage = () => {
     const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch('https://kebede-butchery-ms.onrender.com/api/users/login/', {
+      const res = await fetch(`${API_BASE_URL}/api/users/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +99,7 @@ const LoginPage = () => {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
         >
           Login
         </button>

@@ -297,9 +297,13 @@ CSRF_TRUSTED_ORIGINS = [
 # Session and Cookie Configuration
 SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
 SESSION_COOKIE_SECURE = True       # Use HTTPS in production
+SESSION_COOKIE_HTTPONLY = False    # Allow JavaScript access
+SESSION_COOKIE_DOMAIN = None       # Allow all domains
+
 CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-site CSRF
 CSRF_COOKIE_SECURE = True          # Use HTTPS in production
 CSRF_COOKIE_HTTPONLY = False       # Allow JavaScript access
+CSRF_COOKIE_DOMAIN = None          # Allow all domains
 
 # For development, you might need to set these to False
 if DEBUG:

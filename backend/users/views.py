@@ -84,6 +84,18 @@ class SessionLoginView(APIView):
 def get_csrf(request):
     return JsonResponse({"message": "CSRF cookie set"})
 
+class DebugAuthView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "session_key": request.session.session_key,
+            "user": str(request.user),
+            "is_authenticated": request.user.is_authenticated,
+            "cookies": dict(request.COOKIES),
+            "headers": dict(request.headers),
+        })
+
 
 class UserViewSet(ModelViewSet):
     serializer_class = UserListSerializer  # Changed from UserSerializer to UserListSerializer
@@ -181,6 +193,12 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
+        print("CurrentUserView: cookies=", request.COOKIES)
+        print("CurrentUserView: headers=", dict(request.headers))
+        
+        if not request.user.is_authenticated:
+            return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         serializer = UserLoginSerializer(request.user)
         return Response(serializer.data)
 

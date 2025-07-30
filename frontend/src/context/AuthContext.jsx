@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../api/config';
 
 // Create the context
 const AuthContext = createContext();
@@ -21,14 +22,18 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
-      const res = await fetch('https://kebede-butchery-ms.onrender.com/api/users/me/', {
+      const res = await fetch(`${API_BASE_URL}/api/users/me/`, {
         credentials: 'include', // important to send cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       if (!res.ok) throw new Error('Not authenticated');
       const data = await res.json();
       setUser({ ...data, isAuthenticated: true });
       localStorage.setItem('user', JSON.stringify({ ...data, isAuthenticated: true }));
-    } catch {
+    } catch (error) {
+      console.error('Authentication error:', error);
       setUser(null);
       localStorage.removeItem('user');
     }
@@ -50,9 +55,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('https://kebede-butchery-ms.onrender.com/api/users/logout/', {
+      await fetch(`${API_BASE_URL}/api/users/logout/`, {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
     } catch (err) {
       console.error('Logout failed:', err);

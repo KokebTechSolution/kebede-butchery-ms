@@ -1,12 +1,11 @@
-import axios from 'axios';
-import { API_BASE_URL } from './config';
+import axiosInstance from './axiosInstance';
 
 export const getOrders = async (date) => {
     try {
         const url = date 
-            ? `${API_BASE_URL}/api/orders/order-list/?date=${date}`
-            : `${API_BASE_URL}/api/orders/order-list/`;
-        const response = await axios.get(url);
+            ? `orders/order-list/?date=${date}`
+            : 'orders/order-list/';
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
         console.error('Error fetching orders:', error);
@@ -16,7 +15,7 @@ export const getOrders = async (date) => {
 
 export const createOrder = async (orderData) => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/api/orders/`, orderData);
+        const response = await axiosInstance.post('orders/', orderData);
         return response.data;
     } catch (error) {
         console.error('Error creating order:', error);
@@ -26,7 +25,7 @@ export const createOrder = async (orderData) => {
 
 export const updateOrder = async (orderId, orderData) => {
     try {
-        const response = await axios.patch(`${API_BASE_URL}/api/orders/${orderId}/`, orderData);
+        const response = await axiosInstance.patch(`orders/${orderId}/`, orderData);
         return response.data;
     } catch (error) {
         console.error('Error updating order:', error);
@@ -36,7 +35,7 @@ export const updateOrder = async (orderId, orderData) => {
 
 export const getOrderById = async (orderId) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/orders/${orderId}/`);
+        const response = await axiosInstance.get(`orders/${orderId}/`);
         return response.data;
     } catch (error) {
         console.error('Error fetching order:', error);
@@ -46,7 +45,7 @@ export const getOrderById = async (orderId) => {
 
 export const getTables = async () => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/branches/tables/`);
+        const response = await axiosInstance.get('branches/tables/');
         return response.data;
     } catch (error) {
         console.error('Error fetching tables:', error);
@@ -57,9 +56,9 @@ export const getTables = async () => {
 export const fetchWaiterStats = async (waiterId, date) => {
     try {
         const url = date 
-            ? `${API_BASE_URL}/api/orders/waiter-stats/${waiterId}/?date=${date}`
-            : `${API_BASE_URL}/api/orders/waiter-stats/${waiterId}/`;
-        const response = await axios.get(url);
+            ? `orders/waiter-stats/${waiterId}/?date=${date}`
+            : `orders/waiter-stats/${waiterId}/`;
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
         console.error('Error fetching waiter stats:', error);
@@ -69,7 +68,7 @@ export const fetchWaiterStats = async (waiterId, date) => {
 
 export const updateWaiterProfile = async (waiterId, profileData) => {
     try {
-        const response = await axios.patch(`${API_BASE_URL}/api/users/${waiterId}/`, profileData);
+        const response = await axiosInstance.patch(`users/${waiterId}/`, profileData);
         return response.data;
     } catch (error) {
         console.error('Error updating waiter profile:', error);
@@ -80,9 +79,9 @@ export const updateWaiterProfile = async (waiterId, profileData) => {
 export const fetchWaiterPrintedOrders = async (waiterId, limit = 10) => {
     try {
         const url = limit 
-            ? `${API_BASE_URL}/api/orders/waiter-orders/${waiterId}/?limit=${limit}`
-            : `${API_BASE_URL}/api/orders/waiter-orders/${waiterId}/`;
-        const response = await axios.get(url);
+            ? `orders/waiter-orders/${waiterId}/?limit=${limit}`
+            : `orders/waiter-orders/${waiterId}/`;
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
         console.error('Error fetching waiter printed orders:', error);
