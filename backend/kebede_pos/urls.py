@@ -7,11 +7,17 @@ from django.conf.urls.static import static
 from pathlib import Path
 import os
 from django.http import JsonResponse
+from django.shortcuts import render
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 def api_info(request):
     """Return API information for the root endpoint"""
+    # Check if the request wants HTML
+    if 'text/html' in request.headers.get('Accept', ''):
+        return render(request, 'index.html')
+    
+    # Otherwise return JSON
     return JsonResponse({
         'message': 'Kebede Butchery Management System API',
         'version': '1.0.0',
