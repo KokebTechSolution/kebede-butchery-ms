@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
+from core.decorators import csrf_exempt_for_cors_class
 from .models import (
     ItemType, Category, Product, InventoryTransaction, 
     InventoryRequest, Stock, Branch, BarmanStock, ProductUnit, ProductMeasurement
@@ -27,6 +28,7 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # Item Type
+@csrf_exempt_for_cors_class
 class ItemTypeViewSet(viewsets.ModelViewSet):
     queryset = ItemType.objects.all()
     serializer_class = ItemTypeSerializer
@@ -34,6 +36,7 @@ class ItemTypeViewSet(viewsets.ModelViewSet):
 
 
 # Category
+@csrf_exempt_for_cors_class
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
