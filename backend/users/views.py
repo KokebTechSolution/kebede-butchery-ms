@@ -86,21 +86,42 @@ def get_csrf(request):
 
 
 class UserViewSet(ModelViewSet):
-    queryset = User.objects.all()
+    serializer_class = UserListSerializer  # Changed from UserSerializer to UserListSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Filter users by branch for branch managers
+        """
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            if user.role == 'manager':
+                # Branch managers can see all users in their branch
+                queryset = User.objects.filter(branch=user.branch)
+                print(f"[DEBUG] Filtering users for branch manager: {user.branch.name}")
+            elif user.role == 'owner':
+                # Owners can see all users
+                queryset = User.objects.all()
+                print(f"[DEBUG] Owner - showing all users")
+            else:
+                # Other roles see only themselves
+                queryset = User.objects.filter(id=user.id)
+                print(f"[DEBUG] User {user.role} - showing only self")
+        elif user.is_superuser:
+            # Superuser can see all users
+            queryset = User.objects.all()
+            print(f"[DEBUG] Superuser - showing all users")
+        else:
+            # For users without branch, show only themselves
+            queryset = User.objects.filter(id=user.id)
+            print(f"[DEBUG] User without branch - showing only self")
+        
+        return queryset
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return UserCreateUpdateSerializer
         return UserListSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == 'owner':
-            return User.objects.all()
-        elif user.role == 'manager':
-            return User.objects.filter(branch_id=user.branch_id)
-        return User.objects.none()
 
     def get_object(self):
         lookup_value = self.kwargs.get(self.lookup_url_kwarg or self.lookup_field)

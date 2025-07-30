@@ -40,9 +40,10 @@ class MenuItemSerializer(serializers.ModelSerializer):
             return None
 
         return {
-            'cartons': stock.carton_quantity,
-            'bottles': stock.quantity_in_base_units,
-            'units': stock.unit_quantity,
+            'quantity_in_base_units': stock.quantity_in_base_units,
+            'original_quantity': stock.original_quantity,
+            'original_unit': stock.original_unit.unit_name if stock.original_unit else None,
+            'running_out': stock.running_out,
         }
 
     def get_is_running_out(self, obj):

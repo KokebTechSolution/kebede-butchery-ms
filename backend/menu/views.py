@@ -3,6 +3,7 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db import models
 from .models import Menu, MenuItem, MenuSection, MenuCategory
 from .serializers import (
     MenuSerializer,
@@ -63,6 +64,41 @@ class MenuViewSet(viewsets.ModelViewSet):
 class MenuItemViewSet(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+
+    def get_queryset(self):
+        """
+        Filter menu items by branch for branch managers
+        """
+        queryset = super().get_queryset()
+        
+        # Get the user's branch
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            # Filter menu items that have products with stock in the user's branch
+            # or items without products (food items)
+            queryset = queryset.filter(
+                models.Q(product__store_stocks__branch=user.branch) | 
+                models.Q(product__isnull=True)
+            ).distinct()
+            print(f"[DEBUG] Filtering menu items for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all menu items
+            print(f"[DEBUG] Superuser - showing all menu items")
+        else:
+            # For users without branch, show all menu items
+            print(f"[DEBUG] User without branch - showing all menu items")
+        
+        return queryset
+
+    def get_serializer_context(self):
+        """
+        Add branch_id to serializer context for stock filtering
+        """
+        context = super().get_serializer_context()
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            context['branch_id'] = user.branch.id
+        return context
 
     def perform_create(self, serializer):
         # ✅ Ensures the product_id is saved properly

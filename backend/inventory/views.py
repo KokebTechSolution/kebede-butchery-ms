@@ -45,6 +45,28 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
     serializer_class = InventoryRequestSerializer
     permission_classes = [AllowAny]
 
+    def get_queryset(self):
+        """
+        Filter requests by branch for branch managers and bartenders
+        """
+        queryset = super().get_queryset()
+        
+        # Get the user's branch
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            # Filter by the user's branch
+            queryset = queryset.filter(branch=user.branch)
+            print(f"[DEBUG] Filtering inventory requests for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all requests
+            print(f"[DEBUG] Superuser - showing all inventory requests")
+        else:
+            # For users without branch, show only their own requests
+            queryset = queryset.filter(requested_by=user)
+            print(f"[DEBUG] User without branch - showing only own requests")
+        
+        return queryset
+
     def perform_create(self, serializer):
         # Set requested_by to the current user if not already set
         if not serializer.validated_data.get('requested_by'):
@@ -86,8 +108,14 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         if req.status != 'accepted':
             return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if already fulfilled to prevent duplicate processing
-        if req.status == 'fulfilled' and req.reached_status:
+        # Check if a transaction already exists for this specific request
+        from inventory.models import InventoryTransaction
+        existing_transaction = InventoryTransaction.objects.filter(
+            transaction_type='store_to_barman',
+            notes__contains=f"Fulfilled request #{req.pk}"
+        ).first()
+        
+        if existing_transaction:
             return Response({'detail': 'Request is already fulfilled.'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Only update if not already fulfilled
@@ -102,6 +130,27 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.prefetch_related('store_stocks', 'store_stocks__original_unit', 'store_stocks__branch').all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """
+        Filter products by branch for branch managers
+        """
+        queryset = super().get_queryset()
+        
+        # Get the user's branch
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            # Filter products that have stock in the user's branch
+            queryset = queryset.filter(store_stocks__branch=user.branch).distinct()
+            print(f"[DEBUG] Filtering products for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all products
+            print(f"[DEBUG] Superuser - showing all products")
+        else:
+            # For users without branch, show all products
+            print(f"[DEBUG] User without branch - showing all products")
+        
+        return queryset
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -227,7 +276,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 print(f"Stock created successfully: {stock.id}")
                 
                 # Create inventory transaction for initial stock
-                InventoryTransaction.objects.create(
+                # Set quantity_in_base_units directly to avoid double calculation
+                transaction = InventoryTransaction(
                     product=product,
                     transaction_type='restock',
                     quantity=Decimal(str(original_quantity)),
@@ -237,7 +287,11 @@ class ProductViewSet(viewsets.ModelViewSet):
                     price_at_transaction=product.base_unit_price or Decimal('0.00'),
                     notes=f"Initial stock: {original_quantity} {original_unit.unit_name}"
                 )
-                print(f"Inventory transaction created for initial stock")
+                # Set the quantity_in_base_units directly to avoid double calculation
+                transaction.quantity_in_base_units = quantity_in_base_units
+                transaction._skip_quantity_calculation = True
+                transaction.save(skip_stock_adjustment=True)  # Skip stock adjustment since stock is already set
+                print(f"Inventory transaction created for initial stock with quantity_in_base_units: {quantity_in_base_units}")
                 
             except Exception as e:
                 print(f"Error creating stock: {e}")
@@ -517,6 +571,28 @@ class StockViewSet(viewsets.ModelViewSet):
     serializer_class = StockSerializer
     permission_classes = [AllowAny]
 
+    def get_queryset(self):
+        """
+        Filter stocks by branch for branch managers
+        """
+        queryset = super().get_queryset()
+        
+        # Get the user's branch
+        user = self.request.user
+        if hasattr(user, 'branch') and user.branch:
+            # Filter by the user's branch
+            queryset = queryset.filter(branch=user.branch)
+            print(f"[DEBUG] Filtering stocks for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all stocks
+            print(f"[DEBUG] Superuser - showing all stocks")
+        else:
+            # For users without branch, show empty queryset
+            queryset = queryset.none()
+            print(f"[DEBUG] User without branch - showing no stocks")
+        
+        return queryset
+
     @action(detail=True, methods=['post'], url_path='restock')
     @transaction.atomic
     def restock(self, request, pk=None):
@@ -706,11 +782,35 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
+        """
+        Filter barman stocks by branch and user role
+        """
+        queryset = super().get_queryset()
+        
+        # Get the user's branch
         user = self.request.user
-        qs = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
-        if user.is_staff:
-            return qs
-        return qs.filter(bartender=user)
+        if hasattr(user, 'branch') and user.branch:
+            if user.role == 'bartender':
+                # Bartenders can only see their own stocks
+                queryset = queryset.filter(bartender=user, branch=user.branch)
+                print(f"[DEBUG] Filtering barman stocks for bartender: {user.username} in branch: {user.branch.name}")
+            elif user.role == 'manager':
+                # Managers can see all barman stocks in their branch
+                queryset = queryset.filter(branch=user.branch)
+                print(f"[DEBUG] Filtering barman stocks for manager in branch: {user.branch.name}")
+            else:
+                # Other roles see only their own stocks
+                queryset = queryset.filter(bartender=user)
+                print(f"[DEBUG] Filtering barman stocks for user: {user.username}")
+        elif user.is_superuser:
+            # Superuser can see all barman stocks
+            print(f"[DEBUG] Superuser - showing all barman stocks")
+        else:
+            # For users without branch, show only their own stocks
+            queryset = queryset.filter(bartender=user)
+            print(f"[DEBUG] User without branch - showing only own barman stocks")
+        
+        return queryset
 
     @action(detail=True, methods=['post'], url_path='restock')
     @transaction.atomic

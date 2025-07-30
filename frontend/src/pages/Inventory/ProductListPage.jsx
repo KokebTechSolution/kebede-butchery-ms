@@ -121,43 +121,57 @@ const ProductListPage = () => {
   };
 
   const handleRestockClick = (stock) => {
+    console.log('Restock click for stock:', stock);
     setRestockingStock(stock);
     setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
     setRestockError('');
     setShowRestockModal(true);
+    console.log('Restock modal should now be open');
   };
   const handleRestockChange = (e) => {
     const { name, value } = e.target;
+    console.log('Restock change:', { name, value });
     setRestockData((prev) => ({ ...prev, [name]: value }));
   };
   const handleRestockSubmit = async () => {
+    console.log('Restock submit clicked with data:', restockData);
     setRestockError('');
+    
     if (!restockData.restock_quantity || Number(restockData.restock_quantity) <= 0) {
+      console.log('Validation failed: Invalid quantity');
       setRestockError('Enter a valid restock quantity.');
       return;
     }
     if (!restockData.restock_price || Number(restockData.restock_price) <= 0) {
+      console.log('Validation failed: Invalid price');
       setRestockError('Enter a valid purchase price.');
       return;
     }
+    
+    console.log('Validation passed, submitting restock...');
     try {
-      await axios.post(
+      const payload = {
+        quantity: restockData.restock_quantity,
+        type: restockData.restock_type,
+        price_per_unit: restockData.restock_price,
+      };
+      console.log('Restock payload:', payload);
+      
+      const response = await axios.post(
         `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
-        {
-          quantity: restockData.restock_quantity,
-          type: restockData.restock_type,
-          price_per_unit: restockData.restock_price,
-        },
+        payload,
         {
           withCredentials: true,
           headers: { 'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] },
         }
       );
+      console.log('Restock response:', response.data);
       setShowRestockModal(false);
       setRestockingStock(null);
       setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
       loadData();
     } catch (err) {
+      console.error('Restock error:', err.response?.data || err.message);
       setRestockError('Restock failed: ' + (err.response?.data?.detail || err.message));
     }
   };
@@ -315,23 +329,30 @@ const ProductListPage = () => {
               <label className="block text-sm font-medium text-gray-700">{t('quantity')}</label>
               <input
                 type="number"
+                name="restock_quantity"
                 value={restockData.restock_quantity}
                 onChange={handleRestockChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 min="1"
+                placeholder="Enter quantity"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('price_per_unit')}</label>
               <input
                 type="number"
+                name="restock_price"
                 value={restockData.restock_price}
                 onChange={handleRestockChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                 min="0"
                 step="0.01"
+                placeholder="Enter price per unit"
               />
             </div>
+            {restockError && (
+              <div className="text-red-500 text-sm">{restockError}</div>
+            )}
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowRestockModal(false)}

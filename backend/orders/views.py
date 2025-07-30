@@ -28,14 +28,29 @@ class OrderListView(generics.ListCreateAPIView):
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
+        
+        # Filter by user's branch
+        if hasattr(user, 'branch') and user.branch:
+            queryset = Order.objects.filter(branch=user.branch)
+            print(f"[DEBUG] Filtering orders for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all orders
+            queryset = Order.objects.all()
+            print(f"[DEBUG] Superuser - showing all orders")
+        else:
+            # For users without branch, show only their own orders
+            queryset = Order.objects.filter(created_by=user)
+            print(f"[DEBUG] User without branch - showing only own orders")
+        
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
-        queryset = Order.objects.filter(created_by=user)
+        
         if table_number:
             queryset = queryset.filter(table_number=table_number)
         if date:
             parsed_date = parse_date(date)
             queryset = queryset.filter(created_at__date=parsed_date)
+        
         return queryset
 
     def perform_create(self, serializer):
@@ -69,9 +84,28 @@ class OrderListView(generics.ListCreateAPIView):
 
 
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Order.objects.prefetch_related('items').all()
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Order.objects.none()
+        
+        # Filter by user's branch
+        if hasattr(user, 'branch') and user.branch:
+            queryset = Order.objects.filter(branch=user.branch).prefetch_related('items')
+            print(f"[DEBUG] Filtering order details for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all orders
+            queryset = Order.objects.prefetch_related('items').all()
+            print(f"[DEBUG] Superuser - showing all order details")
+        else:
+            # For users without branch, show only their own orders
+            queryset = Order.objects.filter(created_by=user).prefetch_related('items')
+            print(f"[DEBUG] User without branch - showing only own order details")
+        
+        return queryset
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -84,57 +118,82 @@ class FoodOrderListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
-        # Show all orders that are not paid and have at least one item
-        queryset = Order.objects.filter(
-            food_status__in=['pending', 'preparing', 'completed'],
-            cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-            items__isnull=False
-        ).distinct()
+        
+        # Filter by user's branch
+        if hasattr(user, 'branch') and user.branch:
+            queryset = Order.objects.filter(
+                branch=user.branch,
+                food_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] Filtering food orders for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all food orders
+            queryset = Order.objects.filter(
+                food_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] Superuser - showing all food orders")
+        else:
+            # For users without branch, show only their own food orders
+            queryset = Order.objects.filter(
+                created_by=user,
+                food_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] User without branch - showing only own food orders")
+        
         date = self.request.query_params.get('date')
         if date:
             queryset = queryset.filter(created_at__date=date)
+        
         return queryset
 class BeverageOrderListView(generics.ListAPIView):
     serializer_class = BeverageOrderSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
-        queryset = Order.objects.filter(beverage_status__in=['pending', 'preparing']).distinct()
-
-        branch_id = self.request.query_params.get('branch_id')
-        queryset = Order.objects.filter(
-            beverage_status__in=['pending', 'preparing', 'completed'],
-            items__isnull=False
-        ).distinct()
-
+        
+        # Filter by user's branch
+        if hasattr(user, 'branch') and user.branch:
+            queryset = Order.objects.filter(
+                branch=user.branch,
+                beverage_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] Filtering beverage orders for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all beverage orders
+            queryset = Order.objects.filter(
+                beverage_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] Superuser - showing all beverage orders")
+        else:
+            # For users without branch, show only their own beverage orders
+            queryset = Order.objects.filter(
+                created_by=user,
+                beverage_status__in=['pending', 'preparing', 'completed'],
+                cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+                items__isnull=False
+            ).distinct()
+            print(f"[DEBUG] User without branch - showing only own beverage orders")
+        
         date = self.request.query_params.get('date')
-        start = self.request.query_params.get('start')
-        end = self.request.query_params.get('end')
         if date:
-            queryset = queryset.filter(created_at__date=parse_date(date))
-        elif start and end:
-            queryset = queryset.filter(created_at__date__gte=parse_date(start), created_at__date__lte=parse_date(end))
-
-        queryset = Order.objects.filter(
-            beverage_status__in=['pending', 'preparing', 'completed'],
-            items__isnull=False
-        ).distinct()
-        date = self.request.query_params.get('date')
-        start = self.request.query_params.get('start')
-        end = self.request.query_params.get('end')
-        if date:
-            queryset = queryset.filter(created_at__date=parse_date(date))
-        elif start and end:
-            queryset = queryset.filter(created_at__date__gte=parse_date(start), created_at__date__lte=parse_date(end))
-
+            queryset = queryset.filter(created_at__date=date)
+        
         return queryset
 
 
@@ -159,22 +218,30 @@ class PrintedOrderListView(generics.ListAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Include orders that are ready for payment (pending or printed status)
-        queryset = Order.objects.filter(cashier_status__in=['pending', 'printed'])
+        # Filter by user's branch
+        if hasattr(user, 'branch') and user.branch:
+            queryset = Order.objects.filter(
+                branch=user.branch,
+                cashier_status__in=['pending', 'printed']
+            )
+            print(f"[DEBUG] Filtering printed orders for branch: {user.branch.name}")
+        elif user.is_superuser:
+            # Superuser can see all printed orders
+            queryset = Order.objects.filter(
+                cashier_status__in=['pending', 'printed']
+            )
+            print(f"[DEBUG] Superuser - showing all printed orders")
+        else:
+            # For users without branch, show only their own printed orders
+            queryset = Order.objects.filter(
+                created_by=user,
+                cashier_status__in=['pending', 'printed']
+            )
+            print(f"[DEBUG] User without branch - showing only own printed orders")
         
         date = self.request.query_params.get('date')
-        start = self.request.query_params.get('start')
-        end = self.request.query_params.get('end')
-        
         if date:
-            parsed_date = parse_date(date)
-            queryset = queryset.filter(
-                Q(payment__processed_at__date=parsed_date) |
-                Q(payment__isnull=True, created_at__date=parsed_date)
-            )
-        
-        if start and end:
-            queryset = queryset.filter(payment__processed_at__date__range=[parse_date(start), parse_date(end)])
+            queryset = queryset.filter(created_at__date=date)
         
         return queryset
 

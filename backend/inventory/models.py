@@ -688,29 +688,11 @@ class InventoryRequest(models.Model):
                 # Only prevent duplicates for the exact same request being processed multiple times
                 existing_transaction = InventoryTransaction.objects.filter(
                     transaction_type='store_to_barman',
-                    from_stock_main__product=self.product,
-                    to_stock_barman__bartender=self.requested_by,
                     notes__contains=f"Fulfilled request #{self.pk}"
                 ).first()
                 
                 if existing_transaction:
                     print(f"[DEBUG] Request {self.pk} already fulfilled, skipping duplicate creation")
-                    print(f"[DEBUG] Existing transaction ID: {existing_transaction.id}")
-                    return
-                
-                # Additional check - look for transactions with the same request details
-                # This is more specific and only blocks true duplicates
-                existing_transaction = InventoryTransaction.objects.filter(
-                    transaction_type='store_to_barman',
-                    from_stock_main__product=self.product,
-                    to_stock_barman__bartender=self.requested_by,
-                    quantity=self.quantity,
-                    transaction_unit=self.request_unit,
-                    notes__contains=f"Fulfilled request #{self.pk}"
-                ).first()
-                
-                if existing_transaction:
-                    print(f"[DEBUG] Similar transaction already exists for request {self.pk}, skipping duplicate creation")
                     print(f"[DEBUG] Existing transaction ID: {existing_transaction.id}")
                     return
                 
