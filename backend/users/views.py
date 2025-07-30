@@ -386,6 +386,25 @@ class CSRFDebugView(APIView):
             "headers": dict(request.headers),
         })
 
+class CSRFValidationView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        csrf_token_in_header = request.headers.get('X-CSRFToken', 'not found')
+        csrf_token_in_cookie = request.COOKIES.get('csrftoken', 'not found')
+        csrf_token_expected = request.META.get('CSRF_COOKIE', 'not found')
+        
+        return Response({
+            "message": "CSRF Validation Debug",
+            "csrf_token_in_header": csrf_token_in_header,
+            "csrf_token_in_cookie": csrf_token_in_cookie,
+            "csrf_token_expected": csrf_token_expected,
+            "tokens_match": csrf_token_in_header == csrf_token_expected,
+            "header_length": len(csrf_token_in_header),
+            "cookie_length": len(csrf_token_in_cookie),
+            "expected_length": len(csrf_token_expected),
+        })
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CSRFExemptTestView(APIView):
     permission_classes = [AllowAny]
