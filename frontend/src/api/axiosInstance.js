@@ -7,6 +7,19 @@ function getCookie(name) {
   return match ? match.pop() : '';
 }
 
+// Helper to fetch CSRF token from server
+async function fetchCSRFToken() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/users/csrf/`, {
+      withCredentials: true
+    });
+    return getCookie('csrftoken');
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    return null;
+  }
+}
+
 const axiosInstance = axios.create({
   baseURL: `${API_BASE_URL}/api/`,
   withCredentials: true, // IMPORTANT: send cookies on cross-origin requests
@@ -17,11 +30,22 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to update CSRF token on each request
 axiosInstance.interceptors.request.use(
-  (config) => {
-    // Update CSRF token for each request
-    const csrfToken = getCookie('csrftoken');
+  async (config) => {
+    // Get CSRF token from cookie
+    let csrfToken = getCookie('csrftoken');
+    
+    // If no CSRF token and this is a POST/PUT/PATCH/DELETE request, fetch it
+    if (!csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      console.log('[DEBUG] No CSRF token found, fetching...');
+      csrfToken = await fetchCSRFToken();
+    }
+    
+    // Set CSRF token if available
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
+      console.log('[DEBUG] CSRF token set:', csrfToken.substring(0, 10) + '...');
+    } else {
+      console.warn('[DEBUG] No CSRF token available for request');
     }
     
     // Ensure we don't send problematic headers
@@ -32,7 +56,8 @@ axiosInstance.interceptors.request.use(
       url: config.url,
       method: config.method,
       headers: config.headers,
-      withCredentials: config.withCredentials
+      withCredentials: config.withCredentials,
+      hasCSRF: !!csrfToken
     });
     
     return config;
@@ -60,6 +85,15 @@ axiosInstance.interceptors.response.use(
       message: error.message,
       data: error.response?.data
     });
+    
+    // Handle CSRF errors
+    if (error.response?.status === 403 && error.response?.data?.detail?.includes('CSRF')) {
+      console.log('[DEBUG] CSRF error detected, fetching new token...');
+      // Fetch new CSRF token and retry
+      fetchCSRFToken().then(() => {
+        console.log('[DEBUG] New CSRF token fetched, you may need to retry the request');
+      });
+    }
     
     // Handle authentication errors
     if (error.response?.status === 401) {
