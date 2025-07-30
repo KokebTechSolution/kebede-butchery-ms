@@ -74,11 +74,24 @@ class SessionLoginView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
+        
+        print(f"[DEBUG] Login attempt for user: {username}")
+        print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
+        
         user = authenticate(request, username=username, password=password)
 
         if user:
             login(request, user)  # sets session
+            print(f"[DEBUG] User authenticated: {user.username}")
+            print(f"[DEBUG] Session key after login: {request.session.session_key}")
+            print(f"[DEBUG] User is authenticated: {request.user.is_authenticated}")
+            
+            # Force session save
+            request.session.save()
+            
             return Response(UserLoginSerializer(user).data)
+        
+        print(f"[DEBUG] Authentication failed for user: {username}")
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 @ensure_csrf_cookie
 def get_csrf(request):
@@ -94,6 +107,27 @@ class DebugAuthView(APIView):
             "is_authenticated": request.user.is_authenticated,
             "cookies": dict(request.COOKIES),
             "headers": dict(request.headers),
+            "method": request.method,
+            "path": request.path,
+        })
+
+class TestSessionView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        # Test setting a session value
+        request.session['test_key'] = 'test_value'
+        return Response({
+            "message": "Session test value set",
+            "session_key": request.session.session_key,
+        })
+    
+    def get(self, request):
+        # Test getting a session value
+        test_value = request.session.get('test_key', 'not_found')
+        return Response({
+            "test_value": test_value,
+            "session_key": request.session.session_key,
         })
 
 

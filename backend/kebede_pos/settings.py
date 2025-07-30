@@ -67,9 +67,9 @@ INSTALLED_APPS = [
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # Prioritize session auth
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -194,77 +194,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
 #CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-ms.vercel.app",     # React frontend on Vercel
+    "http://localhost:3000",                      # Local development
+    "http://127.0.0.1:3000",                     # Local development
 ]
 
-
-CORS_ALLOW_CREDENTIALS = True
-
-SIMPLE_JWT = {
-    'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
-}
-
-CORS_ALLOW_CREDENTIALS = True
-"""
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168.1.8', '*']
-
-"""
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",  # Important!
-]
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # For local dev
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Use True in production
-CSRF_COOKIE_SECURE = False 
-import os
-"""
-from pathlib import Path
-
-
-# BASE_DIR points to backend folder, e.g. D:/Kokeb/kebede-butchery-ms/backend
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# React build folder is frontend/build relative to project root
-REACT_BUILD_DIR = BASE_DIR.parent / "frontend" / "build"
-
-# Templates config to load React's index.html
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.fspath(REACT_BUILD_DIR)],  # <-- React build folder with index.html
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",    # needed for admin etc
-                "django.contrib.auth.context_processors.auth",  # needed for admin etc
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
-
-# URL prefix for static files
-STATIC_URL = '/static/'
-
-# Tell Django where to find React build static assets for development serving
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR.parent, 'frontend', 'build', 'static'),  # React static files location
-]
-
-# Optionally, if you want to collect static files for production:
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-"""
-
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True  # For development - you can restrict this later
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -294,7 +228,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",                     # Local development
 ]
 
-# Session and Cookie Configuration
+# Session and Cookie Configuration for Cross-Origin Authentication
 SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
 SESSION_COOKIE_SECURE = True       # Use HTTPS in production
 SESSION_COOKIE_HTTPONLY = False    # Allow JavaScript access
