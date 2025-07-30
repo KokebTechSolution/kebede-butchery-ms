@@ -85,6 +85,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -200,10 +201,10 @@ CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  # Use True in production
 CSRF_COOKIE_SECURE = False 
-
+import os
 """
 from pathlib import Path
-import os
+
 
 # BASE_DIR points to backend folder, e.g. D:/Kokeb/kebede-butchery-ms/backend
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -239,3 +240,8 @@ STATICFILES_DIRS = [
 # Optionally, if you want to collect static files for production:
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 """
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+ALLOWED_HOSTS = ['your-app-name.onrender.com']  # replace later
