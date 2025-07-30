@@ -52,4 +52,40 @@ export const getTables = async () => {
         console.error('Error fetching tables:', error);
         throw error;
     }
+};
+
+export const fetchWaiterStats = async (waiterId, date) => {
+    try {
+        const url = date 
+            ? `${API_BASE_URL}/api/orders/waiter-stats/${waiterId}/?date=${date}`
+            : `${API_BASE_URL}/api/orders/waiter-stats/${waiterId}/`;
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching waiter stats:', error);
+        throw error;
+    }
+};
+
+export const updateWaiterProfile = async (waiterId, profileData) => {
+    try {
+        const response = await axios.patch(`${API_BASE_URL}/api/users/${waiterId}/`, profileData);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating waiter profile:', error);
+        throw error;
+    }
+};
+
+export const fetchWaiterPrintedOrders = async (waiterId, limit = 10) => {
+    try {
+        const url = limit 
+            ? `${API_BASE_URL}/api/orders/waiter-orders/${waiterId}/?limit=${limit}`
+            : `${API_BASE_URL}/api/orders/waiter-orders/${waiterId}/`;
+        const response = await axios.get(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching waiter printed orders:', error);
+        throw error;
+    }
 }; 

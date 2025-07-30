@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'https://kebede-butchery-ms.onrender.com/api/users/users/';
+import { API_BASE_URL } from './config';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken() {
@@ -11,7 +10,7 @@ function getCSRFToken() {
 // Create axios instance with session auth support
 const createAxiosInstance = () => {
   return axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: `${API_BASE_URL}/api/users/`,
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': getCSRFToken(),
@@ -101,6 +100,6 @@ export const fetchBranches = async () => {
     return response.data;
   } catch (error) {
     console.warn('Failed to fetch branches:', error);
-    throw new Error('Unable to load branches. Please try again later.');
+    throw new Error('Unable to load branches. Please refresh or try again later.');
   }
 };
