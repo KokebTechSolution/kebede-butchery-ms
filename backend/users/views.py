@@ -327,3 +327,24 @@ class TestLoginView(APIView):
         
         print(f"[DEBUG] Test login failed for user: {username}")
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+class CORSTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "message": "CORS test successful",
+            "method": request.method,
+            "headers": dict(request.headers),
+            "cors_headers": {
+                "Access-Control-Allow-Origin": request.META.get('HTTP_ORIGIN', ''),
+                "Access-Control-Allow-Credentials": "true",
+            }
+        })
+    
+    def post(self, request):
+        return Response({
+            "message": "CORS POST test successful",
+            "data": request.data,
+            "method": request.method,
+        })
