@@ -216,6 +216,10 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+]
+
+# Additional CORS settings
+CORS_EXPOSE_HEADERS = [
     'access-control-allow-credentials',
     'access-control-allow-origin',
     'access-control-allow-methods',

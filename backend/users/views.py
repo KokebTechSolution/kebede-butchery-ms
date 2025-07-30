@@ -28,6 +28,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 @csrf_exempt
 def test_logout(request):
@@ -347,4 +348,14 @@ class CORSTestView(APIView):
             "message": "CORS POST test successful",
             "data": request.data,
             "method": request.method,
+        })
+
+class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "status": "healthy",
+            "message": "Backend is running",
+            "timestamp": timezone.now().isoformat(),
         })
