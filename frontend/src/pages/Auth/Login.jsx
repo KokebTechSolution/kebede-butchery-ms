@@ -2,12 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import LoadingPage from '../../components/LoadingPage/LoadingPage';
+import axiosInstance from '../../api/axiosInstance';
 
 const LoginPage = () => {
   const { login, user, logout } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState(null);
+  const [showLoading, setShowLoading] = useState(false);
 
   useEffect(() => {
     // Always clear user state and localStorage on login page load
@@ -17,8 +20,8 @@ const LoginPage = () => {
     // Optionally, if setUser is available:
     // setUser && setUser(null);
     // Fetch CSRF cookie
-    fetch('http://localhost:8000/api/users/csrf/', {
-      credentials: 'include',
+    axiosInstance.get('users/csrf/').catch(err => {
+      console.log('CSRF fetch error (expected on first load):', err);
     });
   }, []);
 
@@ -36,31 +39,32 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Login failed');
-      }
-
-      const userData = await res.json();
-      login(userData); // Call AuthContext login
-      navigate('/');
+      console.log('Attempting login with:', formData);
+      
+      const response = await axiosInstance.post('users/login/', formData);
+      console.log('Login response:', response.data);
+      
+      login(response.data); // Call AuthContext login
+      setShowLoading(true); // Show loading page instead of immediate navigation
     } catch (err) {
-      setError(err.message || 'Something went wrong');
+      console.error('Login error:', err);
+      setError(err.response?.data?.error || err.message || 'Something went wrong');
     }
   };
+
+  // Show loading page if loading is active
+  if (showLoading) {
+    return (
+      <LoadingPage 
+        onComplete={() => {
+          setShowLoading(false);
+          navigate('/');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

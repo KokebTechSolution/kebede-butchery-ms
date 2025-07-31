@@ -44,8 +44,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Called after login to update user state
-  const login = async () => {
-    await fetchSessionUser();
+  const login = async (userData) => {
+    if (userData) {
+      setUser({ ...userData, isAuthenticated: true });
+      localStorage.setItem('user', JSON.stringify({ ...userData, isAuthenticated: true }));
+    } else {
+      await fetchSessionUser();
+    }
   };
 
   const logout = async () => {
@@ -84,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        setUser,
         login,
         logout,
         updateUser,

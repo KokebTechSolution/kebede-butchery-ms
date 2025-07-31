@@ -1,0 +1,169 @@
+.butchery-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.butchery-logo {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.butchery-logo.animating .knife {
+  animation: knifeCut 3s ease-in-out infinite;
+  transform-origin: 140px 100px;
+}
+
+.butchery-logo.animating .meat-piece {
+  animation: meatShake 3s ease-in-out infinite;
+}
+
+.butchery-logo.animating .cut-line {
+  animation: cutAnimation 3s ease-in-out infinite;
+}
+
+.butchery-logo.animating .meat-cut-left {
+  animation: meatCutLeft 3s ease-in-out infinite;
+}
+
+.butchery-logo.animating .meat-cut-right {
+  animation: meatCutRight 3s ease-in-out infinite;
+}
+
+.butchery-name {
+  font-family: 'Arial', sans-serif;
+  font-size: 8px;
+  font-weight: bold;
+  fill: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Knife cutting animation */
+@keyframes knifeCut {
+  0%, 100% {
+    transform: rotate(0deg) translateX(0);
+  }
+  20% {
+    transform: rotate(-5deg) translateX(-5px);
+  }
+  40% {
+    transform: rotate(-15deg) translateX(-15px);
+  }
+  60% {
+    transform: rotate(-25deg) translateX(-25px);
+  }
+  80% {
+    transform: rotate(-15deg) translateX(-15px);
+  }
+}
+
+/* Meat shaking animation */
+@keyframes meatShake {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+  20% {
+    transform: translateX(-2px) scale(0.98);
+  }
+  40% {
+    transform: translateX(-5px) scale(0.95);
+  }
+  60% {
+    transform: translateX(-8px) scale(0.92);
+  }
+  80% {
+    transform: translateX(-5px) scale(0.95);
+  }
+}
+
+/* Cutting line animation */
+@keyframes cutAnimation {
+  0%, 100% {
+    opacity: 0;
+    stroke-dashoffset: 100;
+  }
+  30% {
+    opacity: 0;
+    stroke-dashoffset: 100;
+  }
+  40% {
+    opacity: 1;
+    stroke-dashoffset: 50;
+  }
+  60% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+  70% {
+    opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Meat cut pieces animations */
+@keyframes meatCutLeft {
+  0%, 100% {
+    opacity: 0;
+    transform: translateX(0) scale(0.8);
+  }
+  50% {
+    opacity: 0;
+    transform: translateX(0) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-10px) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(-10px) scale(1);
+  }
+}
+
+@keyframes meatCutRight {
+  0%, 100% {
+    opacity: 0;
+    transform: translateX(0) scale(0.8);
+  }
+  50% {
+    opacity: 0;
+    transform: translateX(0) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(10px) scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(10px) scale(1);
+  }
+}
+
+/* Pulse effect for the logo */
+.butchery-logo {
+  animation: logoPulse 2s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .butchery-logo {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .butchery-name {
+    font-size: 6px;
+  }
+} 

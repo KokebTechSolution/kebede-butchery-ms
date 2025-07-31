@@ -74,15 +74,29 @@ class SessionLoginView(APIView):
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
+        
+        print(f"Login attempt - Username: {username}")
+        print(f"Request data: {request.data}")
+        print(f"Request headers: {request.headers}")
+        
         user = authenticate(request, username=username, password=password)
+        
+        print(f"Authentication result: {user}")
 
         if user:
             login(request, user)  # sets session
+            print(f"User logged in successfully: {user.username}")
             return Response(UserLoginSerializer(user).data)
+        
+        print("Authentication failed - invalid credentials")
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 @ensure_csrf_cookie
 def get_csrf(request):
-    return JsonResponse({"message": "CSRF cookie set"})
+    print(f"[DEBUG] CSRF request - User: {request.user}, Authenticated: {request.user.is_authenticated}")
+    print(f"[DEBUG] CSRF cookies: {request.COOKIES}")
+    response = JsonResponse({"message": "CSRF cookie set"})
+    print(f"[DEBUG] CSRF response cookies: {response.cookies}")
+    return response
 
 
 class UserViewSet(ModelViewSet):

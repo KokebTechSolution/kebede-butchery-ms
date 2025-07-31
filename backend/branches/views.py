@@ -20,6 +20,12 @@ class TableListCreateView(generics.ListCreateAPIView):
     serializer_class = TableSerializer
     permission_classes = [IsAuthenticated]
 
+    def post(self, request, *args, **kwargs):
+        print(f"[DEBUG] POST request received - User: {request.user.username}, Role: {request.user.role}")
+        print(f"[DEBUG] User authenticated: {request.user.is_authenticated}")
+        print(f"[DEBUG] Request data: {request.data}")
+        return super().post(request, *args, **kwargs)
+
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
@@ -52,11 +58,18 @@ class TableListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         user = self.request.user
+        print(f"[DEBUG] Table creation attempt - User: {user.username}, Role: {user.role}, Authenticated: {user.is_authenticated}")
+        print(f"[DEBUG] User has role attribute: {hasattr(user, 'role')}")
+        print(f"[DEBUG] User branch: {getattr(user, 'branch', None)}")
+        
         if user.is_authenticated and hasattr(user, 'role') and user.role == 'waiter':
             branch = getattr(user, 'branch', None)
             if not branch:
+                print(f"[DEBUG] Permission denied - no branch assigned")
                 raise PermissionDenied('Waiter does not have a branch assigned.')
+            print(f"[DEBUG] Creating table for waiter: {user.username} in branch: {branch.name}")
             serializer.save(created_by=user, branch=branch)
         else:
+            print(f"[DEBUG] Permission denied - user role: {user.role}, expected: waiter")
             raise PermissionDenied('Only waiters can create tables.')
 
