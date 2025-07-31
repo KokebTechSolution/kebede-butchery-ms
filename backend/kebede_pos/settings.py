@@ -256,13 +256,8 @@ CSRF_TRUSTED_ORIGINS = [
 
 # CSRF Configuration for cross-origin requests
 CSRF_USE_REFERER = False
-CSRF_TRUSTED_ORIGINS = [
-    "https://kebede-butchery-ms.onrender.com",
-    "https://kebede-butchery-ms.vercel.app",
-    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 
 # CSRF Cookie settings
 CSRF_COOKIE_SAMESITE = 'None'
@@ -271,15 +266,6 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_DOMAIN = None
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
-
-# For development, set secure cookies to False
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-
-# Additional CSRF settings for cross-origin
-CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 
 # Session Configuration
 SESSION_COOKIE_SAMESITE = 'None'
