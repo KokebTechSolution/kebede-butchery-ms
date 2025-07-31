@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from core.decorators import csrf_exempt_for_cors
 from .models import (
     ItemType, Category, Product, InventoryTransaction, 
     InventoryRequest, Stock, Branch, BarmanStock, ProductUnit, ProductMeasurement
@@ -67,8 +68,12 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             print(f"[DEBUG] Superuser - showing all inventory requests")
         else:
             # For users without branch, show only their own requests
-            queryset = queryset.filter(requested_by=user)
-            print(f"[DEBUG] User without branch - showing only own requests")
+            if user.is_authenticated:
+                queryset = queryset.filter(requested_by=user)
+                print(f"[DEBUG] User without branch - showing only own requests")
+            else:
+                queryset = queryset.none()
+                print(f"[DEBUG] Anonymous user - showing no requests")
         
         return queryset
 
@@ -784,7 +789,7 @@ class StockViewSet(viewsets.ModelViewSet):
         return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt_for_cors, name='dispatch')
 class BarmanStockViewSet(viewsets.ModelViewSet):
     queryset = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
     serializer_class = BarmanStockSerializer
@@ -816,8 +821,12 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
             print(f"[DEBUG] Superuser - showing all barman stocks")
         else:
             # For users without branch, show only their own stocks
-            queryset = queryset.filter(bartender=user)
-            print(f"[DEBUG] User without branch - showing only own barman stocks")
+            if user.is_authenticated:
+                queryset = queryset.filter(bartender=user)
+                print(f"[DEBUG] User without branch - showing only own barman stocks")
+            else:
+                queryset = queryset.none()
+                print(f"[DEBUG] Anonymous user - showing no barman stocks")
         
         return queryset
 

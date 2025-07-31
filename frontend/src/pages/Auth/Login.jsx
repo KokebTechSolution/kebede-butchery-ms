@@ -38,7 +38,13 @@ const LoginPage = () => {
     try {
       console.log('Attempting login with:', formData);
       
-      const response = await axiosInstance.post('users/login/', formData);
+      // Check if we're accessing from network IP
+      const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const loginEndpoint = isNetworkAccess ? 'users/network-login/' : 'users/login/';
+      
+      console.log('Using login endpoint:', loginEndpoint);
+      
+      const response = await axiosInstance.post(loginEndpoint, formData);
       console.log('Login response:', response.data);
       
       login(response.data); // Call AuthContext login

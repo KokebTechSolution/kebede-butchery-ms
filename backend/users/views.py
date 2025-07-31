@@ -29,6 +29,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from core.decorators import csrf_exempt_for_cors
+from core.session_manager import SessionManager
 
 @csrf_exempt
 def test_logout(request):
@@ -55,9 +57,13 @@ def session_logout(request):
                 Session.objects.filter(session_key=request.session.session_key).delete()
         except Exception as e:
             print("Session DB delete error:", e)
+        # Get the origin from the request to determine the redirect URL
+        origin = request.headers.get('Origin', 'http://localhost:3000')
+        redirect_url = f"{origin}/login"
+        
         response = JsonResponse({
             "message": "Logged out successfully.",
-            "redirect_url": "http://localhost:3000/login"
+            "redirect_url": redirect_url
         })
         response.delete_cookie('sessionid', path='/')
         response.delete_cookie('sessionid', path='')
@@ -85,27 +91,28 @@ class SessionLoginView(APIView):
         print(f"Authentication result: {user}")
 
         if user:
-            login(request, user)  # sets session
+            # Use SessionManager to create session
+            session_key = SessionManager.create_session(request, user)
             
             print(f"[DEBUG] User authenticated: {user.username}")
-            print(f"[DEBUG] Session key after login: {request.session.session_key}")
+            print(f"[DEBUG] Session key after login: {session_key}")
             print(f"[DEBUG] User is authenticated: {request.user.is_authenticated}")
-            
-            # Force session save
-            request.session.save()
             
             # Create response with user data
             response = Response(UserLoginSerializer(user).data)
             
-            # Set session cookie explicitly
-            response.set_cookie(
-                'sessionid',
-                request.session.session_key,
-                max_age=86400,  # 24 hours
-                secure=True,
-                samesite='None',
-                httponly=False
-            )
+            # Set session cookie explicitly for network access
+            if session_key:
+                response.set_cookie(
+                    'sessionid',
+                    session_key,
+                    max_age=86400,  # 24 hours
+                    secure=False,  # Allow HTTP for local development
+                    samesite='None',  # Allow cross-site for network access
+                    httponly=False,
+                    path='/',
+                    domain=None
+                )
             
             # Set CSRF cookie if not already set
             if 'csrftoken' not in request.COOKIES:
@@ -113,9 +120,11 @@ class SessionLoginView(APIView):
                     'csrftoken',
                     request.META.get('CSRF_COOKIE', ''),
                     max_age=31449600,  # 1 year
-                    secure=True,
-                    samesite='None',
-                    httponly=False
+                    secure=False,  # Allow HTTP for local development
+                    samesite='None',  # Allow cross-site for network access
+                    httponly=False,
+                    path='/',
+                    domain=None
                 )
             
             print(f"[DEBUG] Response cookies: {dict(response.cookies)}")
@@ -127,24 +136,32 @@ class SessionLoginView(APIView):
 
 @ensure_csrf_cookie
 def get_csrf(request):
-    csrf_token = request.META.get('CSRF_COOKIE', '')
+    # Get CSRF token from Django's CSRF middleware
+    from django.middleware.csrf import get_token
+    csrf_token = get_token(request)
+    
     print(f"[DEBUG] CSRF endpoint called")
-    print(f"[DEBUG] CSRF_COOKIE from META: {csrf_token[:10] if csrf_token else 'None'}...")
+    print(f"[DEBUG] CSRF token generated: {csrf_token[:10] if csrf_token else 'None'}...")
     print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
     print(f"[DEBUG] Request headers: {dict(request.headers)}")
     
     response = JsonResponse({"message": "CSRF cookie set", "csrf_token": csrf_token})
     
-    # Ensure CSRF cookie is set with proper attributes for cross-origin
-    response.set_cookie(
-        'csrftoken',
-        csrf_token,
-        max_age=31449600,  # 1 year
-        secure=True,
-        samesite='None',
-        httponly=False,
-        path='/'
-    )
+    # Force CSRF cookie to be set
+    if csrf_token:
+        response.set_cookie(
+            'csrftoken',
+            csrf_token,
+            max_age=31449600,  # 1 year
+            secure=False,  # Allow HTTP for local development
+            samesite='None',  # Allow cross-site for network access
+            httponly=False,
+            path='/',
+            domain=None
+        )
+        print(f"[DEBUG] CSRF cookie explicitly set: {csrf_token[:10]}...")
+    else:
+        print(f"[DEBUG] No CSRF token generated")
     
     # Also set additional headers for debugging
     response['Access-Control-Allow-Credentials'] = 'true'
@@ -166,6 +183,9 @@ class DebugAuthView(APIView):
             "headers": dict(request.headers),
             "method": request.method,
             "path": request.path,
+            "session_data": dict(request.session),
+            "sessionid_cookie": request.COOKIES.get('sessionid'),
+            "csrftoken_cookie": request.COOKIES.get('csrftoken'),
         })
 
 class TestSessionView(APIView):
@@ -174,9 +194,11 @@ class TestSessionView(APIView):
     def post(self, request):
         # Test setting a session value
         request.session['test_key'] = 'test_value'
+        request.session.save()
         return Response({
             "message": "Session test value set",
             "session_key": request.session.session_key,
+            "cookies": dict(request.COOKIES),
         })
     
     def get(self, request):
@@ -185,6 +207,9 @@ class TestSessionView(APIView):
         return Response({
             "test_value": test_value,
             "session_key": request.session.session_key,
+            "cookies": dict(request.COOKIES),
+            "is_authenticated": request.user.is_authenticated,
+            "user": str(request.user),
         })
 
 
@@ -281,6 +306,7 @@ class UserViewSet(ModelViewSet):
 
         return Response({"status": "Password reset successfully"})
 
+@method_decorator(csrf_exempt_for_cors, name='dispatch')
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -291,6 +317,25 @@ class CurrentUserView(APIView):
         print(f"[DEBUG] Is authenticated: {request.user.is_authenticated}")
         print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
         print(f"[DEBUG] Headers: {dict(request.headers)}")
+        print(f"[DEBUG] Session data: {dict(request.session)}")
+        print(f"[DEBUG] Authorization header: {request.headers.get('Authorization')}")
+        
+        # Check if sessionid cookie is present
+        sessionid_cookie = request.COOKIES.get('sessionid')
+        print(f"[DEBUG] Sessionid cookie: {sessionid_cookie}")
+        
+        # Try to validate session using SessionManager
+        user = SessionManager.validate_session(request)
+        
+        if user:
+            print(f"[DEBUG] User authenticated via session: {user.username}")
+            serializer = UserLoginSerializer(user)
+            return Response(serializer.data)
+        
+        # Check if user is anonymous
+        if request.user.is_anonymous:
+            print(f"[DEBUG] User is anonymous, returning 401")
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
         
         if not request.user.is_authenticated:
             print(f"[DEBUG] User not authenticated, returning 401")
@@ -431,3 +476,147 @@ class CSRFExemptTestView(APIView):
             "csrf_token_in_header": request.headers.get('X-CSRFToken', 'not found'),
             "csrf_token_in_cookie": request.COOKIES.get('csrftoken', 'not found'),
         })
+
+class AuthTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "message": "Auth test endpoint",
+            "session_key": request.session.session_key,
+            "user": str(request.user),
+            "is_authenticated": request.user.is_authenticated,
+            "cookies": dict(request.COOKIES),
+            "session_data": dict(request.session),
+        })
+    
+    def post(self, request):
+        return Response({
+            "message": "Auth test POST endpoint",
+            "session_key": request.session.session_key,
+            "user": str(request.user),
+            "is_authenticated": request.user.is_authenticated,
+            "cookies": dict(request.COOKIES),
+            "data": request.data,
+        })
+
+class CSRFTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        # This endpoint requires CSRF token
+        return Response({
+            "message": "CSRF test successful",
+            "csrf_token_received": bool(request.headers.get('X-CSRFToken')),
+            "csrf_token_value": request.headers.get('X-CSRFToken', 'not found')[:10] + '...',
+            "cookies": dict(request.COOKIES),
+        })
+
+class NetworkAuthView(APIView):
+    """
+    Special authentication view for network access that returns session data in response
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        
+        print(f"[DEBUG] Network login attempt for user: {username}")
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user:
+            # Use SessionManager to create session
+            session_key = SessionManager.create_session(request, user)
+            
+            print(f"[DEBUG] Network user authenticated: {user.username}")
+            print(f"[DEBUG] Network session key: {session_key}")
+            
+            # Create response with user data and session info
+            response_data = UserLoginSerializer(user).data
+            response_data['session_key'] = session_key
+            response_data['csrf_token'] = request.META.get('CSRF_COOKIE', '')
+            
+            response = Response(response_data)
+            
+            # Set cookies for network access
+            if session_key:
+                response.set_cookie(
+                    'sessionid',
+                    session_key,
+                    max_age=86400,
+                    secure=False,
+                    samesite='None',
+                    httponly=False,
+                    path='/',
+                    domain=None
+                )
+            
+            # Set CSRF cookie
+            csrf_token = request.META.get('CSRF_COOKIE', '')
+            if csrf_token:
+                response.set_cookie(
+                    'csrftoken',
+                    csrf_token,
+                    max_age=31449600,
+                    secure=False,
+                    samesite='None',
+                    httponly=False,
+                    path='/',
+                    domain=None
+                )
+            
+            print(f"[DEBUG] Network response cookies: {dict(response.cookies)}")
+            return response
+        
+        print(f"[DEBUG] Network authentication failed for user: {username}")
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+class NetworkCurrentUserView(APIView):
+    """
+    Network-specific current user view that accepts session key in headers
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        print(f"[DEBUG] NetworkCurrentUserView called")
+        print(f"[DEBUG] Headers: {dict(request.headers)}")
+        print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
+        
+        # Try to get session key from headers (for network access)
+        session_key = request.headers.get('X-Session-Key')
+        print(f"[DEBUG] Session key from header: {session_key}")
+        
+        if session_key:
+            # Try to validate session using the provided session key
+            try:
+                from django.contrib.sessions.models import Session
+                from django.utils import timezone
+                
+                session = Session.objects.get(
+                    session_key=session_key,
+                    expire_date__gt=timezone.now()
+                )
+                session_data = session.get_decoded()
+                user_id = session_data.get('_auth_user_id')
+                
+                if user_id:
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    user = User.objects.get(id=user_id)
+                    print(f"[DEBUG] User authenticated via session key: {user.username}")
+                    serializer = UserLoginSerializer(user)
+                    return Response(serializer.data)
+            except Exception as e:
+                print(f"[DEBUG] Session validation error: {e}")
+        
+        # Fallback to regular session validation
+        user = SessionManager.validate_session(request)
+        if user:
+            print(f"[DEBUG] User authenticated via session manager: {user.username}")
+            serializer = UserLoginSerializer(user)
+            return Response(serializer.data)
+        
+        print(f"[DEBUG] No valid session found")
+        return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)

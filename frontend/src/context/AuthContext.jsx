@@ -23,7 +23,24 @@ export const AuthProvider = ({ children }) => {
   const fetchSessionUser = async () => {
     try {
       console.log('[DEBUG] Fetching session user...');
-      const response = await axiosInstance.get('users/me/');
+      
+      // Check if we're accessing from network IP
+      const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const meEndpoint = isNetworkAccess ? 'users/network-me/' : 'users/me/';
+      
+      console.log('[DEBUG] Using endpoint:', meEndpoint);
+      
+      // For network access, include session key in headers if available
+      const config = {};
+      if (isNetworkAccess) {
+        const networkSessionKey = localStorage.getItem('network_session_key');
+        if (networkSessionKey) {
+          config.headers = { 'X-Session-Key': networkSessionKey };
+          console.log('[DEBUG] Using network session key:', networkSessionKey.substring(0, 10) + '...');
+        }
+      }
+      
+      const response = await axiosInstance.get(meEndpoint, config);
       const data = response.data;
       console.log('[DEBUG] Session user data:', data);
       setUser({ ...data, isAuthenticated: true });

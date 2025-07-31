@@ -94,9 +94,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be first
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.middleware.SessionMiddleware',  # Custom session middleware
     'django.middleware.common.CommonMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'core.middleware.CSRFMiddleware',  # Custom CSRF middleware
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -129,18 +131,6 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-"""DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'kebede_pos_db',
-        'USER': 'postgres',
-        'PASSWORD': 'kokeb',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-    }
-}
-"""
-
 import dj_database_url
 import os
 
@@ -151,11 +141,15 @@ if os.environ.get('DATABASE_URL'):
         'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
     }
 else:
-    # Use SQLite for local development
+    # Use PostgreSQL for local development
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'kebede_pos_db',
+            'USER': 'postgres',
+            'PASSWORD': 'kokeb',
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
         }
     }
 
@@ -203,23 +197,25 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
-#CORS_ALLOW_ALL_ORIGINS = True
-# CORS Configuration - Fixed version
+
+# Custom Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'core.authentication.SessionAuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+# CORS Configuration for LOCAL NETWORK
 CORS_ALLOWED_ORIGINS = [
-    "https://kebede-butchery-ms.vercel.app",
-    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.2:3000",  # Your local IP
-    "http://192.168.1.2:8000",  # Backend on local IP
+    "http://192.168.1.2:3001",  # Alternative port
 ]
 
-# Allow all origins for development (more permissive)
+# For development, allow all origins and credentials
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True
-else:
-    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOW_HEADERS = ['*']  # Allow all headers
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -240,6 +236,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-environment',
     'access-control-allow-credentials',
     'access-control-allow-origin',
     'access-control-allow-methods',
@@ -252,40 +249,43 @@ CORS_EXPOSE_HEADERS = [
     'access-control-allow-origin',
     'access-control-allow-methods',
     'access-control-allow-headers',
+    'x-environment',
 ]
 
-# CSRF Configuration
+# CSRF Configuration for LOCAL NETWORK
 CSRF_TRUSTED_ORIGINS = [
-    "https://kebede-butchery-ms.onrender.com",
-    "https://kebede-butchery-ms.vercel.app",
-    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.2:3000",  # Your local IP
-    "http://192.168.1.2:8000",  # Backend on local IP
+    "http://192.168.1.2:3001",  # Alternative port
 ]
 
-# CSRF Configuration for cross-origin requests
+# For development, trust all localhost origins
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ])
+
+# CSRF Configuration for NETWORK ACCESS
 CSRF_USE_REFERER = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-
-# CSRF Cookie settings
-CSRF_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
-CSRF_COOKIE_SECURE = False  # Set to False for HTTP
 CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'None'  # Allow cross-site for network access
+CSRF_COOKIE_SECURE = False      # False for HTTP
 CSRF_COOKIE_DOMAIN = None
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
 
-# Session Configuration
-SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site cookies
-SESSION_COOKIE_SECURE = False  # Set to False for HTTP
+# Session Configuration for NETWORK ACCESS
+SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site for network access
+SESSION_COOKIE_SECURE = False     # False for HTTP
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_DOMAIN = None
 SESSION_COOKIE_AGE = 86400
-
-# For development, set secure cookies to False
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_PATH = '/'
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_NAME = 'sessionid'

@@ -3,11 +3,13 @@ from rest_framework import generics
 from .models import Table
 from .serializers import TableSerializer
 from rest_framework.exceptions import PermissionDenied
+from django.utils.decorators import method_decorator
 
 from rest_framework import viewsets
 from .models import Branch
 from .serializers import BranchSerializer
 from rest_framework.permissions import IsAuthenticated
+from core.decorators import csrf_exempt_for_cors
 
 class BranchViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Branch.objects.all()
@@ -16,6 +18,7 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 
+@method_decorator(csrf_exempt_for_cors, name='dispatch')
 class TableListCreateView(generics.ListCreateAPIView):
     serializer_class = TableSerializer
     permission_classes = [IsAuthenticated]
