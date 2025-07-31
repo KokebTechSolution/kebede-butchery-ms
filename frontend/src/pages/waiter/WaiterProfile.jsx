@@ -26,6 +26,7 @@ const WaiterProfile = ({ onBack }) => {
   const [printedOrders, setPrintedOrders] = useState([]);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderItems, setOrderItems] = useState({}); // { orderId: [items] }
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
@@ -40,9 +41,9 @@ const WaiterProfile = ({ onBack }) => {
 
   useEffect(() => {
     if (activeTab === 'activity') {
-      loadPrintedOrders();
+      loadPrintedOrders(filterDate);
     }
-  }, [activeTab]);
+  }, [activeTab, filterDate]);
 
   const loadWaiterStats = async () => {
     try {
@@ -58,9 +59,9 @@ const WaiterProfile = ({ onBack }) => {
     }
   };
 
-  const loadPrintedOrders = async () => {
+  const loadPrintedOrders = async (date = null) => {
     try {
-      const orders = await fetchWaiterPrintedOrders(user?.id, 10);
+      const orders = await fetchWaiterPrintedOrders(user?.id, 10, date);
       // Only include orders with cashier_status === 'printed'
       setPrintedOrders((orders || []).filter(order => order.cashier_status === 'printed'));
     } catch (error) {
@@ -337,11 +338,23 @@ const WaiterProfile = ({ onBack }) => {
             <div className="section-header">
               <h2>Recent Printed Orders</h2>
             </div>
+            <div className="mb-6 flex items-center gap-4">
+              <label htmlFor="activity-date-filter" className="font-medium">Filter by Date:</label>
+              <input
+                id="activity-date-filter"
+                type="date"
+                value={filterDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setFilterDate(e.target.value)}
+                className="p-2 border rounded"
+              />
+              <span className="text-xs text-gray-500">(Default: today)</span>
+            </div>
             <div className="activity-list">
               {printedOrders.length === 0 && (
                 <div className="activity-item">
                   <div className="activity-content">
-                    <h4>No printed orders found.</h4>
+                    <h4>No printed orders found for {filterDate}.</h4>
                   </div>
                 </div>
               )}

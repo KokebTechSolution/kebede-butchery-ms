@@ -1,15 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FaLock } from 'react-icons/fa';
 
 const ClosedOrders = ({ orders }) => {
-  if (!orders || orders.length === 0) {
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Filter orders by selected date
+  const filteredOrders = orders.filter(order => {
+    if (!order.created_at) return false;
+    const orderDate = new Date(order.created_at).toISOString().slice(0, 10);
+    return orderDate === filterDate;
+  });
+
+  if (!filteredOrders || filteredOrders.length === 0) {
     return (
-      <div className="text-gray-400 text-center">No closed orders</div>
+      <>
+        <div className="mb-6 flex items-center gap-4">
+          <label htmlFor="closed-order-date-filter" className="font-medium">Filter by Date:</label>
+          <input
+            id="closed-order-date-filter"
+            type="date"
+            value={filterDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => setFilterDate(e.target.value)}
+            className="p-2 border rounded"
+          />
+          <span className="text-xs text-gray-500">(Default: today)</span>
+        </div>
+        <div className="text-gray-400 text-center">No closed orders</div>
+      </>
     );
   }
 
-  // Group orders by table number
-  const groupedByTable = orders.reduce((acc, order) => {
+  // Group filtered orders by table number
+  const groupedByTable = filteredOrders.reduce((acc, order) => {
     const table = order.table_number || 'No Table';
     if (!acc[table]) acc[table] = [];
     acc[table].push(order);

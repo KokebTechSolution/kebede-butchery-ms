@@ -23,9 +23,13 @@ export const updateWaiterProfile = async (waiterId, profileData) => {
 };
 
 // Fetch waiter's recent printed orders
-export const fetchWaiterPrintedOrders = async (waiterId, limit = 10) => {
+export const fetchWaiterPrintedOrders = async (waiterId, limit = 10, date = null) => {
   try {
-    const response = await axiosInstance.get(`/orders/order-list/?waiter=${waiterId}&cashier_status=printed&limit=${limit}`);
+    let url = `/orders/order-list/?waiter=${waiterId}&cashier_status=printed&limit=${limit}`;
+    if (date) {
+      url += `&date=${date}`;
+    }
+    const response = await axiosInstance.get(url);
     return response.data;
   } catch (error) {
     console.error('Error fetching waiter printed orders:', error);
