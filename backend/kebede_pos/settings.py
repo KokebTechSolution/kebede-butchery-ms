@@ -26,7 +26,14 @@ SECRET_KEY = 'django-insecure-m18^jf)3nv*sx4l945otnd+0x*8#6myq(_ah78t!2+yw22j8&1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'kebede-butchery-ms.onrender.com',
+    'kebede-butchery-ms.vercel.app',
+    '.onrender.com',
+    '.vercel.app',
+]
 
 
 # Application definition
@@ -60,9 +67,9 @@ INSTALLED_APPS = [
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # Prioritize session auth
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -81,22 +88,22 @@ SIMPLE_JWT = {
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Must be first
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-   'corsheaders.middleware.CorsMiddleware' 
 ]
 ROOT_URLCONF = 'kebede_pos.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -119,11 +126,23 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
+"""DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'kebede_pos_db',
+        'USER': 'postgres',
+        'PASSWORD': 'kokeb',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
     }
+}
+"""
+
+import dj_database_url
+import os
+
+DATABASES = {
+    'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 }
 
 # Password validation
@@ -170,68 +189,94 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-
-SIMPLE_JWT = {
-    'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
-}
-
-CORS_ALLOW_CREDENTIALS = True
-"""
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168.1.8', '*']
-
-"""
+#CORS_ALLOW_ALL_ORIGINS = True
+# CORS Configuration - Fixed version
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
+    "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'access-control-allow-credentials',
+    'access-control-allow-origin',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
+]
+
+# CORS Expose Headers - Allow these headers to be exposed to the client
+CORS_EXPOSE_HEADERS = [
+    'access-control-allow-credentials',
+    'access-control-allow-origin',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
+]
+
+# CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",  # Important!
+    "https://kebede-butchery-ms.onrender.com",
+    "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # For local dev
+
+# CSRF Configuration for cross-origin requests
+CSRF_USE_REFERER = False
+CSRF_TRUSTED_ORIGINS = [
+    "https://kebede-butchery-ms.onrender.com",
+    "https://kebede-butchery-ms.vercel.app",
+    "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# CSRF Cookie settings
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Use True in production
-CSRF_COOKIE_SECURE = False 
+CSRF_COOKIE_DOMAIN = None
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_AGE = 31449600
 
-"""
-from pathlib import Path
-import os
+# For development, set secure cookies to False
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
-# BASE_DIR points to backend folder, e.g. D:/Kokeb/kebede-butchery-ms/backend
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Additional CSRF settings for cross-origin
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 
-# React build folder is frontend/build relative to project root
-REACT_BUILD_DIR = BASE_DIR.parent / "frontend" / "build"
+# Session Configuration
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = False
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_AGE = 86400
 
-# Templates config to load React's index.html
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.fspath(REACT_BUILD_DIR)],  # <-- React build folder with index.html
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",    # needed for admin etc
-                "django.contrib.auth.context_processors.auth",  # needed for admin etc
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
-
-# URL prefix for static files
-STATIC_URL = '/static/'
-
-# Tell Django where to find React build static assets for development serving
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR.parent, 'frontend', 'build', 'static'),  # React static files location
-]
-
-# Optionally, if you want to collect static files for production:
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-"""
+# For development, set secure cookies to False
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False

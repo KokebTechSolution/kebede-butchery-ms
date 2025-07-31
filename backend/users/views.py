@@ -28,6 +28,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 @csrf_exempt
 def test_logout(request):
@@ -194,7 +195,18 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
+        print(f"[DEBUG] CurrentUserView called")
+        print(f"[DEBUG] Session key: {request.session.session_key}")
+        print(f"[DEBUG] User: {request.user}")
+        print(f"[DEBUG] Is authenticated: {request.user.is_authenticated}")
+        print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
+        print(f"[DEBUG] Headers: {dict(request.headers)}")
+        
+        if not request.user.is_authenticated:
+            print(f"[DEBUG] User not authenticated, returning 401")
+            return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        print(f"[DEBUG] User authenticated, returning user data")
         serializer = UserLoginSerializer(request.user)
         return Response(serializer.data)
 
@@ -224,3 +236,110 @@ class WaiterUnsettledTablesView(APIView):
             })
         return Response(result)
 # ✅ Custom User Login Serializer
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TestLoginView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        
+        print(f"[DEBUG] Test login attempt for user: {username}")
+        
+        user = authenticate(request, username=username, password=password)
+
+        if user:
+            login(request, user)
+            print(f"[DEBUG] Test login successful for: {user.username}")
+            return Response({
+                "message": "Login successful",
+                "user": UserLoginSerializer(user).data,
+                "session_key": request.session.session_key
+            })
+        
+        print(f"[DEBUG] Test login failed for user: {username}")
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+# Add this new view for CORS testing
+class CORSTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "message": "CORS test successful",
+            "origin": request.headers.get('Origin'),
+            "method": request.method,
+            "headers": dict(request.headers)
+        })
+    
+    def post(self, request):
+        return Response({
+            "message": "CORS POST test successful",
+            "data": request.data,
+            "origin": request.headers.get('Origin'),
+            "method": request.method
+        })
+
+class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        return Response({
+            "status": "healthy",
+            "message": "Backend is running",
+            "timestamp": timezone.now().isoformat(),
+        })
+
+class CSRFDebugView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        csrf_token = request.META.get('CSRF_COOKIE', '')
+        return Response({
+            "message": "CSRF Debug",
+            "csrf_token_available": bool(csrf_token),
+            "csrf_token_length": len(csrf_token),
+            "csrf_token_preview": csrf_token[:10] + "..." if csrf_token else "None",
+            "cookies": dict(request.COOKIES),
+        })
+    
+    def post(self, request):
+        return Response({
+            "message": "CSRF POST test successful",
+            "csrf_token_received": bool(request.META.get('CSRF_COOKIE')),
+            "headers": dict(request.headers),
+        })
+
+class CSRFValidationView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        csrf_token_in_header = request.headers.get('X-CSRFToken', 'not found')
+        csrf_token_in_cookie = request.COOKIES.get('csrftoken', 'not found')
+        csrf_token_expected = request.META.get('CSRF_COOKIE', 'not found')
+        
+        return Response({
+            "message": "CSRF Validation Debug",
+            "csrf_token_in_header": csrf_token_in_header,
+            "csrf_token_in_cookie": csrf_token_in_cookie,
+            "csrf_token_expected": csrf_token_expected,
+            "tokens_match": csrf_token_in_header == csrf_token_expected,
+            "header_length": len(csrf_token_in_header),
+            "cookie_length": len(csrf_token_in_cookie),
+            "expected_length": len(csrf_token_expected),
+        })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CSRFExemptTestView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        return Response({
+            "message": "CSRF exempt test successful",
+            "data": request.data,
+            "method": request.method,
+            "headers": dict(request.headers),
+            "csrf_token_in_header": request.headers.get('X-CSRFToken', 'not found'),
+            "csrf_token_in_cookie": request.COOKIES.get('csrftoken', 'not found'),
+        })

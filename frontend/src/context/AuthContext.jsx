@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axiosInstance from '../api/axiosInstance';
 
 // Create the context
 const AuthContext = createContext();
@@ -21,14 +22,14 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/me/', {
-        credentials: 'include', // important to send cookies
-      });
-      if (!res.ok) throw new Error('Not authenticated');
-      const data = await res.json();
+      console.log('[DEBUG] Fetching session user...');
+      const response = await axiosInstance.get('users/me/');
+      const data = response.data;
+      console.log('[DEBUG] Session user data:', data);
       setUser({ ...data, isAuthenticated: true });
       localStorage.setItem('user', JSON.stringify({ ...data, isAuthenticated: true }));
-    } catch {
+    } catch (error) {
+      console.error('Authentication error:', error);
       setUser(null);
       localStorage.removeItem('user');
     }
@@ -55,10 +56,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/api/users/logout/', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await axiosInstance.post('users/logout/');
     } catch (err) {
       console.error('Logout failed:', err);
     } finally {

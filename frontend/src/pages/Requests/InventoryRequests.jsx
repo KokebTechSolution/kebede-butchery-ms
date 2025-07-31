@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useTranslation } from 'react-i18next';
 import {
   fetchRequests,
   acceptRequest,
   rejectRequest,
-} from '../../api/inventory'; // make sure these use axios withCredentials too
+} from '../../api/inventory';
 import NewRequest from './NewRequest';
 import { useAuth } from '../../context/AuthContext';
 
@@ -51,9 +51,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/products/');
       setProducts(res.data);
     } catch (err) {
       console.error(t('error_loading_products'), err);
@@ -62,9 +60,7 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/branches/');
       setBranches(res.data);
     } catch (err) {
       console.error(t('error_loading_branches'), err);
@@ -101,7 +97,7 @@ const InventoryRequestList = () => {
   const handleEdit = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/edit/`, {}, { withCredentials: true });
+      await axiosInstance.post(`inventory/requests/${id}/edit/`, {});
       await loadRequests();
       setFormMessage('Request edited!');
     } catch (err) {
@@ -114,7 +110,7 @@ const InventoryRequestList = () => {
   const handleCancel = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/cancel/`, {}, { withCredentials: true });
+      await axiosInstance.post(`inventory/requests/${id}/cancel/`, {});
       await loadRequests();
       setFormMessage('Request cancelled!');
     } catch (err) {
@@ -127,7 +123,7 @@ const InventoryRequestList = () => {
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, { withCredentials: true });
+      await axiosInstance.post(`inventory/requests/${id}/reach/`, {});
       await loadRequests();
       setFormMessage('Request reached!');
     } catch (err) {
@@ -140,7 +136,7 @@ const InventoryRequestList = () => {
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, { withCredentials: true });
+      await axiosInstance.post(`inventory/requests/${id}/not_reach/`, {});
       await loadRequests();
       setFormMessage('Request not reached!');
     } catch (err) {
@@ -167,18 +163,14 @@ const InventoryRequestList = () => {
     }
 
     try {
-      await axios.post(
-        'http://localhost:8000/api/inventory/requests/',
+      await axiosInstance.post(
+        'inventory/requests/',
         {
           product_id: parseInt(formData.product),
           quantity: parseFloat(formData.quantity),
           unit_type: formData.unit_type,
           status: 'pending',
           branch_id: parseInt(formData.branch),
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          withCredentials: true,
         }
       );
 
@@ -200,14 +192,12 @@ const InventoryRequestList = () => {
       for (const key in errors) {
         if (Array.isArray(errors[key])) {
           messages.push(`${key}: ${errors[key].join(', ')}`);
-        } else if (typeof errors[key] === 'object') {
-          messages.push(`${key}: ${Object.values(errors[key]).flat().join(', ')}`);
         } else {
           messages.push(`${key}: ${errors[key]}`);
         }
       }
 
-      setFormMessage(messages.join(' | ') || t('unknown_submission_error'));
+      setFormMessage(messages.length > 0 ? messages.join('; ') : t('request_submission_failed'));
     }
   };
 

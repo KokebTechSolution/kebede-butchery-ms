@@ -1,32 +1,67 @@
-import axios from 'axios';
+import axiosInstance from './axiosInstance';
 
-const API_URL = 'http://localhost:8000/api/users/users/';
-
-// Helper to get CSRF token from cookie
-function getCSRFToken() {
-  const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
-  return match ? match[2] : null;
-}
-
-// Common Axios config with CSRF and cookies enabled
-const axiosConfig = {
-  headers: {
-    'Content-Type': 'application/json',
-    'X-CSRFToken': getCSRFToken(),
-  },
-  withCredentials: true,
+// Fetch all staff members
+export const fetchStaff = async () => {
+  try {
+    const response = await axiosInstance.get('users/');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching staff:', error);
+    throw error;
+  }
 };
 
-export const fetchStaffList = async () => {
-  const response = await axios.get(API_URL, axiosConfig);
-  return response.data;
+// Create a new staff member
+export const createStaff = async (staffData) => {
+  try {
+    const response = await axiosInstance.post('users/', staffData);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error creating staff:', error);
+    throw error;
+  }
 };
 
-export const updateUser = async (id, formData) => {
-  const response = await axios.put(`${API_URL}${id}/`, formData, axiosConfig);
-  return response.data;
+// Update a staff member
+export const updateStaff = async (id, staffData) => {
+  try {
+    const response = await axiosInstance.patch(`users/${id}/`, staffData);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error updating staff with ID ${id}:`, error);
+    throw error;
+  }
 };
 
-export const deleteUser = async (id) => {
-  await axios.delete(`${API_URL}${id}/`, axiosConfig);
+// Delete a staff member
+export const deleteStaff = async (id) => {
+  try {
+    const response = await axiosInstance.delete(`users/${id}/`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error deleting staff with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+// Fetch staff by role
+export const fetchStaffByRole = async (role) => {
+  try {
+    const response = await axiosInstance.get(`users/?role=${role}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error fetching staff by role ${role}:`, error);
+    throw error;
+  }
+};
+
+// Fetch staff by branch
+export const fetchStaffByBranch = async (branchId) => {
+  try {
+    const response = await axiosInstance.get(`users/?branch=${branchId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Error fetching staff by branch ${branchId}:`, error);
+    throw error;
+  }
 };

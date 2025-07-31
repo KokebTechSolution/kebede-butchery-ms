@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../../api/axiosInstance';
+
 export const useOrders = (filterDate) => {
   const [orders, setOrders] = useState([]);
 
   const fetchOrders = async (date) => {
     try {
-      let url = 'http://localhost:8000/api/orders/food/';
+      let url = 'orders/food/';
       if (date) url += `?date=${date}`;
-      const response = await axios.get(url, { withCredentials: true });
+      const response = await axiosInstance.get(url);
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -24,10 +25,9 @@ export const useOrders = (filterDate) => {
     try {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
-      await axios.patch(
-        `http://localhost:8000/api/orders/${orderId}/`,
-        payload,
-        { withCredentials: true }
+      await axiosInstance.patch(
+        `orders/${orderId}/`,
+        payload
       );
       setOrders(prevOrders =>
         prevOrders.map(order =>
@@ -68,10 +68,9 @@ export const useOrders = (filterDate) => {
   // Accept/reject order item (updates item status)
   const updateOrderItemStatus = async (itemId, status) => {
     try {
-      const response = await axios.patch(
-        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
-        { status },
-        { withCredentials: true }
+      const response = await axiosInstance.patch(
+        `orders/order-item/${itemId}/update-status/`,
+        { status }
       );
       setOrders(prevOrders =>
         prevOrders.map(order => ({
@@ -92,7 +91,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axios.patch(`http://localhost:8000/api/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axiosInstance.patch(`orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {

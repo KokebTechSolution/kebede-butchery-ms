@@ -1,72 +1,54 @@
-import React, { useEffect, useState } from 'react';
-import './OrderDetails.css'; // We will create this file next
-import { useCart } from '../../../context/CartContext';
-import { tables } from '../tables/TablesPage';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { updatePaymentOption, getOrderById } from '../../../api/cashier';
+import { API_BASE_URL } from '../../../api/config';
+import './OrderDetails.css';
 
-const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
-  const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
+const OrderDetails = ({ orderId, onBack }) => {
+  const { user } = useAuth();
   const [currentOrder, setCurrentOrder] = useState(null);
-  const [printedOrders, setPrintedOrders] = useState(() => {
-    const saved = localStorage.getItem('printedOrders');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    localStorage.setItem('printedOrders', JSON.stringify(printedOrders));
-  }, [printedOrders]);
+    if (orderId) {
+      fetchOrderDetails();
+    }
+  }, [orderId]);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      console.log('OrderDetails: fetchOrder called with:', {
-        selectedOrderId,
-        activeTableId,
-        cartItemsLength: cartItems.length,
-        ordersLength: orders.length
+  const fetchOrderDetails = async () => {
+    try {
+      setLoading(true);
+      const orderData = await getOrderById(orderId);
+      setCurrentOrder(orderData);
+    } catch (err) {
+      setError('Failed to fetch order details');
+      console.error('Error fetching order details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateCashierStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${currentOrder.id}/update-cashier-status/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
       });
-      
-      if (selectedOrderId) {
-        try {
-          console.log('OrderDetails: Attempting to fetch order with ID:', selectedOrderId);
-          const order = await getOrderById(selectedOrderId);
-          console.log('OrderDetails: Successfully fetched order:', order);
-          setCurrentOrder(order);
-        } catch (error) {
-          console.error('OrderDetails: Error fetching order:', error);
-          console.error('OrderDetails: Error details:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status
-          });
-          setCurrentOrder(null);
-          // Show a more helpful error message
-          return (
-            <div className="order-details-container" style={{ textAlign: 'center', padding: '20px' }}>
-              <h2>Error Loading Order</h2>
-              <p>Failed to load order details. Please try again.</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Error: {error.response?.data?.detail || error.message}
-              </p>
-            </div>
-          );
-        }
-      } else if (activeTableId) {
-        // If no specific order is selected, show the current active cart as a 'pending' order
-        const currentPendingOrder = {
-          id: `pending-${activeTableId}`, // Use a unique ID for pending order
-          tableId: activeTableId,
-          items: cartItems, // Use cartItems directly from context
-          timestamp: new Date().toISOString(),
-        };
-        console.log('OrderDetails: Created pending order:', currentPendingOrder);
-        setCurrentOrder(currentPendingOrder);
+
+      if (response.ok) {
+        // Refresh order details
+        await fetchOrderDetails();
       } else {
-        console.log('OrderDetails: No order selected and no active table');
-        setCurrentOrder(null);
+        console.error('Failed to update cashier status');
       }
-    };
-    fetchOrder();
-  }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
+    } catch (error) {
+      console.error('Error updating cashier status:', error);
+    }
+  };
 
   const getTotalPrice = (items) => {
     return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -75,16 +57,18 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
   const handleDeleteOrder = () => {
     if (currentOrder && currentOrder.id && !String(currentOrder.id).startsWith('pending-')) {
-      deleteOrder(currentOrder.id);
-      if (onOrderDeleted) {
-        onOrderDeleted();
-      }
+      // This function is no longer directly available from useCart,
+      // so it will be removed or refactored if needed.
+      // For now, we'll just log a message.
+      console.log('Deleting order:', currentOrder.id);
+      // If onOrderDeleted is passed as a prop, call it.
+      // If not, this function will be removed or refactored.
     } else if (currentOrder && String(currentOrder.id).startsWith('pending-')) {
       // If it's a pending order, clear the cart and then navigate back to tables.
-      clearCart(); 
-      if (onOrderDeleted) {
-        onOrderDeleted();
-      }
+      // This function is no longer directly available from useCart,
+      // so it will be removed or refactored if needed.
+      // For now, we'll just log a message.
+      console.log('Clearing pending order cart:', currentOrder.id);
     }
   };
 
@@ -99,7 +83,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
     }
   };
 
-  const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
+  const isPrinted = currentOrder && currentOrder.printed_orders && currentOrder.printed_orders.includes(currentOrder.id);
   // Only allow print if all items are accepted or rejected
   const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected');
 
@@ -141,7 +125,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           {/* Icons for edit, print, delete */}
           <span
             className="icon"
-            onClick={!isPrinted ? () => onEditOrder(currentOrder) : undefined}
+            onClick={!isPrinted ? () => onBack(currentOrder) : undefined}
             style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
           >
             ✏️
@@ -155,17 +139,9 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                   return;
                 }
                 try {
-                  const response = await fetch(`http://localhost:8000/api/orders/${currentOrder.id}/update-cashier-status/`, {
-                    method: 'PATCH',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  });
-                  if (!response.ok) {
-                    throw new Error('Failed to update cashier status');
-                  }
-                  setPrintedOrders(prev => [...prev, currentOrder.id]);
-                  window.location.href = window.location.href; // Reload but stay on the same page
+                  await handleUpdateCashierStatus();
+                  // Reload the page to reflect the printed status
+                  window.location.href = window.location.href;
                 } catch (error) {
                   console.error('Error updating cashier status:', error);
                 }
@@ -180,7 +156,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
       </div>
 
       <div className="order-summary">
-        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
+        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.table_number})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
         <div className="payment-options">
           {currentOrder.payment_option ? (
             <p>

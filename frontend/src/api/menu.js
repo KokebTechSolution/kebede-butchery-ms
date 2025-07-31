@@ -2,7 +2,6 @@
 
 import axiosInstance from './axiosInstance';
 
-
 export const fetchMenus = async () => {
     try {
         const response = await axiosInstance.get('menu/menus/');
@@ -112,7 +111,6 @@ export const deleteMenuItem = async (id) => {
     }
 };
 
-
 // Create a new menu category
 export const createMenuCategory = async (categoryData) => {
     try {
@@ -124,7 +122,6 @@ export const createMenuCategory = async (categoryData) => {
     }
 };
 
-
 // Fetch inventory categories
 export const fetchInventoryCategories = async () => {
   try {
@@ -135,10 +132,6 @@ export const fetchInventoryCategories = async () => {
     throw error;
   }
 };
-
-
-
-
 
 export async function syncMenuCategoriesWithInventory() {
   try {
@@ -178,7 +171,6 @@ export async function syncMenuCategoriesWithInventory() {
     console.error("❌ Error status:", error.response?.status);
   }
 }
-
 
 // Fetch menu categories AFTER syncing
 export const fetchMenuCategories = async () => {
