@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-m18^jf)3nv*sx4l945otnd+0x*8#6myq(_ah78t!2+yw22j8&1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -173,6 +173,14 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Static files configuration for production
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Additional locations of static files
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
