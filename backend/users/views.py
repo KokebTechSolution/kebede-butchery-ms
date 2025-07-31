@@ -183,6 +183,7 @@ class TestSessionView(APIView):
         })
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class UserViewSet(ModelViewSet):
     serializer_class = UserListSerializer  # Changed from UserSerializer to UserListSerializer
     permission_classes = [IsAuthenticated]

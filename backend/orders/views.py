@@ -19,7 +19,10 @@ from payments.models import Payment
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Q
 from rest_framework.decorators import action
 from rest_framework import viewsets
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
+@method_decorator(csrf_exempt, name='dispatch')
 class OrderListView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
@@ -83,6 +86,7 @@ class OrderListView(generics.ListCreateAPIView):
         )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]

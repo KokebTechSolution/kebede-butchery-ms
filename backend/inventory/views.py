@@ -44,6 +44,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class InventoryRequestViewSet(viewsets.ModelViewSet):
     queryset = InventoryRequest.objects.all()
     serializer_class = InventoryRequestSerializer
@@ -130,6 +131,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.prefetch_related('store_stocks', 'store_stocks__original_unit', 'store_stocks__branch').all()
     serializer_class = ProductSerializer
@@ -563,6 +565,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 # Inventory Transaction
+@method_decorator(csrf_exempt, name='dispatch')
 class InventoryTransactionViewSet(viewsets.ModelViewSet):
     queryset = InventoryTransaction.objects.all()
     serializer_class = InventoryTransactionSerializer
@@ -570,6 +573,7 @@ class InventoryTransactionViewSet(viewsets.ModelViewSet):
 
 
 # Stock
+@method_decorator(csrf_exempt, name='dispatch')
 class StockViewSet(viewsets.ModelViewSet):
     queryset = Stock.objects.select_related('product', 'branch').all()
     serializer_class = StockSerializer
@@ -780,6 +784,7 @@ class StockViewSet(viewsets.ModelViewSet):
         return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class BarmanStockViewSet(viewsets.ModelViewSet):
     queryset = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
     serializer_class = BarmanStockSerializer
@@ -964,12 +969,14 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
         return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProductUnitViewSet(viewsets.ModelViewSet):
     queryset = ProductUnit.objects.all()
     serializer_class = ProductUnitSerializer
     permission_classes = [AllowAny]
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProductMeasurementViewSet(viewsets.ModelViewSet):
     queryset = ProductMeasurement.objects.all()
     serializer_class = ProductMeasurementSerializer
