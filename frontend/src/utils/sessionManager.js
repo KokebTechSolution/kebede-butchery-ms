@@ -38,23 +38,23 @@ export const initializeSession = async () => {
     const userResponse = await axiosInstance.get('users/me/');
     console.log('User response:', userResponse.data);
 
-    // Step 3: Verify the session is working by making a test request
-    console.log('Step 3: Verifying session...');
-    try {
-      // Make a simple test request to verify CSRF is working
-      const testResponse = await axiosInstance.get('users/me/');
-      console.log('Session verification successful');
-    } catch (testError) {
-      console.error('Session verification failed:', testError);
-      // Don't throw error here, just log it - session might not be established yet
-      console.log('Session verification failed, but continuing...');
-    }
+         // Step 3: Verify the session is working by making a test request
+     console.log('Step 3: Verifying session...');
+     try {
+       // Make a simple test request to verify CSRF is working
+       const testResponse = await axiosInstance.get('users/me/');
+       console.log('Session verification successful');
+     } catch (testError) {
+       console.error('Session verification failed:', testError);
+       // Don't throw error here, just log it - session might not be established yet
+       console.log('Session verification failed, but continuing...');
+     }
 
-    return {
-      success: true,
-      user: userResponse.data,
-      message: 'Session initialized successfully'
-    };
+          return {
+       success: true,
+       user: userResponse.data,
+       message: 'Session initialized successfully'
+     };
   } catch (error) {
     console.error('Session initialization failed:', error);
     console.error('Error details:', {

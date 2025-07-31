@@ -95,21 +95,21 @@ const LoadingPage = ({ onComplete, onError }) => {
           }
           
           console.log('Session test successful');
-        } catch (testError) {
-          console.error('Session test failed:', testError);
-          // Don't throw error here, just log it - session might not be established yet
-          console.log('Session test failed, but continuing...');
-        }
+                          } catch (testError) {
+           console.error('Session test failed:', testError);
+           // Don't throw error here, just log it - session might not be established yet
+           console.log('Session test failed, but continuing...');
+         }
 
-        // Step 6: Complete loading
-        setLoadingText('Ready!');
-        setProgress(100);
-        await new Promise(resolve => setTimeout(resolve, 300));
+         // Step 6: Complete loading
+         setLoadingText('Ready!');
+         setProgress(100);
+         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Call the completion callback
-        if (onComplete) {
-          onComplete();
-        }
+         // Call the completion callback
+         if (onComplete) {
+           onComplete();
+         }
 
       } catch (error) {
         console.error('Session initialization failed:', error);
