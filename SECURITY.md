@@ -6,7 +6,7 @@ This project is actively maintained and security updates are applied as needed.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it to us at [your-email@example.com].
+If you discover a security vulnerability, please report it to us at [aurarisetechsolutions@gmail.com].
 
 ## Development Dependencies
 
