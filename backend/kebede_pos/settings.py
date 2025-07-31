@@ -30,6 +30,8 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    '192.168.1.2',  # Your local IP
+    '192.168.1.0/24',  # Your local network
     'kebede-butchery-ms.onrender.com',
     'kebede-butchery-ms.vercel.app',
     '.onrender.com',
@@ -208,6 +210,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.1.2:3000",  # Your local IP
+    "http://192.168.1.2:8000",  # Backend on local IP
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -252,6 +256,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://kebede-butchery-h741toz7z-alki45s-projects.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.1.2:3000",  # Your local IP
+    "http://192.168.1.2:8000",  # Backend on local IP
 ]
 
 # CSRF Configuration for cross-origin requests
