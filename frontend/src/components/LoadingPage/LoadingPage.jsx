@@ -18,10 +18,33 @@ const LoadingPage = ({ onComplete, onError }) => {
         console.log('Starting session initialization...');
         console.log('Auth context available:', { user, login });
         
-        // Step 1: Verify CSRF token
-        setLoadingText('Verifying security token...');
+        // Step 1: Force refresh CSRF token
+        setLoadingText('Refreshing security token...');
         setProgress(20);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Force refresh CSRF token before session initialization
+        try {
+          // Get the API base URL dynamically
+          const { API_BASE_URL } = await import('../../api/config');
+          
+          const csrfResponse = await fetch(`${API_BASE_URL}/api/users/csrf/`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (!csrfResponse.ok) {
+            throw new Error(`CSRF request failed: ${csrfResponse.status}`);
+          }
+          
+          console.log('CSRF token refreshed successfully');
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (csrfError) {
+          console.error('CSRF token refresh failed:', csrfError);
+          throw new Error('Failed to refresh CSRF token');
+        }
 
         // Step 2: Refresh user data
         setLoadingText('Loading user profile...');
@@ -52,7 +75,32 @@ const LoadingPage = ({ onComplete, onError }) => {
         setProgress(80);
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Step 5: Complete loading
+        // Step 5: Test CSRF token with a simple request
+        setLoadingText('Testing security...');
+        setProgress(90);
+        try {
+          // Get the API base URL dynamically
+          const { API_BASE_URL } = await import('../../api/config');
+          
+          const testResponse = await fetch(`${API_BASE_URL}/api/users/me/`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (!testResponse.ok) {
+            throw new Error(`Session test failed: ${testResponse.status}`);
+          }
+          
+          console.log('Session test successful');
+        } catch (testError) {
+          console.error('Session test failed:', testError);
+          throw new Error('Session verification failed');
+        }
+
+        // Step 6: Complete loading
         setLoadingText('Ready!');
         setProgress(100);
         await new Promise(resolve => setTimeout(resolve, 300));

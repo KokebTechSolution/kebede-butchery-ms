@@ -10,11 +10,21 @@ function getCookie(name) {
 // Helper to refresh CSRF token
 async function refreshCSRFToken() {
   try {
-    await axios.get('http://localhost:8000/api/users/csrf/', {
-      withCredentials: true
+    const baseURL = API_BASE_URL;
+    console.log('Refreshing CSRF token from:', `${baseURL}/api/users/csrf/`);
+    
+    const response = await axios.get(`${baseURL}/api/users/csrf/`, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      }
     });
+    
+    console.log('CSRF token refreshed successfully');
+    return true;
   } catch (error) {
-    console.log('CSRF refresh error:', error);
+    console.error('CSRF refresh error:', error);
+    return false;
   }
 }
 
@@ -28,13 +38,29 @@ const axiosInstance = axios.create({
 
 // Add request interceptor to always get fresh CSRF token
 axiosInstance.interceptors.request.use(async (config) => {
-  // Refresh CSRF token before each request
-  await refreshCSRFToken();
-  
-  // Get the fresh CSRF token
-  const csrfToken = getCookie('csrftoken');
-  if (csrfToken) {
-    config.headers['X-CSRFToken'] = csrfToken;
+  try {
+    // Skip CSRF for GET requests and CSRF endpoint itself
+    if (config.method === 'get' || config.url?.includes('csrf')) {
+      return config;
+    }
+    
+    // Refresh CSRF token before each request
+    const csrfRefreshed = await refreshCSRFToken();
+    
+    if (csrfRefreshed) {
+      // Get the fresh CSRF token
+      const csrfToken = getCookie('csrftoken');
+      if (csrfToken) {
+        config.headers['X-CSRFToken'] = csrfToken;
+        console.log('CSRF token set for request:', config.url);
+      } else {
+        console.warn('No CSRF token found for request:', config.url);
+      }
+    } else {
+      console.error('Failed to refresh CSRF token for request:', config.url);
+    }
+  } catch (error) {
+    console.error('Error setting CSRF token:', error);
   }
   
   return config;

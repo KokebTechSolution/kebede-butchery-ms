@@ -4,23 +4,50 @@ export const initializeSession = async () => {
   try {
     console.log('Initializing session...');
 
-    // Step 1: Verify CSRF token
-    console.log('Step 1: Verifying CSRF token...');
+    // Step 1: Force refresh CSRF token
+    console.log('Step 1: Refreshing CSRF token...');
     try {
-      const csrfResponse = await axiosInstance.get('users/csrf/');
-      console.log('CSRF response:', csrfResponse.status);
+      // Get the API base URL dynamically
+      const { API_BASE_URL } = await import('../api/config');
+      
+      // Make a direct request to get fresh CSRF token
+      const csrfResponse = await fetch(`${API_BASE_URL}/api/users/csrf/`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!csrfResponse.ok) {
+        throw new Error(`CSRF request failed: ${csrfResponse.status}`);
+      }
+      
+      console.log('CSRF token refreshed successfully');
+      
+      // Wait a moment for the cookie to be set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
     } catch (csrfError) {
-      console.log('CSRF verification failed, but continuing:', csrfError);
+      console.error('CSRF token refresh failed:', csrfError);
+      throw new Error('Failed to refresh CSRF token');
     }
 
-    // Step 2: Get user data
+    // Step 2: Get user data with fresh CSRF token
     console.log('Step 2: Getting user data...');
     const userResponse = await axiosInstance.get('users/me/');
     console.log('User response:', userResponse.data);
 
-    // Step 3: Load any additional data needed for the app
-    // You can add more API calls here as needed
-    // For example: orders, inventory, etc.
+    // Step 3: Verify the session is working by making a test request
+    console.log('Step 3: Verifying session...');
+    try {
+      // Make a simple test request to verify CSRF is working
+      const testResponse = await axiosInstance.get('users/me/');
+      console.log('Session verification successful');
+    } catch (testError) {
+      console.error('Session verification failed:', testError);
+      throw new Error('Session verification failed');
+    }
 
     return {
       success: true,
