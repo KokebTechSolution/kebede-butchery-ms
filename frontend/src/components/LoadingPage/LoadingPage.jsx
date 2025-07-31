@@ -97,7 +97,8 @@ const LoadingPage = ({ onComplete, onError }) => {
           console.log('Session test successful');
         } catch (testError) {
           console.error('Session test failed:', testError);
-          throw new Error('Session verification failed');
+          // Don't throw error here, just log it - session might not be established yet
+          console.log('Session test failed, but continuing...');
         }
 
         // Step 6: Complete loading

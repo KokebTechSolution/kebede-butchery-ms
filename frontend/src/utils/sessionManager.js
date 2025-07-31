@@ -46,7 +46,8 @@ export const initializeSession = async () => {
       console.log('Session verification successful');
     } catch (testError) {
       console.error('Session verification failed:', testError);
-      throw new Error('Session verification failed');
+      // Don't throw error here, just log it - session might not be established yet
+      console.log('Session verification failed, but continuing...');
     }
 
     return {

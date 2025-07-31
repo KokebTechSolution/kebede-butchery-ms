@@ -214,6 +214,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.2:8000",  # Backend on local IP
 ]
 
+# Allow all origins for development (more permissive)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -266,16 +273,16 @@ CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 
 # CSRF Cookie settings
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax'  # Changed from 'None' to 'Lax'
+CSRF_COOKIE_SECURE = False  # Set to False for development
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_DOMAIN = None
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
 
 # Session Configuration
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'  # Changed from 'None' to 'Lax'
+SESSION_COOKIE_SECURE = False  # Set to False for development
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_DOMAIN = None
 SESSION_COOKIE_AGE = 86400
