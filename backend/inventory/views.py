@@ -304,7 +304,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                     branch=branch,
                     quantity_in_base_units=quantity_in_base_units,
                     original_quantity=original_quantity_decimal,
-                    original_unit=original_unit,
+                    original_unit=original_unit,  # This should be the input unit (from_unit)
                     minimum_threshold_base_units=Decimal(stock_data.get('minimum_threshold_base_units', 0)),
                 )
                 print(f"Stock created successfully for {product.name}")
