@@ -3,9 +3,9 @@
 ## 📱 **Access Your App from Any Device on Same WiFi**
 
 ### **Your Network Details:**
-- **Your Computer IP**: `192.168.1.2`
-- **Frontend URL**: `http://192.168.1.2:3000`
-- **Backend API**: `http://192.168.1.2:8000`
+- **Your Computer IP**: `192.168.1.8`
+- **Frontend URL**: `http://192.168.1.8:3000`
+- **Backend API**: `http://192.168.1.8:8000`
 
 ## 🚀 **Quick Start**
 
@@ -28,7 +28,7 @@ start-network.bat
 **Or manually:**
 ```bash
 cd frontend
-set REACT_APP_API_URL=http://192.168.1.2:8000
+set REACT_APP_API_URL=http://192.168.1.8:8000
 npm start
 ```
 
@@ -37,12 +37,12 @@ npm start
 ### **From Phone/Tablet:**
 1. Connect to same WiFi network
 2. Open browser
-3. Go to: `http://192.168.1.2:3000`
+3. Go to: `http://192.168.1.8:3000`
 
 ### **From Other Computers:**
 1. Connect to same WiFi network
 2. Open browser
-3. Go to: `http://192.168.1.2:3000`
+3. Go to: `http://192.168.1.8:3000`
 
 ## 🔧 **Troubleshooting**
 
@@ -58,7 +58,7 @@ npm start
 3. **Verify Network:**
    ```bash
    # Test if backend is accessible
-   curl http://192.168.1.2:8000/api/users/csrf/
+   curl http://192.168.1.8:8000/api/users/csrf/
    ```
 
 ### **Windows Firewall Settings:**
@@ -71,9 +71,9 @@ npm start
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | `http://192.168.1.2:3000` | React App |
-| **Backend API** | `http://192.168.1.2:8000` | Django API |
-| **Admin Panel** | `http://192.168.1.2:8000/admin` | Django Admin |
+| **Frontend** | `http://192.168.1.8:3000` | React App |
+| **Backend API** | `http://192.168.1.8:8000` | Django API |
+| **Admin Panel** | `http://192.168.1.8:8000/admin` | Django Admin |
 
 ## 🎯 **Testing Checklist**
 

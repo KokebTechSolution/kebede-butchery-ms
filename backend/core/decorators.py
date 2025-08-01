@@ -18,8 +18,8 @@ def csrf_exempt_for_cors(view_func):
             'http://localhost:3001',
             'http://127.0.0.1:3000',
             'http://127.0.0.1:3001',
-            'http://192.168.1.2:3000',
-            'http://192.168.1.2:3001'
+            'http://192.168.1.8:3000',
+            'http://192.168.1.8:3001'
         ]:
             # For cross-origin requests, exempt CSRF
             return csrf_exempt(view_func)(request, *args, **kwargs)

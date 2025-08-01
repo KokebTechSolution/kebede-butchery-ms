@@ -82,7 +82,11 @@ const LoadingPage = ({ onComplete, onError }) => {
           // Get the API base URL dynamically
           const { API_BASE_URL } = await import('../../api/config');
           
-          const testResponse = await fetch(`${API_BASE_URL}/api/users/me/`, {
+          // Check if we're accessing from network IP
+          const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+          const meEndpoint = isNetworkAccess ? 'users/network-me/' : 'users/me/';
+          
+          const testResponse = await fetch(`${API_BASE_URL}/api/${meEndpoint}`, {
             method: 'GET',
             credentials: 'include',
             headers: {

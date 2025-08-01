@@ -16,11 +16,11 @@ cd ..
 echo.
 echo ✅ Network servers started!
 echo.
-echo 🌐 Backend: http://192.168.1.2:8000
-echo 🌐 Frontend: http://192.168.1.2:3000
+echo 🌐 Backend: http://192.168.1.8:8000
+echo 🌐 Frontend: http://192.168.1.8:3000
 echo.
 echo 📱 Access from other devices on your WiFi:
-echo    - Phone/Tablet: http://192.168.1.2:3000
-echo    - Other computers: http://192.168.1.2:3000
+echo    - Phone/Tablet: http://192.168.1.8:3000
+echo    - Other computers: http://192.168.1.8:3000
 echo.
 pause 

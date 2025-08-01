@@ -108,7 +108,7 @@ class SessionLoginView(APIView):
                     session_key,
                     max_age=86400,  # 24 hours
                     secure=False,  # Allow HTTP for local development
-                    samesite='None',  # Allow cross-site for network access
+                    samesite='Lax',  # Changed to Lax for localhost compatibility
                     httponly=False,
                     path='/',
                     domain=None
@@ -121,7 +121,7 @@ class SessionLoginView(APIView):
                     request.META.get('CSRF_COOKIE', ''),
                     max_age=31449600,  # 1 year
                     secure=False,  # Allow HTTP for local development
-                    samesite='None',  # Allow cross-site for network access
+                    samesite='Lax',  # Changed to Lax for localhost compatibility
                     httponly=False,
                     path='/',
                     domain=None
@@ -154,7 +154,7 @@ def get_csrf(request):
             csrf_token,
             max_age=31449600,  # 1 year
             secure=False,  # Allow HTTP for local development
-            samesite='None',  # Allow cross-site for network access
+            samesite='Lax',  # Changed to Lax for localhost compatibility
             httponly=False,
             path='/',
             domain=None
@@ -308,7 +308,7 @@ class UserViewSet(ModelViewSet):
 
 @method_decorator(csrf_exempt_for_cors, name='dispatch')
 class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow any request, we'll handle auth manually
 
     def get(self, request):
         print(f"[DEBUG] CurrentUserView called")
@@ -332,18 +332,19 @@ class CurrentUserView(APIView):
             serializer = UserLoginSerializer(user)
             return Response(serializer.data)
         
+        # Try to get user from request.user (for local access)
+        if request.user and request.user.is_authenticated:
+            print(f"[DEBUG] User authenticated via request.user: {request.user.username}")
+            serializer = UserLoginSerializer(request.user)
+            return Response(serializer.data)
+        
         # Check if user is anonymous
         if request.user.is_anonymous:
             print(f"[DEBUG] User is anonymous, returning 401")
             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
         
-        if not request.user.is_authenticated:
-            print(f"[DEBUG] User not authenticated, returning 401")
-            return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        print(f"[DEBUG] User authenticated, returning user data")
-        serializer = UserLoginSerializer(request.user)
-        return Response(serializer.data)
+        print(f"[DEBUG] No valid session found")
+        return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class WaiterUnsettledTablesView(APIView):
@@ -512,6 +513,7 @@ class CSRFTestView(APIView):
             "cookies": dict(request.COOKIES),
         })
 
+@method_decorator(csrf_exempt, name='dispatch')
 class NetworkAuthView(APIView):
     """
     Special authentication view for network access that returns session data in response
@@ -547,7 +549,7 @@ class NetworkAuthView(APIView):
                     session_key,
                     max_age=86400,
                     secure=False,
-                    samesite='None',
+                    samesite='Lax',
                     httponly=False,
                     path='/',
                     domain=None
@@ -561,7 +563,7 @@ class NetworkAuthView(APIView):
                     csrf_token,
                     max_age=31449600,
                     secure=False,
-                    samesite='None',
+                    samesite='Lax',
                     httponly=False,
                     path='/',
                     domain=None
@@ -575,7 +577,7 @@ class NetworkAuthView(APIView):
 
 class NetworkCurrentUserView(APIView):
     """
-    Network-specific current user view that accepts session key in headers
+    Network-specific current user view that works with cookies (same as regular me endpoint)
     """
     permission_classes = [AllowAny]
 
@@ -584,38 +586,17 @@ class NetworkCurrentUserView(APIView):
         print(f"[DEBUG] Headers: {dict(request.headers)}")
         print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
         
-        # Try to get session key from headers (for network access)
-        session_key = request.headers.get('X-Session-Key')
-        print(f"[DEBUG] Session key from header: {session_key}")
-        
-        if session_key:
-            # Try to validate session using the provided session key
-            try:
-                from django.contrib.sessions.models import Session
-                from django.utils import timezone
-                
-                session = Session.objects.get(
-                    session_key=session_key,
-                    expire_date__gt=timezone.now()
-                )
-                session_data = session.get_decoded()
-                user_id = session_data.get('_auth_user_id')
-                
-                if user_id:
-                    from django.contrib.auth import get_user_model
-                    User = get_user_model()
-                    user = User.objects.get(id=user_id)
-                    print(f"[DEBUG] User authenticated via session key: {user.username}")
-                    serializer = UserLoginSerializer(user)
-                    return Response(serializer.data)
-            except Exception as e:
-                print(f"[DEBUG] Session validation error: {e}")
-        
-        # Fallback to regular session validation
+        # Use the same session validation as CurrentUserView
         user = SessionManager.validate_session(request)
         if user:
             print(f"[DEBUG] User authenticated via session manager: {user.username}")
             serializer = UserLoginSerializer(user)
+            return Response(serializer.data)
+        
+        # Also try Django's built-in authentication
+        if request.user.is_authenticated:
+            print(f"[DEBUG] User authenticated via Django: {request.user.username}")
+            serializer = UserLoginSerializer(request.user)
             return Response(serializer.data)
         
         print(f"[DEBUG] No valid session found")

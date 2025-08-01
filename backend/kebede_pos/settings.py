@@ -30,8 +30,8 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '192.168.1.2',  # Your local IP
-    '192.168.1.0/24',  # Your local network
+    '192.168.1.8',  # Your actual local IP
+    '192.168.155.0/24',  # Your local network
     'kebede-butchery-ms.onrender.com',
     'kebede-butchery-ms.vercel.app',
     '.onrender.com',
@@ -92,6 +92,7 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be first
+    'core.middleware.CORSMiddleware',  # Custom CORS middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'core.middleware.SessionMiddleware',  # Custom session middleware
@@ -207,8 +208,10 @@ AUTHENTICATION_BACKENDS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.1.2:3000",  # Your local IP
-    "http://192.168.1.2:3001",  # Alternative port
+    "http://192.168.1.8:3000",  # Your actual local IP
+    "http://192.168.1.8:3001",  # Alternative port
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
 # For development, allow all origins and credentials
@@ -216,6 +219,7 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = ['*']  # Allow all headers
+    CORS_EXPOSE_HEADERS = ['*']  # Expose all headers
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -256,8 +260,10 @@ CORS_EXPOSE_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.1.2:3000",  # Your local IP
-    "http://192.168.1.2:3001",  # Alternative port
+    "http://192.168.1.8:3000",  # Your actual local IP
+    "http://192.168.1.8:3001",  # Alternative port
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
 ]
 
 # For development, trust all localhost origins
@@ -272,14 +278,14 @@ CSRF_USE_REFERER = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'None'  # Allow cross-site for network access
+CSRF_COOKIE_SAMESITE = 'Lax'  # Changed to Lax for localhost compatibility
 CSRF_COOKIE_SECURE = False      # False for HTTP
 CSRF_COOKIE_DOMAIN = None
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
 
 # Session Configuration for NETWORK ACCESS
-SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-site for network access
+SESSION_COOKIE_SAMESITE = 'Lax'  # Changed to Lax for localhost compatibility
 SESSION_COOKIE_SECURE = False     # False for HTTP
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_DOMAIN = None

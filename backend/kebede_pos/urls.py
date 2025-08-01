@@ -8,8 +8,28 @@ from pathlib import Path
 import os
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+@csrf_exempt
+@require_http_methods(["GET", "OPTIONS"])
+def test_connection(request):
+    """Test endpoint to verify frontend-backend communication"""
+    if request.method == "OPTIONS":
+        response = JsonResponse({"status": "ok"})
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken"
+        return response
+    
+    return JsonResponse({
+        "status": "success",
+        "message": "Backend is responding!",
+        "timestamp": "2025-08-01T05:45:00Z",
+        "cors_enabled": True
+    })
 
 def api_info(request):
     """Return API information for the root endpoint"""
@@ -44,6 +64,7 @@ def api_info(request):
 
 urlpatterns = [
     path('', api_info, name='api_info'),
+    path('test-connection/', test_connection, name='test-connection'),
     path('admin/', admin.site.urls),
 
     # APIs
