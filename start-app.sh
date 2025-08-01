@@ -56,7 +56,7 @@ start_backend() {
     # Start Django server
     echo -e "${GREEN}✅ Starting Django on http://localhost:8000${NC}"
     echo -e "${GREEN}✅ Network access: http://192.168.1.8:8000${NC}"
-    python manage.py runserver 0.0.0.0:8000 &
+    python manage.py runserver 0.0.0.0:8000 > ../backend.log 2>&1 &
     BACKEND_PID=$!
     cd ..
 }
@@ -81,7 +81,7 @@ start_frontend() {
     # Start React development server
     echo -e "${GREEN}✅ Starting React on http://localhost:3000${NC}"
     echo -e "${GREEN}✅ Network access: http://192.168.1.8:3000${NC}"
-    npm start &
+    npm start > ../frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd ..
 }
@@ -117,12 +117,37 @@ show_status() {
     echo -e "${BLUE}💡 To stop the servers, press Ctrl+C${NC}"
 }
 
+# Function to show logs
+show_logs() {
+    echo ""
+    echo -e "${BLUE}📊 Server Logs:${NC}"
+    echo "================================================"
+    
+    # Show backend logs
+    if [ -f "backend.log" ]; then
+        echo -e "${GREEN}🐍 Backend Logs:${NC}"
+        tail -n 5 backend.log
+    fi
+    
+    # Show frontend logs
+    if [ -f "frontend.log" ]; then
+        echo -e "${GREEN}⚛️  Frontend Logs:${NC}"
+        tail -n 5 frontend.log
+    fi
+    
+    echo ""
+}
+
 # Function to cleanup on exit
 cleanup() {
     echo ""
     echo -e "${YELLOW}🛑 Stopping servers...${NC}"
     kill_port 8000
     kill_port 3000
+    
+    # Clean up log files
+    rm -f backend.log frontend.log
+    
     echo -e "${GREEN}✅ Servers stopped${NC}"
     exit 0
 }
@@ -159,5 +184,8 @@ show_status
 echo -e "${BLUE}📊 Monitoring servers... (Press Ctrl+C to stop)${NC}"
 echo "================================================"
 
-# Wait for background processes
-wait $BACKEND_PID $FRONTEND_PID 
+# Monitor and show logs every 10 seconds
+while true; do
+    show_logs
+    sleep 10
+done 

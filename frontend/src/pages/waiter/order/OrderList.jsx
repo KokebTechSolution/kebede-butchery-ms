@@ -144,6 +144,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
                 key={order.id}
                 className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
                 onClick={() => {
+                  console.log('Order clicked:', order.id, order);
                   onSelectOrder(order.id);
                 }}
               >

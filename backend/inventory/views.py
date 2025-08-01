@@ -228,6 +228,21 @@ class ProductViewSet(viewsets.ModelViewSet):
                 print(f"Error creating measurement: {e}")
                 raise ValueError(f"Error creating measurement: {e}")
         
+        # Ensure base unit is set as default sales unit if no measurement was created
+        if not measurement_data and product.base_unit:
+            try:
+                # Create a self-conversion for the base unit (1:1 ratio)
+                ProductMeasurement.objects.create(
+                    product=product,
+                    from_unit=product.base_unit,
+                    to_unit=product.base_unit,
+                    amount_per=Decimal('1.0'),
+                    is_default_sales_unit=True,
+                )
+                print(f"Created default sales unit conversion for {product.name}: {product.base_unit.unit_name}")
+            except Exception as e:
+                print(f"Error creating default sales unit conversion: {e}")
+        
         # Create stock AFTER measurement is created
         if stock_data:
             try:
@@ -244,6 +259,9 @@ class ProductViewSet(viewsets.ModelViewSet):
                 branch = Branch.objects.get(id=branch_id)
                 original_unit = ProductUnit.objects.get(id=original_unit_id)
                 
+                # Convert original_quantity to Decimal early
+                original_quantity_decimal = Decimal(str(original_quantity))
+                
                 # Use provided quantity_in_base_units if available, otherwise calculate
                 if provided_quantity_in_base_units is not None:
                     quantity_in_base_units = Decimal(str(provided_quantity_in_base_units)).quantize(Decimal('0.01'))
@@ -251,8 +269,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 else:
                     # Calculate quantity in base units - now the conversion should exist
                     try:
-                        # Ensure original_quantity is properly converted to Decimal
-                        original_quantity_decimal = Decimal(str(original_quantity))
                         conversion_factor = product.get_conversion_factor(original_unit, product.base_unit)
                         quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
                         print(f"Calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity_decimal}, conversion: {conversion_factor})")
@@ -268,41 +284,30 @@ class ProductViewSet(viewsets.ModelViewSet):
                                 amount_per=Decimal(str(default_factor)),
                                 is_default_sales_unit=False
                             )
-                            print(f"Auto-created conversion: {original_unit.unit_name} -> {product.base_unit.unit_name} = {default_factor}")
-                            conversion_factor = Decimal(str(default_factor))
-                            original_quantity_decimal = Decimal(str(original_quantity))
+                            # Also create the reverse conversion
+                            ProductMeasurement.objects.create(
+                                product=product,
+                                from_unit=product.base_unit,
+                                to_unit=original_unit,
+                                amount_per=Decimal('1.0') / Decimal(str(default_factor)),
+                                is_default_sales_unit=False
+                            )
+                            # Recalculate with the new conversion
+                            conversion_factor = product.get_conversion_factor(original_unit, product.base_unit)
                             quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
-                            print(f"Auto-calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity_decimal}, conversion: {conversion_factor})")
+                            print(f"Created conversion and recalculated: {quantity_in_base_units}")
                         else:
-                            raise ValueError(f"No conversion path found and no default available for {original_unit.unit_name} -> {product.base_unit.unit_name}")
+                            raise ValueError(f"No default conversion factor available for {original_unit.unit_name} -> {product.base_unit.unit_name}")
                 
-                stock = Stock.objects.create(
+                Stock.objects.create(
                     product=product,
                     branch=branch,
                     quantity_in_base_units=quantity_in_base_units,
-                    original_quantity=Decimal(str(original_quantity)),
+                    original_quantity=original_quantity_decimal,
                     original_unit=original_unit,
-                    minimum_threshold_base_units=stock_data.get('minimum_threshold_base_units', 0),
+                    minimum_threshold_base_units=Decimal(stock_data.get('minimum_threshold_base_units', 0)),
                 )
-                print(f"Stock created successfully: {stock.id}")
-                
-                # Create inventory transaction for initial stock
-                # Set quantity_in_base_units directly to avoid double calculation
-                transaction = InventoryTransaction(
-                    product=product,
-                    transaction_type='restock',
-                    quantity=Decimal(str(original_quantity)),
-                    transaction_unit=original_unit,
-                    to_stock_main=stock,
-                    branch=branch,
-                    price_at_transaction=product.base_unit_price or Decimal('0.00'),
-                    notes=f"Initial stock: {original_quantity} {original_unit.unit_name}"
-                )
-                # Set the quantity_in_base_units directly to avoid double calculation
-                transaction.quantity_in_base_units = quantity_in_base_units
-                transaction._skip_quantity_calculation = True
-                transaction.save(skip_stock_adjustment=True)  # Skip stock adjustment since stock is already set
-                print(f"Inventory transaction created for initial stock with quantity_in_base_units: {quantity_in_base_units}")
+                print(f"Stock created successfully for {product.name}")
                 
             except Exception as e:
                 print(f"Error creating stock: {e}")

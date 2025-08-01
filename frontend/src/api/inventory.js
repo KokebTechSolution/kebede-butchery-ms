@@ -134,6 +134,6 @@ const addNewCategory = async (categoryName, itemTypeId) => {
 };
 
 export const fetchProductMeasurements = async (productId) => {
-  const response = await axiosInstance.get(`productmeasurements/?product=${productId}`);
+  const response = await axiosInstance.get(`inventory/productmeasurements/?product=${productId}`);
   return response.data;
 };

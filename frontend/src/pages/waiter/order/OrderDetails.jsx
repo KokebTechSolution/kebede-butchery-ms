@@ -4,22 +4,24 @@ import { updatePaymentOption, getOrderById } from '../../../api/cashier';
 import { API_BASE_URL } from '../../../api/config';
 import './OrderDetails.css';
 
-const OrderDetails = ({ orderId, onBack }) => {
-  const { user } = useAuth();
+const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
   const [currentOrder, setCurrentOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  console.log('OrderDetails - selectedOrderId:', selectedOrderId);
+  console.log('OrderDetails - currentOrder:', currentOrder);
+
   useEffect(() => {
-    if (orderId) {
+    if (selectedOrderId) {
       fetchOrderDetails();
     }
-  }, [orderId]);
+  }, [selectedOrderId]);
 
   const fetchOrderDetails = async () => {
     try {
       setLoading(true);
-      const orderData = await getOrderById(orderId);
+      const orderData = await getOrderById(selectedOrderId);
       setCurrentOrder(orderData);
     } catch (err) {
       setError('Failed to fetch order details');
@@ -125,7 +127,7 @@ const OrderDetails = ({ orderId, onBack }) => {
           {/* Icons for edit, print, delete */}
           <span
             className="icon"
-            onClick={!isPrinted ? () => onBack(currentOrder) : undefined}
+            onClick={!isPrinted ? () => onEditOrder(currentOrder) : undefined}
             style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
           >
             ✏️

@@ -75,6 +75,7 @@ def session_logout(request):
 User = get_user_model()
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -98,8 +99,12 @@ class SessionLoginView(APIView):
             print(f"[DEBUG] Session key after login: {session_key}")
             print(f"[DEBUG] User is authenticated: {request.user.is_authenticated}")
             
-            # Create response with user data
-            response = Response(UserLoginSerializer(user).data)
+            # Create response with user data and session info for network access
+            response_data = UserLoginSerializer(user).data
+            response_data['session_key'] = session_key
+            response_data['csrf_token'] = request.META.get('CSRF_COOKIE', '')
+            
+            response = Response(response_data)
             
             # Set session cookie explicitly for network access
             if session_key:
@@ -306,7 +311,7 @@ class UserViewSet(ModelViewSet):
 
         return Response({"status": "Password reset successfully"})
 
-@method_decorator(csrf_exempt_for_cors, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class CurrentUserView(APIView):
     permission_classes = [AllowAny]  # Allow any request, we'll handle auth manually
 
@@ -513,91 +518,5 @@ class CSRFTestView(APIView):
             "cookies": dict(request.COOKIES),
         })
 
-@method_decorator(csrf_exempt, name='dispatch')
-class NetworkAuthView(APIView):
-    """
-    Special authentication view for network access that returns session data in response
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        
-        print(f"[DEBUG] Network login attempt for user: {username}")
-        
-        user = authenticate(request, username=username, password=password)
-        
-        if user:
-            # Use SessionManager to create session
-            session_key = SessionManager.create_session(request, user)
-            
-            print(f"[DEBUG] Network user authenticated: {user.username}")
-            print(f"[DEBUG] Network session key: {session_key}")
-            
-            # Create response with user data and session info
-            response_data = UserLoginSerializer(user).data
-            response_data['session_key'] = session_key
-            response_data['csrf_token'] = request.META.get('CSRF_COOKIE', '')
-            
-            response = Response(response_data)
-            
-            # Set cookies for network access
-            if session_key:
-                response.set_cookie(
-                    'sessionid',
-                    session_key,
-                    max_age=86400,
-                    secure=False,
-                    samesite='Lax',
-                    httponly=False,
-                    path='/',
-                    domain=None
-                )
-            
-            # Set CSRF cookie
-            csrf_token = request.META.get('CSRF_COOKIE', '')
-            if csrf_token:
-                response.set_cookie(
-                    'csrftoken',
-                    csrf_token,
-                    max_age=31449600,
-                    secure=False,
-                    samesite='Lax',
-                    httponly=False,
-                    path='/',
-                    domain=None
-                )
-            
-            print(f"[DEBUG] Network response cookies: {dict(response.cookies)}")
-            return response
-        
-        print(f"[DEBUG] Network authentication failed for user: {username}")
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
-class NetworkCurrentUserView(APIView):
-    """
-    Network-specific current user view that works with cookies (same as regular me endpoint)
-    """
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        print(f"[DEBUG] NetworkCurrentUserView called")
-        print(f"[DEBUG] Headers: {dict(request.headers)}")
-        print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
-        
-        # Use the same session validation as CurrentUserView
-        user = SessionManager.validate_session(request)
-        if user:
-            print(f"[DEBUG] User authenticated via session manager: {user.username}")
-            serializer = UserLoginSerializer(user)
-            return Response(serializer.data)
-        
-        # Also try Django's built-in authentication
-        if request.user.is_authenticated:
-            print(f"[DEBUG] User authenticated via Django: {request.user.username}")
-            serializer = UserLoginSerializer(request.user)
-            return Response(serializer.data)
-        
-        print(f"[DEBUG] No valid session found")
-        return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+# NetworkAuthView and NetworkCurrentUserView have been consolidated into SessionLoginView and CurrentUserView
+# Both endpoints now work for both local and network access

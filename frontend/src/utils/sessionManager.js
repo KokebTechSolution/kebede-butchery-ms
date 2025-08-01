@@ -35,18 +35,15 @@ export const initializeSession = async () => {
 
     // Step 2: Get user data with fresh CSRF token
     console.log('Step 2: Getting user data...');
-    // Check if we're accessing from network IP
-    const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const meEndpoint = isNetworkAccess ? 'users/network-me/' : 'users/me/';
-    
-    const userResponse = await axiosInstance.get(meEndpoint);
+    // Use unified endpoint for both local and network access
+    const userResponse = await axiosInstance.get('users/me/');
     console.log('User response:', userResponse.data);
 
          // Step 3: Verify the session is working by making a test request
      console.log('Step 3: Verifying session...');
      try {
        // Make a simple test request to verify CSRF is working
-       const testResponse = await axiosInstance.get(meEndpoint);
+       const testResponse = await axiosInstance.get('users/me/');
        console.log('Session verification successful');
      } catch (testError) {
        console.error('Session verification failed:', testError);
@@ -76,12 +73,8 @@ export const initializeSession = async () => {
 
 export const refreshSession = async () => {
   try {
-    // Refresh user data
-    // Check if we're accessing from network IP
-    const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const meEndpoint = isNetworkAccess ? 'users/network-me/' : 'users/me/';
-    
-    const userResponse = await axiosInstance.get(meEndpoint);
+    // Refresh user data using unified endpoint
+    const userResponse = await axiosInstance.get('users/me/');
     return {
       success: true,
       user: userResponse.data
@@ -97,11 +90,8 @@ export const refreshSession = async () => {
 
 export const validateSession = async () => {
   try {
-    // Check if we're accessing from network IP
-    const isNetworkAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const meEndpoint = isNetworkAccess ? 'users/network-me/' : 'users/me/';
-    
-    const response = await axiosInstance.get(meEndpoint);
+    // Use unified endpoint for session validation
+    const response = await axiosInstance.get('users/me/');
     return response.status === 200;
   } catch (error) {
     return false;
