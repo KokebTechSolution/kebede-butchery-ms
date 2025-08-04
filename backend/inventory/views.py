@@ -52,45 +52,54 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+    # Accept: Only update status
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def accept(self, request, pk=None):
-        req = self.get_object();
+        req = self.get_object()
         if req.status != 'pending':
             return Response({'detail': 'Request is not pending.'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            stock = Stock.objects.get(product=req.product, branch=req.branch)
-            # Convert request quantity to base units
-            conversion_factor = req.product.get_conversion_factor(req.request_unit, req.product.base_unit)
-            quantity_in_base_units = (req.quantity * conversion_factor).quantize(Decimal('0.01'))
-            if stock.quantity_in_base_units < quantity_in_base_units:
-                return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            print(f"[DEBUG] Accepted request: Stock check passed - {quantity_in_base_units} base units available")
-            
-        except Stock.DoesNotExist:
-            return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(f"[ERROR] Error accepting request: {e}")
-            return Response({'detail': f'Error accepting request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        
         req.status = 'accepted'
         req.responded_by = request.user
         req.save()
         return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
+    # Reach: Deduct stock and update status
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def reach(self, request, pk=None):
         req = self.get_object()
         if req.status != 'accepted':
             return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
-        # Only update if not already fulfilled
-        if req.status != 'fulfilled':
-            req.status = 'fulfilled'
-            req.reached_status = True
-            req.responded_by = request.user
-            req.save()  # This triggers InventoryRequest.save(), which creates the transaction
+        try:
+            stock = Stock.objects.get(product=req.product, branch=req.branch)
+            conversion_factor = req.product.get_conversion_factor(req.request_unit, req.product.base_unit)
+            quantity_in_base_units = (req.quantity * conversion_factor).quantize(Decimal('0.01'))
+            if stock.quantity_in_base_units < quantity_in_base_units:
+                return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
+            #stock.quantity_in_base_units = (stock.quantity_in_base_units - quantity_in_base_units).quantize(Decimal('0.01'))
+            # Update original_quantity and unit as before
+            if stock.original_unit and stock.original_unit != req.request_unit:
+                try:
+                    existing_conversion = req.product.get_conversion_factor(stock.original_unit, req.request_unit)
+                    converted_existing = stock.original_quantity * existing_conversion
+                    stock.original_quantity = (converted_existing - req.quantity).quantize(Decimal('0.01'))
+                except ValueError:
+                    stock.original_quantity = stock.original_quantity
+            else:
+                stock.original_quantity = (stock.original_quantity - req.quantity).quantize(Decimal('0.01'))
+            stock.original_unit = req.request_unit
+            stock.save()
+            print(f"[DEBUG] Stock updated after reach: original_quantity={stock.original_quantity}, original_unit={stock.original_unit.unit_name}")
+        except Stock.DoesNotExist:
+            return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"[ERROR] Error reaching request: {e}")
+            return Response({'detail': f'Error reaching request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        req.status = 'fulfilled'
+        req.reached_status = True
+        req.responded_by = request.user
+        req.save()
         return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
