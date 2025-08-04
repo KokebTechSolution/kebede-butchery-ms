@@ -156,7 +156,7 @@ class StockSerializer(serializers.ModelSerializer):
             'product_id',
             'branch',
             'branch_id',
-            'quantity_in_base_units',
+            'quantity_in_base_units',  # ✅ This will be displayed
             'minimum_threshold_base_units',
             'running_out',
             'last_stock_update',
@@ -164,6 +164,8 @@ class StockSerializer(serializers.ModelSerializer):
             'original_unit',
             'original_quantity_display',
         ]
+        read_only_fields = ['quantity_in_base_units', 'running_out']  # ✅ This protects it
+
 
 # Inventory Transaction
 class InventoryTransactionSerializer(serializers.ModelSerializer):

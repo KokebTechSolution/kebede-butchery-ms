@@ -248,9 +248,9 @@ const ProductListPage = () => {
                     <button onClick={() => handleRestockClick(stock)} className="bg-green-600 text-white px-2 py-1 rounded text-sm hover:bg-green-700">
                       {t('restock')}
                     </button>
-                    <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
+{/*                    <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
                       {t('delete')}
-                    </button>
+                    </button>*/}
                   </td>
                 </tr>
               ))
