@@ -7,9 +7,6 @@ from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from core.decorators import csrf_exempt_for_cors
 from .models import (
     ItemType, Category, Product, InventoryTransaction, 
     InventoryRequest, Stock, Branch, BarmanStock, ProductUnit, ProductMeasurement
@@ -30,7 +27,6 @@ class BranchViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # Item Type
-@method_decorator(csrf_exempt, name='dispatch')
 class ItemTypeViewSet(viewsets.ModelViewSet):
     queryset = ItemType.objects.all()
     serializer_class = ItemTypeSerializer
@@ -38,44 +34,16 @@ class ItemTypeViewSet(viewsets.ModelViewSet):
 
 
 # Category
-@method_decorator(csrf_exempt, name='dispatch')
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class InventoryRequestViewSet(viewsets.ModelViewSet):
     queryset = InventoryRequest.objects.all()
     serializer_class = InventoryRequestSerializer
     permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        """
-        Filter requests by branch for branch managers and bartenders
-        """
-        queryset = super().get_queryset()
-        
-        # Get the user's branch
-        user = self.request.user
-        if hasattr(user, 'branch') and user.branch:
-            # Filter by the user's branch
-            queryset = queryset.filter(branch=user.branch)
-            print(f"[DEBUG] Filtering inventory requests for branch: {user.branch.name}")
-        elif user.is_superuser:
-            # Superuser can see all requests
-            print(f"[DEBUG] Superuser - showing all inventory requests")
-        else:
-            # For users without branch, show only their own requests
-            if user.is_authenticated:
-                queryset = queryset.filter(requested_by=user)
-                print(f"[DEBUG] User without branch - showing only own requests")
-            else:
-                queryset = queryset.none()
-                print(f"[DEBUG] Anonymous user - showing no requests")
-        
-        return queryset
 
     def perform_create(self, serializer):
         # Set requested_by to the current user if not already set
@@ -98,7 +66,14 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             if stock.quantity_in_base_units < quantity_in_base_units:
                 return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
             
-            print(f"[DEBUG] Accepted request: Stock check passed - {quantity_in_base_units} base units available")
+            # Update stock quantities
+            stock.quantity_in_base_units = (stock.quantity_in_base_units - quantity_in_base_units).quantize(Decimal('0.01'))
+            stock.original_quantity = max(Decimal('0.00'), (stock.original_quantity - req.quantity).quantize(Decimal('0.01')))
+            stock.original_unit = req.request_unit
+            stock.last_stock_update = timezone.now()
+            stock.save()
+            
+            print(f"[DEBUG] Accepted request: Reduced stock by {quantity_in_base_units} base units, {req.quantity} {req.request_unit.unit_name}")
             
         except Stock.DoesNotExist:
             return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -107,7 +82,6 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
             return Response({'detail': f'Error accepting request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
         
         req.status = 'accepted'
-        req.responded_by = request.user
         req.save()
         return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
@@ -117,51 +91,19 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         req = self.get_object()
         if req.status != 'accepted':
             return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Check if a transaction already exists for this specific request
-        from inventory.models import InventoryTransaction
-        existing_transaction = InventoryTransaction.objects.filter(
-            transaction_type='store_to_barman',
-            notes__contains=f"Fulfilled request #{req.pk}"
-        ).first()
-        
-        if existing_transaction:
-            return Response({'detail': 'Request is already fulfilled.'}, status=status.HTTP_400_BAD_REQUEST)
-        
         # Only update if not already fulfilled
-        req.status = 'fulfilled'
-        req.reached_status = True
-        req.responded_by = request.user
-        req.save()  # This triggers InventoryRequest.save(), which creates the transaction
+        if req.status != 'fulfilled':
+            req.status = 'fulfilled'
+            req.reached_status = True
+            req.responded_by = request.user
+            req.save()  # This triggers InventoryRequest.save(), which creates the transaction
         return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.prefetch_related('store_stocks', 'store_stocks__original_unit', 'store_stocks__branch').all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        """
-        Filter products by branch for branch managers
-        """
-        queryset = super().get_queryset()
-        
-        # Get the user's branch
-        user = self.request.user
-        if hasattr(user, 'branch') and user.branch:
-            # Filter products that have stock in the user's branch
-            queryset = queryset.filter(store_stocks__branch=user.branch).distinct()
-            print(f"[DEBUG] Filtering products for branch: {user.branch.name}")
-        elif user.is_superuser:
-            # Superuser can see all products
-            print(f"[DEBUG] Superuser - showing all products")
-        else:
-            # For users without branch, show all products
-            print(f"[DEBUG] User without branch - showing all products")
-        
-        return queryset
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -228,21 +170,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 print(f"Error creating measurement: {e}")
                 raise ValueError(f"Error creating measurement: {e}")
         
-        # Ensure base unit is set as default sales unit if no measurement was created
-        if not measurement_data and product.base_unit:
-            try:
-                # Create a self-conversion for the base unit (1:1 ratio)
-                ProductMeasurement.objects.create(
-                    product=product,
-                    from_unit=product.base_unit,
-                    to_unit=product.base_unit,
-                    amount_per=Decimal('1.0'),
-                    is_default_sales_unit=True,
-                )
-                print(f"Created default sales unit conversion for {product.name}: {product.base_unit.unit_name}")
-            except Exception as e:
-                print(f"Error creating default sales unit conversion: {e}")
-        
         # Create stock AFTER measurement is created
         if stock_data:
             try:
@@ -251,27 +178,22 @@ class ProductViewSet(viewsets.ModelViewSet):
                 original_unit_id = stock_data.get('original_unit_id')
                 provided_quantity_in_base_units = stock_data.get('quantity_in_base_units')
                 
-                print(f"[DEBUG] Stock data - original_quantity: {original_quantity} (type: {type(original_quantity)})")
-                
                 if not original_unit_id:
                     raise ValueError("original_unit_id is required in stock_data")
                 
                 branch = Branch.objects.get(id=branch_id)
                 original_unit = ProductUnit.objects.get(id=original_unit_id)
                 
-                # Convert original_quantity to Decimal early
-                original_quantity_decimal = Decimal(str(original_quantity))
-                
                 # Use provided quantity_in_base_units if available, otherwise calculate
                 if provided_quantity_in_base_units is not None:
-                    quantity_in_base_units = Decimal(str(provided_quantity_in_base_units)).quantize(Decimal('0.01'))
+                    quantity_in_base_units = Decimal(provided_quantity_in_base_units).quantize(Decimal('0.01'))
                     print(f"Using provided quantity_in_base_units: {quantity_in_base_units}")
                 else:
                     # Calculate quantity in base units - now the conversion should exist
                     try:
                         conversion_factor = product.get_conversion_factor(original_unit, product.base_unit)
-                        quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
-                        print(f"Calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity_decimal}, conversion: {conversion_factor})")
+                        quantity_in_base_units = (Decimal(original_quantity) * conversion_factor).quantize(Decimal('0.01'))
+                        print(f"Calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity}, conversion: {conversion_factor})")
                     except ValueError as e:
                         # If conversion doesn't exist, try to create it automatically
                         print(f"Missing conversion for {product.name}: {original_unit.unit_name} -> {product.base_unit.unit_name}")
@@ -284,30 +206,35 @@ class ProductViewSet(viewsets.ModelViewSet):
                                 amount_per=Decimal(str(default_factor)),
                                 is_default_sales_unit=False
                             )
-                            # Also create the reverse conversion
-                            ProductMeasurement.objects.create(
-                                product=product,
-                                from_unit=product.base_unit,
-                                to_unit=original_unit,
-                                amount_per=Decimal('1.0') / Decimal(str(default_factor)),
-                                is_default_sales_unit=False
-                            )
-                            # Recalculate with the new conversion
-                            conversion_factor = product.get_conversion_factor(original_unit, product.base_unit)
-                            quantity_in_base_units = (original_quantity_decimal * conversion_factor).quantize(Decimal('0.01'))
-                            print(f"Created conversion and recalculated: {quantity_in_base_units}")
+                            print(f"Auto-created conversion: {original_unit.unit_name} -> {product.base_unit.unit_name} = {default_factor}")
+                            conversion_factor = Decimal(str(default_factor))
+                            quantity_in_base_units = (Decimal(original_quantity) * conversion_factor).quantize(Decimal('0.01'))
+                            print(f"Auto-calculated quantity_in_base_units: {quantity_in_base_units} (original: {original_quantity}, conversion: {conversion_factor})")
                         else:
-                            raise ValueError(f"No default conversion factor available for {original_unit.unit_name} -> {product.base_unit.unit_name}")
+                            raise ValueError(f"No conversion path found and no default available for {original_unit.unit_name} -> {product.base_unit.unit_name}")
                 
-                Stock.objects.create(
+                stock = Stock.objects.create(
                     product=product,
                     branch=branch,
                     quantity_in_base_units=quantity_in_base_units,
-                    original_quantity=original_quantity_decimal,
-                    original_unit=original_unit,  # This should be the input unit (from_unit)
-                    minimum_threshold_base_units=Decimal(stock_data.get('minimum_threshold_base_units', 0)),
+                    original_quantity=original_quantity,
+                    original_unit=original_unit,
+                    minimum_threshold_base_units=stock_data.get('minimum_threshold_base_units', 0),
                 )
-                print(f"Stock created successfully for {product.name}")
+                print(f"Stock created successfully: {stock.id}")
+                
+                # Create inventory transaction for initial stock
+                InventoryTransaction.objects.create(
+                    product=product,
+                    transaction_type='restock',
+                    quantity=original_quantity,
+                    transaction_unit=original_unit,
+                    to_stock_main=stock,
+                    branch=branch,
+                    price_at_transaction=product.base_unit_price or Decimal('0.00'),
+                    notes=f"Initial stock: {original_quantity} {original_unit.unit_name}"
+                )
+                print(f"Inventory transaction created for initial stock")
                 
             except Exception as e:
                 print(f"Error creating stock: {e}")
@@ -575,7 +502,6 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 # Inventory Transaction
-@method_decorator(csrf_exempt, name='dispatch')
 class InventoryTransactionViewSet(viewsets.ModelViewSet):
     queryset = InventoryTransaction.objects.all()
     serializer_class = InventoryTransactionSerializer
@@ -583,33 +509,10 @@ class InventoryTransactionViewSet(viewsets.ModelViewSet):
 
 
 # Stock
-@method_decorator(csrf_exempt, name='dispatch')
 class StockViewSet(viewsets.ModelViewSet):
     queryset = Stock.objects.select_related('product', 'branch').all()
     serializer_class = StockSerializer
     permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        """
-        Filter stocks by branch for branch managers
-        """
-        queryset = super().get_queryset()
-        
-        # Get the user's branch
-        user = self.request.user
-        if hasattr(user, 'branch') and user.branch:
-            # Filter by the user's branch
-            queryset = queryset.filter(branch=user.branch)
-            print(f"[DEBUG] Filtering stocks for branch: {user.branch.name}")
-        elif user.is_superuser:
-            # Superuser can see all stocks
-            print(f"[DEBUG] Superuser - showing all stocks")
-        else:
-            # For users without branch, show empty queryset
-            queryset = queryset.none()
-            print(f"[DEBUG] User without branch - showing no stocks")
-        
-        return queryset
 
     @action(detail=True, methods=['post'], url_path='restock')
     @transaction.atomic
@@ -695,38 +598,15 @@ class StockViewSet(viewsets.ModelViewSet):
                         'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
                     }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Update stock quantities - REMOVE DIRECT MODIFICATION, let InventoryTransaction handle it
-            print(f"[DEBUG] Before restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
-            print(f"[DEBUG] Restock calculation - restock_quantity: {restock_quantity}, conversion_factor: {conversion_factor}, quantity_in_base_units: {quantity_in_base_units}")
+            # Update stock quantities
+            stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
+            # Add the restock quantity to original_quantity (this is the actual quantity in original units)
+            stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
+            stock.original_unit = restock_unit
+            stock.last_stock_update = timezone.now()
+            stock.save()
             
-            # REMOVED: stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
-            # Let InventoryTransaction handle the stock adjustment
-            
-            # REMOVED: Direct stock updates - let InventoryTransaction handle this
-            # Update original_quantity - handle unit conversion properly
-            # if stock.original_unit and stock.original_unit != restock_unit:
-            #     # Convert existing original_quantity to the new restock unit
-            #     try:
-            #         existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
-            #         converted_existing = stock.original_quantity * existing_conversion
-            #         stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
-            #         print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
-            #     except ValueError:
-            #         # If conversion doesn't exist, just add the new quantity
-            #         stock.original_quantity = restock_quantity
-            #         print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
-            # else:
-            #     # Same unit or no existing original_unit, just add
-            #     stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
-            #     print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
-            
-            # stock.original_unit = restock_unit
-            # stock.last_stock_update = timezone.now()
-            # stock.save()
-            
-            print(f"[DEBUG] After restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
-            
-            # Create inventory transaction - use constructor to avoid double save
+            # Create inventory transaction
             user = request.user if request.user.is_authenticated else None
             username = user.username if user else "API"
             
@@ -734,14 +614,7 @@ class StockViewSet(viewsets.ModelViewSet):
             if receipt_file:
                 transaction_notes += f" - Receipt: {receipt_file.name}"
             
-            # REMOVED: Update the stock's original_unit to match the restock unit
-            # Let the InventoryTransaction handle all stock updates
-            # if stock.original_unit != restock_unit:
-            #     stock.original_unit = restock_unit
-            #     stock.save(update_fields=['original_unit'])
-            
-            # Use constructor instead of create() to avoid double save
-            transaction = InventoryTransaction(
+            InventoryTransaction.objects.create(
                 product=product,
                 transaction_type='restock',
                 quantity=restock_quantity,
@@ -750,12 +623,8 @@ class StockViewSet(viewsets.ModelViewSet):
                 branch=stock.branch,
                 initiated_by=user,
                 price_at_transaction=price_per_unit,
-                notes=transaction_notes,
+                notes=transaction_notes
             )
-            # Set the quantity_in_base_units directly to avoid double calculation
-            transaction.quantity_in_base_units = quantity_in_base_units
-            transaction._skip_quantity_calculation = True
-            transaction.save(skip_stock_adjustment=False)  # Single save call
             
             return Response({
                 'detail': 'Restocked successfully.',
@@ -794,203 +663,25 @@ class StockViewSet(viewsets.ModelViewSet):
         return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
 
 
-@method_decorator(csrf_exempt_for_cors, name='dispatch')
 class BarmanStockViewSet(viewsets.ModelViewSet):
     queryset = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
     serializer_class = BarmanStockSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        """
-        Filter barman stocks by branch and user role
-        """
-        queryset = super().get_queryset()
-        
-        # Get the user's branch
         user = self.request.user
-        if hasattr(user, 'branch') and user.branch:
-            if user.role == 'bartender':
-                # Bartenders can only see their own stocks
-                queryset = queryset.filter(bartender=user, branch=user.branch)
-                print(f"[DEBUG] Filtering barman stocks for bartender: {user.username} in branch: {user.branch.name}")
-            elif user.role == 'manager':
-                # Managers can see all barman stocks in their branch
-                queryset = queryset.filter(branch=user.branch)
-                print(f"[DEBUG] Filtering barman stocks for manager in branch: {user.branch.name}")
-            else:
-                # Other roles see only their own stocks
-                queryset = queryset.filter(bartender=user)
-                print(f"[DEBUG] Filtering barman stocks for user: {user.username}")
-        elif user.is_superuser:
-            # Superuser can see all barman stocks
-            print(f"[DEBUG] Superuser - showing all barman stocks")
-        else:
-            # For users without branch, show only their own stocks
-            if user.is_authenticated:
-                queryset = queryset.filter(bartender=user)
-                print(f"[DEBUG] User without branch - showing only own barman stocks")
-            else:
-                queryset = queryset.none()
-                print(f"[DEBUG] Anonymous user - showing no barman stocks")
-        
-        return queryset
-
-    @action(detail=True, methods=['post'], url_path='restock')
-    @transaction.atomic
-    def restock(self, request, pk=None):
-        barman_stock = self.get_object()
-        product = barman_stock.stock.product
-        data = request.data
-        
-        # Debug logging
-        print(f"[DEBUG] BarmanStock restock request data: {data}")
-        print(f"[DEBUG] Files: {request.FILES}")
-        
-        try:
-            restock_quantity = data.get('quantity')
-            restock_type = data.get('type')  # 'carton', 'bottle', or 'unit'
-            price_per_unit = data.get('price_per_unit') or data.get('price_at_transaction')
-            total_amount = data.get('total_amount')
-            receipt_file = request.FILES.get('receipt')
-            
-            print(f"[DEBUG] Parsed values - quantity: {restock_quantity}, type: {restock_type}, price: {price_per_unit}")
-            
-            # Validate required fields
-            if not restock_quantity:
-                return Response({'detail': 'Quantity is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            try:
-                restock_quantity = Decimal(restock_quantity)
-                if restock_quantity <= 0:
-                    return Response({'detail': 'Quantity must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
-            except (ValueError, TypeError):
-                return Response({'detail': 'Quantity must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            if not restock_type:
-                return Response({'detail': 'Restock type is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            if not price_per_unit:
-                return Response({'detail': 'Price per unit is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            try:
-                price_per_unit = Decimal(price_per_unit)
-                if price_per_unit <= 0:
-                    return Response({'detail': 'Price per unit must be greater than 0.'}, status=status.HTTP_400_BAD_REQUEST)
-            except (ValueError, TypeError):
-                return Response({'detail': 'Price per unit must be a valid number.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Get the restock unit
-            try:
-                restock_unit = ProductUnit.objects.get(unit_name=restock_type)
-            except ProductUnit.DoesNotExist:
-                return Response({'detail': f'Unit "{restock_type}" not found.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Get conversion factor and validate
-            try:
-                conversion_factor = product.get_conversion_factor(restock_unit, product.base_unit)
-                quantity_in_base_units = (restock_quantity * conversion_factor).quantize(Decimal('0.01'))
-            except ValueError as e:
-                # Try to create missing conversion automatically
-                print(f"Missing conversion for {product.name}: {restock_type} -> {product.base_unit.unit_name}")
-                try:
-                    # Create a reasonable default conversion
-                    default_factor = self._get_default_conversion_factor(restock_type, product.base_unit.unit_name)
-                    if default_factor:
-                        ProductMeasurement.objects.create(
-                            product=product,
-                            from_unit=restock_unit,
-                            to_unit=product.base_unit,
-                            amount_per=Decimal(str(default_factor)),
-                            is_default_sales_unit=False
-                        )
-                        print(f"Auto-created conversion: {restock_type} -> {product.base_unit.unit_name} = {default_factor}")
-                        conversion_factor = Decimal(str(default_factor))
-                        quantity_in_base_units = (restock_quantity * conversion_factor).quantize(Decimal('0.01'))
-                    else:
-                        return Response({
-                            'detail': f'No conversion path found for Product "{product.name}" from "{restock_type}" to "{product.base_unit.unit_name}". Please configure unit conversions.',
-                            'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                except Exception as auto_create_error:
-                    print(f"Failed to auto-create conversion: {auto_create_error}")
-                    return Response({
-                        'detail': f'No conversion path found for Product "{product.name}" from "{restock_type}" to "{product.base_unit.unit_name}". Please configure unit conversions.',
-                        'suggestion': f'Try adding conversion: 1 {restock_type} = X {product.base_unit.unit_name}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Update barman stock quantities - let InventoryTransaction handle this
-            # barman_stock.adjust_quantity(quantity_in_base_units, restock_unit, is_addition=True)  # REMOVED - causes double counting
-            
-            # Create inventory transaction - use constructor to avoid double save
-            user = request.user if request.user.is_authenticated else None
-            username = user.username if user else "API"
-            
-            transaction_notes = f"Barman restocked {restock_quantity} {restock_unit.unit_name}(s) by {username}"
-            if receipt_file:
-                transaction_notes += f" - Receipt: {receipt_file.name}"
-            
-            # Use constructor instead of create() to avoid double save
-            transaction = InventoryTransaction(
-                product=product,
-                transaction_type='restock',
-                quantity=restock_quantity,
-                transaction_unit=restock_unit,
-                to_stock_barman=barman_stock,
-                branch=barman_stock.branch,
-                initiated_by=user,
-                price_at_transaction=price_per_unit,
-                notes=transaction_notes,
-            )
-            # Set the quantity_in_base_units directly to avoid double calculation
-            transaction.quantity_in_base_units = quantity_in_base_units
-            transaction._skip_quantity_calculation = True
-            transaction.save(skip_stock_adjustment=False)  # Single save call
-            
-            return Response({
-                'detail': 'Barman stock restocked successfully.',
-                'quantity_added': float(quantity_in_base_units),
-                'base_unit': product.base_unit.unit_name,
-                'total_amount': float(total_amount) if total_amount else None
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            print(f"BarmanStock restock error: {str(e)}")
-            return Response({'detail': f'BarmanStock restock failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-    def _get_default_conversion_factor(self, from_unit_name, to_unit_name):
-        """Get default conversion factor for common unit combinations"""
-        default_conversions = {
-            'carton': {
-                'bottle': 24,
-                'shot': 480,
-                'unit': 24,
-            },
-            'bottle': {
-                'shot': 20,
-                'ml': 750,
-                'unit': 1,
-            },
-            'shot': {
-                'ml': 37.5,
-                'unit': 1,
-            },
-            'unit': {
-                'shot': 1,
-                'ml': 37.5,
-            }
-        }
-        
-        return default_conversions.get(from_unit_name.lower(), {}).get(to_unit_name.lower())
+        qs = BarmanStock.objects.select_related('stock__product', 'stock__branch', 'bartender')
+        if user.is_staff:
+            return qs
+        return qs.filter(bartender=user)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductUnitViewSet(viewsets.ModelViewSet):
     queryset = ProductUnit.objects.all()
     serializer_class = ProductUnitSerializer
     permission_classes = [AllowAny]
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ProductMeasurementViewSet(viewsets.ModelViewSet):
     queryset = ProductMeasurement.objects.all()
     serializer_class = ProductMeasurementSerializer
@@ -1057,5 +748,4 @@ class ProductMeasurementViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': f'Error creating conversion: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
-
 

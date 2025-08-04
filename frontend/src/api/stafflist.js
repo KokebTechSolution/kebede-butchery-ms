@@ -17,7 +17,7 @@ const getFriendlyErrorMessage = (error) => {
 
 export const fetchStaffList = async () => {
   try {
-    const response = await axiosInstance.get('users/');
+    const response = await axiosInstance.get('users/users/');
     // Defensive: handle array or object
     if (Array.isArray(response.data)) {
       return response.data;
@@ -38,7 +38,7 @@ export const fetchStaffList = async () => {
 
 export const addUser = async (formData) => {
   try {
-    const response = await axiosInstance.post('users/', formData);
+    const response = await axiosInstance.post('users/users/', formData);
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);

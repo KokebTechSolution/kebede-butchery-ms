@@ -161,12 +161,12 @@ function StaffListPage() {
                       >
                         {t('reset_password')}
                       </button>
-                      <button
+{/*                      <button
                         onClick={() => handleDelete(user.id)}
                         className="bg-red-500 text-white px-3 py-1 rounded shadow hover:bg-red-600"
                       >
                         {t('delete')}
-                      </button>
+                      </button>   */}
                     </td>
                   </tr>
                 ))}

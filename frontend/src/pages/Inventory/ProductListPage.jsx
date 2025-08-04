@@ -11,7 +11,7 @@ import {
 import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
-import axiosInstance from '../../api/axiosInstance';
+import axios from 'axios';
 
 const ProductListPage = () => {
   const { t } = useTranslation();
@@ -121,66 +121,52 @@ const ProductListPage = () => {
   };
 
   const handleRestockClick = (stock) => {
-    console.log('Restock click for stock:', stock);
     setRestockingStock(stock);
     setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
     setRestockError('');
     setShowRestockModal(true);
-    console.log('Restock modal should now be open');
   };
   const handleRestockChange = (e) => {
     const { name, value } = e.target;
-    console.log('Restock change:', { name, value });
     setRestockData((prev) => ({ ...prev, [name]: value }));
   };
   const handleRestockSubmit = async () => {
-    console.log('Restock submit clicked with data:', restockData);
     setRestockError('');
-    
     if (!restockData.restock_quantity || Number(restockData.restock_quantity) <= 0) {
-      console.log('Validation failed: Invalid quantity');
       setRestockError('Enter a valid restock quantity.');
       return;
     }
     if (!restockData.restock_price || Number(restockData.restock_price) <= 0) {
-      console.log('Validation failed: Invalid price');
       setRestockError('Enter a valid purchase price.');
       return;
     }
-    
-    console.log('Validation passed, submitting restock...');
     try {
-      const payload = {
-        quantity: restockData.restock_quantity,
-        type: restockData.restock_type,
-        price_per_unit: restockData.restock_price,
-      };
-      console.log('Restock payload:', payload);
-      
-      const response = await axiosInstance.post(
-        `inventory/stocks/${restockingStock.id}/restock/`,
-        payload,
+      await axios.post(
+        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        {
+          quantity: restockData.restock_quantity,
+          type: restockData.restock_type,
+          price_at_transaction: restockData.restock_price,
+        },
         {
           withCredentials: true,
           headers: { 'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] },
         }
       );
-      console.log('Restock response:', response.data);
       setShowRestockModal(false);
       setRestockingStock(null);
       setRestockData({ restock_quantity: '', restock_type: 'carton', restock_price: '' });
       loadData();
     } catch (err) {
-      console.error('Restock error:', err.response?.data || err.message);
       setRestockError('Restock failed: ' + (err.response?.data?.detail || err.message));
     }
   };
   const handleDelete = async (productId, stockId) => {
     if (!window.confirm(t('confirm_delete_product'))) return;
     try {
-      await axiosInstance.delete(`inventory/products/${productId}/`);
+      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
       if (stockId) {
-        await axiosInstance.delete(`inventory/stocks/${stockId}/`);
+        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
       }
       loadData();
     } catch (err) {
@@ -196,21 +182,9 @@ const ProductListPage = () => {
       <h1 className="text-2xl font-bold mb-4">{t('inventory_dashboard')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard
-          title={t('total_products')}
-          value={stocks.length}
-          color="blue"
-        />
-        <StatCard
-          title={t('running_out')}
-          value={stocks.filter(stock => stock.running_out).length}
-          color="red"
-        />
-        <StatCard
-          title={t('total_value')}
-          value={`ETB ${stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}`}
-          color="green"
-        />
+        <StatCard title={t('total_products')} value={totalProducts} color="blue" />
+        <StatCard title={t('running_low')} value={runningLowProducts} color="yellow" />
+        <StatCard title={t('inventory_value')} value={`ETB ${totalInventoryValue.toFixed(2)}`} color="green" />
       </div>
 
       <div className="mb-4 flex justify-end space-x-4">
@@ -282,7 +256,7 @@ const ProductListPage = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="15" className="border px-4 py-4 text-center text-gray-500">
+                <td colSpan="10" className="border px-4 py-4 text-center text-gray-500">
                   {t('no_products_found')}
                 </td>
               </tr>
@@ -290,11 +264,11 @@ const ProductListPage = () => {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
+              <td colSpan="4" className="border px-4 py-2 font-bold text-right">{t('total_inventory_value')}:</td>
               <td className="border px-4 py-2 font-bold">
-                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
+                ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.product?.base_unit_price || 0) * parseFloat(stock.quantity_in_base_units || 0)), 0).toFixed(2)}
               </td>
-              <td className="border px-4 py-2" colSpan="7"></td>
+              <td className="border px-4 py-2" colSpan="4"></td>
             </tr>
           </tfoot>
         </table>
@@ -326,45 +300,48 @@ const ProductListPage = () => {
         <Modal title={t('restock_product')} onClose={() => setShowRestockModal(false)}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('quantity')}</label>
+              <label className="block font-medium mb-1">Quantity</label>
               <input
                 type="number"
                 name="restock_quantity"
                 value={restockData.restock_quantity}
                 onChange={handleRestockChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                min="1"
-                placeholder="Enter quantity"
+                className="border p-2 w-full rounded"
+                min="0"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('price_per_unit')}</label>
+              <label className="block font-medium mb-1">Type</label>
+              <select
+                name="restock_type"
+                value={restockData.restock_type}
+                onChange={handleRestockChange}
+                className="border p-2 w-full rounded"
+              >
+                <option value="carton">Carton</option>
+                <option value="bottle">Bottle</option>
+                <option value="unit">Unit</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Purchase Price</label>
               <input
                 type="number"
                 name="restock_price"
                 value={restockData.restock_price}
                 onChange={handleRestockChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="border p-2 w-full rounded"
                 min="0"
                 step="0.01"
-                placeholder="Enter price per unit"
               />
             </div>
-            {restockError && (
-              <div className="text-red-500 text-sm">{restockError}</div>
-            )}
+            {restockError && <p className="text-red-500 text-sm mb-2">{restockError}</p>}
             <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowRestockModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                {t('cancel')}
-              </button>
-              <button
-                onClick={handleRestockSubmit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
+              <button onClick={handleRestockSubmit} className="bg-green-600 text-white px-4 py-2 rounded">
                 {t('restock')}
+              </button>
+              <button onClick={() => setShowRestockModal(false)} className="bg-gray-400 text-white px-4 py-2 rounded">
+                {t('cancel')}
               </button>
             </div>
           </div>

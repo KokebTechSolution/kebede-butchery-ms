@@ -19,4 +19,3 @@ router.register(r'transactions', InventoryTransactionViewSet, basename='transact
 urlpatterns = [
     path('', include(router.urls)),
 ]
-

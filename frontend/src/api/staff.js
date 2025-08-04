@@ -3,7 +3,7 @@ import axiosInstance from './axiosInstance';
 // Fetch all staff members
 export const fetchStaff = async () => {
   try {
-    const response = await axiosInstance.get('users/');
+    const response = await axiosInstance.get('users/users/');
     return response.data;
   } catch (error) {
     console.error('❌ Error fetching staff:', error);
@@ -14,7 +14,7 @@ export const fetchStaff = async () => {
 // Create a new staff member
 export const createStaff = async (staffData) => {
   try {
-    const response = await axiosInstance.post('users/', staffData);
+    const response = await axiosInstance.post('users/users/', staffData);
     return response.data;
   } catch (error) {
     console.error('❌ Error creating staff:', error);
