@@ -36,7 +36,7 @@ const LoginPage = () => {
     e.preventDefault();
 
     try {
-      console.log('Attempting login with:', formData);
+
       
       // Use unified login endpoint for both local and network access
       const response = await axiosInstance.post('users/login/', formData);
