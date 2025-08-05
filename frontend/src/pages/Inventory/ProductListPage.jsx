@@ -203,17 +203,11 @@ const ProductListPage = () => {
               <th className="border px-4 py-2">{t('name')}</th>
               <th className="border px-4 py-2">{t('description')}</th>
               <th className="border px-4 py-2">{t('category')}</th>
-              <th className="border px-4 py-2">{t('item_type')}</th>
-              <th className="border px-4 py-2">{t('branch')}</th>
-              <th className="border px-4 py-2">{t('branch_location')}</th>
-              <th className="border px-4 py-2">{t('quantity_in_base_units')}</th>
               <th className="border px-4 py-2">{t('original_quantity')}</th>
               <th className="border px-4 py-2">{t('minimum_threshold_base_units')}</th>
               <th className="border px-4 py-2">{t('base_unit_price')}</th>
               <th className="border px-4 py-2">{t('running_out')}</th>
-              <th className="border px-4 py-2">{t('last_stock_update')}</th>
-              <th className="border px-4 py-2">{t('product_created_at')}</th>
-              <th className="border px-4 py-2">{t('product_updated_at')}</th>
+
               <th className="border px-4 py-2">{t('actions')}</th>
             </tr>
           </thead>
@@ -224,10 +218,6 @@ const ProductListPage = () => {
                   <td className="border px-4 py-2">{stock.product?.name || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.product?.description || 'N/A'}</td>
                   <td className="border px-4 py-2">{stock.product?.category?.category_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.branch?.location || 'N/A'}</td>
-                  <td className="border px-4 py-2">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
                   <td className="border px-4 py-2">
                     {stock.original_quantity_display || 'N/A'}
                   </td>
@@ -238,9 +228,7 @@ const ProductListPage = () => {
                       {stock.running_out ? t('running_out') : t('in_stock')}
                     </span>
                   </td>
-                  <td className="border px-4 py-2">{stock.last_stock_update ? new Date(stock.last_stock_update).toLocaleString() : 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.created_at ? new Date(stock.product.created_at).toLocaleString() : 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.updated_at ? new Date(stock.product.updated_at).toLocaleString() : 'N/A'}</td>
+
                   <td className="border px-4 py-2 space-x-2">
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}

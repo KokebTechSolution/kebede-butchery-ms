@@ -12,10 +12,12 @@ export default function StaffRequests() {
   useEffect(() => {
     fetchRequests();
   }, []);
-
+  
   const fetchRequests = async () => {
     try {
       const response = await axiosInstance.get(API_URL);
+      console.log("Response content-type:", response.headers['content-type']);
+      console.log("Response data:", response.data);
       setRequests(response.data);
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -23,7 +25,8 @@ export default function StaffRequests() {
       setLoading(false);
     }
   };
-
+  
+  
   const handleApprove = async (id) => {
     try {
       await axiosInstance.post(`${API_URL}${id}/approve/`);

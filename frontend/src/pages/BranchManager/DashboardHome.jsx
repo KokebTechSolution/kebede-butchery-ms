@@ -4,7 +4,7 @@ import SalesSummary from "../../components/ManagmentComponents/Dashboard/SalesSu
 import StockAlerts from "../../components/ManagmentComponents/Dashboard/StockAlerts";
 import StockLevels from "../../components/ManagmentComponents/Dashboard/StockLevels";
 import EmployeeActivity from "../../components/ManagmentComponents/Dashboard/EmployeeActivity";
-import StaffRequests from "../../components/ManagmentComponents/Dashboard/StaffRequests";
+//import StaffRequests from "../../components/ManagmentComponents/Dashboard/StaffRequests";
 import { FaCashRegister, FaBoxes, FaUsers, FaClipboardList } from "react-icons/fa";
 import { useTranslation } from 'react-i18next';
 
@@ -41,11 +41,11 @@ export default function DashboardHome() {
       </div>
 
       {/* Requests - Full Width */}
-      <div className="w-full">
+{/*      <div className="w-full">
         <Card icon={<FaClipboardList />} title={t('pending_requests')} color="text-purple-600" full>
           <StaffRequests />
         </Card>
-      </div>
+      </div>*/}
     </div>
   );
 }
