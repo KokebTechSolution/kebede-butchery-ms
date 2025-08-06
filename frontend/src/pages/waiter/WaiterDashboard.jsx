@@ -9,10 +9,25 @@ import OrderDetails from './order/OrderDetails.jsx';
 import OrderList from './order/OrderList.jsx';
 import WaiterProfile from './WaiterProfile.jsx';
 import '../../App.css';
+import './WaiterDashboard.css';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
-import { Utensils, ClipboardList, UserCircle, Menu as MenuIcon } from 'lucide-react';
+import { 
+  Home, 
+  Coffee, 
+  ClipboardList, 
+  UserCircle, 
+  ShoppingCart,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Users,
+  Plus,
+  ArrowLeft,
+  Bell,
+  Utensils
+} from 'lucide-react';
 
 function mergeOrderItems(existingItems, cartItems) {
   const normalize = name => name.trim().toLowerCase();
@@ -72,7 +87,7 @@ const WaiterDashboard = () => {
     user,
     orders
   } = useCart();
-  const { tokens } = useAuth();
+  const { tokens, user: authUser } = useAuth();
 
   const handleNavigate = (page) => {
     if (page === 'order') {
@@ -105,42 +120,88 @@ const WaiterDashboard = () => {
     setCurrentPage('menu');
   };
 
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
   const handleOrder = async () => {
-    if (cartItems.length === 0) {
-      setMessage('Cart is empty');
+    // Check if user is authenticated
+    if (!authUser || !authUser.isAuthenticated) {
+      setMessage('❌ Please log in to place orders!');
       return;
     }
 
+    if (cartItems.length === 0) {
+      setMessage('🛒 Your cart is empty! Please add some items first.');
+      return;
+    }
+
+    if (!selectedTable) {
+      setMessage('❌ Please select a table first!');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    setMessage('📝 Placing your order... Please wait!');
+
     const orderData = {
       table: selectedTable.id,
-      items: cartItems.map(item => ({
+      waiter_id: authUser?.id,
+      waiter_username: authUser?.username,
+      waiter_name: authUser?.first_name || authUser?.username,
+      items: cartItems.map(item => {
+        console.log('[DEBUG] Order item mapping:', item);
+        return {
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-        item_type: item.item_type || 'beverage'
-        }))
+          item_type: item.item_type || 'beverage',
+          product: item.id || item.product_id || item.product || null // Include product ID from menu item
+        };
+      })
       };
 
     try {
       await placeOrder(orderData);
-        setMessage('Order placed successfully!');
+      setMessage(`✅ Great! Order for Table ${selectedTable.number} has been placed successfully! The kitchen will start preparing it now.`);
       clearCart();
+      
+      setTimeout(() => {
+        setMessage('');
+      }, 3000);
+      
       setCurrentPage('tables');
       setSelectedTable(null);
     } catch (error) {
-      setMessage('Error placing order. Please try again.');
+      console.error('Order placement error:', error);
+      setMessage('❌ Oops! Something went wrong while placing the order. Please check your connection and try again.');
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
   const handleEditOrder = (orderToEdit) => {
-      setEditingOrderId(orderToEdit.id);
-    setSelectedOrderId(orderToEdit.id);
-      setCurrentPage('menu');
+    // Check if user is authenticated
+    if (!authUser || !authUser.isAuthenticated) {
+      setMessage('❌ Please log in to edit orders!');
+      return;
+    }
     
-    // Load cart with existing items - pass both tableId and items
-    const existingItems = orderToEdit.items || [];
-    const tableId = orderToEdit.table || activeTableId;
-    loadCartForEditing(tableId, existingItems);
+    // Check if this order belongs to the current user
+    if (orderToEdit.waiter_id && authUser.id && orderToEdit.waiter_id !== authUser.id) {
+      setMessage('❌ You can only edit your own orders!');
+      return;
+    }
+    
+    setEditingOrderId(orderToEdit.id);
+    setSelectedOrderId(orderToEdit.id);
+    
+    // Fix: Pass tableId and items separately, with safety checks
+    const tableId = orderToEdit.table || orderToEdit.table_number;
+    const items = orderToEdit.items || [];
+    
+    console.log('[DEBUG] handleEditOrder - tableId:', tableId, 'items:', items);
+    loadCartForEditing(tableId, items);
+    
+    setCurrentPage('menu');
   };
 
   const handleSelectOrder = (orderId) => {
@@ -161,8 +222,24 @@ const WaiterDashboard = () => {
   };
 
   const handleClearCart = () => {
-    clearCart();
-    setMessage('Cart cleared');
+    if (cartItems.length === 0) {
+      setMessage('🛒 Your cart is already empty!');
+      return;
+    }
+    
+    // Simple confirmation for non-technical users
+    const itemCount = cartItems.length;
+    const confirmMessage = `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? 's' : ''} from your cart?`;
+    
+    if (window.confirm(confirmMessage)) {
+      clearCart();
+      setMessage('🗑️ Cart cleared! All items have been removed.');
+      
+      // Auto-hide message after 2 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 2000);
+    }
   };
 
   const navItems = [
@@ -179,24 +256,112 @@ const WaiterDashboard = () => {
   );
 
   const sidebar = (
-    <div className="p-4">
+    <div className="p-4 space-y-3">
+      {/* Welcome Section */}
+      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+            <UserCircle className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-800">
+              👋 Welcome, {authUser?.first_name || authUser?.username || 'Waiter'}!
+            </h3>
+            <p className="text-sm text-gray-600">
+              🔒 Your personal workspace - only your orders & tables
+            </p>
+            {authUser?.username && (
+              <p className="text-xs text-blue-600 mt-1">
+                Logged in as: {authUser.username}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Buttons */}
       <div className="space-y-2">
-        {navItems.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => handleNavigate(item.key)}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-              currentPage === item.key
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              {item.icon}
-              <span className="font-medium">{item.label}</span>
+        <button
+          onClick={() => handleNavigate('tables')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'tables'
+              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'tables' ? 'bg-white bg-opacity-20' : 'bg-green-100'
+          }`}>
+            <Home className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">Tables</span>
+            <p className="text-xs opacity-75">View & select tables</p>
+          </div>
+        </button>
+        
+        <button
+          onClick={() => handleNavigate('orderDetails')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'orderDetails'
+              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-orange-50 hover:text-orange-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'orderDetails' ? 'bg-white bg-opacity-20' : 'bg-orange-100'
+          }`}>
+            <ClipboardList className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">Orders</span>
+            <p className="text-xs opacity-75">Manage all orders</p>
+          </div>
+          {orders?.length > 0 && (
+            <div className="ml-auto">
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {orders.length}
+              </span>
             </div>
-          </button>
-        ))}
+          )}
+        </button>
+        
+        <button
+          onClick={() => handleNavigate('profile')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'profile'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'profile' ? 'bg-white bg-opacity-20' : 'bg-purple-100'
+          }`}>
+            <UserCircle className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">My Profile</span>
+            <p className="text-xs opacity-75">View your info</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-xl border">
+        <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+          <Bell className="w-4 h-4 mr-2" />
+          Today's Summary
+        </h4>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Active Orders:</span>
+            <span className="font-semibold text-orange-600">{orders?.filter(o => o.status === 'pending').length || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Completed:</span>
+            <span className="font-semibold text-green-600">{orders?.filter(o => o.status === 'completed').length || 0}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -204,30 +369,76 @@ const WaiterDashboard = () => {
   const renderContent = () => {
     switch (currentPage) {
       case 'tables':
-  return (
-          <div className="dashboard-container">
-            <div className="dashboard-content">
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="bg-green-500 p-3 rounded-full mr-4">
+                    <Home className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Restaurant Tables</h1>
+                    <p className="text-gray-600 mt-1">Choose a table to start taking orders</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-green-100">
+                  <div className="flex items-center justify-center space-x-6 text-sm">
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Available</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Occupied</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Needs Service</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <TablesPage onSelectTable={handleTableSelect} />
             </div>
           </div>
         );
       case 'menu':
         return (
-          <div className="dashboard-container">
-            <div className="dashboard-content">
-              <div className="mb-4">
+          <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Header with Back Button */}
+              <div className="mb-6">
                 <button
                   onClick={handleBackFromMenu}
-                  className="mobile-button-secondary mb-4"
+                  className="flex items-center space-x-2 bg-white hover:bg-gray-50 px-6 py-3 rounded-xl shadow-md border border-gray-200 transition-all duration-200 transform hover:scale-105 mb-4"
                 >
-                  ← Back to Tables
+                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                  <span className="font-semibold text-gray-700">Back to Tables</span>
                 </button>
                 {selectedTable && (
-                  <h2 className="text-responsive-lg font-semibold mb-4">
-                    Table {selectedTable.number} - Menu
-                  </h2>
+                  <div className="bg-white rounded-xl p-6 shadow-lg border border-orange-100">
+                    <div className="flex items-center space-x-4">
+                      <div className="bg-orange-500 p-3 rounded-full">
+                        <Coffee className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Table {selectedTable.number}</h2>
+                        <p className="text-gray-600">Select items from the menu below</p>
+                      </div>
+                      {cartItems.length > 0 && (
+                        <div className="ml-auto bg-orange-100 px-4 py-2 rounded-full">
+                          <span className="text-orange-700 font-semibold">
+                            {cartItems.length} item{cartItems.length > 1 ? 's' : ''} in cart
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
+              
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <MenuPage 
@@ -238,38 +449,91 @@ const WaiterDashboard = () => {
                   />
                 </div>
                 <div className="lg:col-span-1">
-                  <Cart 
-                    onOrder={handleOrder}
-                    onClearCart={handleClearCart}
-                    editingOrderId={editingOrderId}
-                    onUpdateOrder={updateOrder}
-                  />
+                  <div className="sticky top-4">
+                    <Cart 
+                      onOrder={handleOrder}
+                      onClearCart={handleClearCart}
+                      editingOrderId={editingOrderId}
+                      onUpdateOrder={updateOrder}
+                    />
+                  </div>
                 </div>
-            </div>
+              </div>
             </div>
           </div>
         );
       case 'orderDetails':
         return (
-          <div className="dashboard-container">
-            <div className="dashboard-content">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-            <OrderList
-              onSelectOrder={handleSelectOrder}
-              selectedOrderId={selectedOrderId}
-            />
+          <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-purple-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-purple-500 p-3 rounded-full">
+                      <ClipboardList className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
+                      <p className="text-gray-600">View and manage all customer orders</p>
+                    </div>
+                    <div className="ml-auto flex space-x-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {orders?.filter(o => o.status === 'pending').length || 0}
+                        </div>
+                        <div className="text-xs text-gray-600">Pending</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {orders?.filter(o => o.status === 'completed').length || 0}
+                        </div>
+                        <div className="text-xs text-gray-600">Completed</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Mobile-First Responsive Grid Layout */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+                <div className="xl:col-span-1 order-2 xl:order-1">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+                    <div className="p-3 sm:p-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-800 flex items-center text-sm sm:text-base">
+                        <ClipboardList className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">All Orders</span>
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1 hidden sm:block">Click on any order to view details</p>
+                      <p className="text-xs text-gray-600 mt-1 sm:hidden">Tap to view details</p>
+                    </div>
+                    <OrderList
+                      onSelectOrder={handleSelectOrder}
+                      selectedOrderId={selectedOrderId}
+                    />
+                  </div>
                 </div>
                 <div className="lg:col-span-2">
                   {selectedOrderId ? (
-            <OrderDetails
+                    <OrderDetails
                       selectedOrderId={selectedOrderId}
-              onEditOrder={handleEditOrder}
-              onOrderDeleted={handleOrderDeleted}
-            />
+                      onEditOrder={handleEditOrder}
+                      onOrderDeleted={handleOrderDeleted}
+                    />
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-gray-500">Select an order to view details</p>
+                    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 lg:p-12 text-center">
+                      <div className="mb-4">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <ClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Select an Order</h3>
+                        <p className="text-sm sm:text-base text-gray-500 px-2">Choose an order from the list to view its details and manage it</p>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <p className="text-sm text-blue-700">
+                          💡 <strong>Tip:</strong> Click on any order in the left panel to see customer details, items ordered, and order status
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -279,19 +543,33 @@ const WaiterDashboard = () => {
         );
       case 'profile':
         return (
-          <div className="dashboard-container">
-            <div className="dashboard-content">
+          <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
+            <div className="max-w-4xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-indigo-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-indigo-500 p-3 rounded-full">
+                      <UserCircle className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
+                      <p className="text-gray-600">View and update your personal information</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <WaiterProfile />
             </div>
           </div>
         );
       default:
         return (
-          <div className="dashboard-container">
-            <div className="dashboard-content">
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+            <div className="max-w-7xl mx-auto">
               <TablesPage onSelectTable={handleTableSelect} />
-      </div>
-    </div>
+            </div>
+          </div>
         );
     }
   };
@@ -304,8 +582,44 @@ const WaiterDashboard = () => {
       showHeader={true}
     >
       {message && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          {message}
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className={`flex items-center space-x-3 px-6 py-4 rounded-xl shadow-2xl border-l-4 ${
+            message.includes('Error') || message.includes('empty')
+              ? 'bg-red-50 border-red-500 text-red-800'
+              : message.includes('success') || message.includes('placed')
+              ? 'bg-green-50 border-green-500 text-green-800'
+              : 'bg-blue-50 border-blue-500 text-blue-800'
+          }`}>
+            <div className={`p-2 rounded-full ${
+              message.includes('Error') || message.includes('empty')
+                ? 'bg-red-100'
+                : message.includes('success') || message.includes('placed')
+                ? 'bg-green-100'
+                : 'bg-blue-100'
+            }`}>
+              {message.includes('Error') || message.includes('empty') ? (
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              ) : message.includes('success') || message.includes('placed') ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <Bell className="w-5 h-5 text-blue-600" />
+              )}
+            </div>
+            <div>
+              <p className="font-semibold text-sm">
+                {message.includes('Error') ? '❌ Oops!' : 
+                 message.includes('success') || message.includes('placed') ? '✅ Great!' : 
+                 '📢 Notice'}
+              </p>
+              <p className="text-sm opacity-90">{message}</p>
+            </div>
+            <button
+              onClick={() => setMessage('')}
+              className="ml-2 p-1 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+            >
+              <span className="text-lg leading-none">×</span>
+            </button>
+          </div>
         </div>
       )}
       {renderContent()}

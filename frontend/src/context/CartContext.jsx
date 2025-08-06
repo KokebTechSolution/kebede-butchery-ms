@@ -6,6 +6,12 @@ const CartContext = createContext();
 
 // Utility to merge cart items by name, price, type, and status
 function mergeCartItems(items) {
+  // Safety check: handle undefined or null items
+  if (!items || !Array.isArray(items)) {
+    console.warn('[CartContext] mergeCartItems called with invalid items:', items);
+    return [];
+  }
+  
   const merged = [];
   items.forEach(item => {
     const found = merged.find(i =>

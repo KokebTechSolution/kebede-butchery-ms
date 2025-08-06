@@ -17,7 +17,7 @@ timeout /t 3 /nobreak >nul
 REM === Start React Frontend ===
 echo ⚛️ Starting React Frontend...
 cd /d D:\Kokeb\kebede-butchery-ms\frontend
-set REACT_APP_API_URL=http://192.168.1.4:8000
+set REACT_APP_API_URL=http://192.168.1.2:8000
 set NODE_ENV=development
 set HOST=0.0.0.0
 start /B npm start

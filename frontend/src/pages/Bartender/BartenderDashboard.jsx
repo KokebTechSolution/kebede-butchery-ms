@@ -96,45 +96,47 @@ export default function BartenderDashboard() {
   };
 
   return (
-    <div className="bg-gray-100">
-      <main className="p-4 md:p-6 lg:p-8 space-y-6">
-        {/* Welcome Banner */}
-        <div className="bg-blue-100 text-blue-800 p-4 md:p-6 rounded shadow-sm">
-          <h1 className="text-3xl font-bold">
+    <div className="bg-gray-100 min-h-screen">
+      {/* Mobile-First Main Content */}
+      <main className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        {/* Mobile-Optimized Welcome Banner */}
+        <div className="bg-blue-100 text-blue-800 p-3 sm:p-4 md:p-6 rounded-xl shadow-lg">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
             {t("welcome", { name: userName })} 🍻
           </h1>
-          <p className="text-md mt-1">
+          <p className="text-sm sm:text-base md:text-md mt-1 line-clamp-2">
             {t("dashboard_intro")}
           </p>
         </div>
 
-        {/* Bar Operations Navigation */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <FaBeer className="text-2xl text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
+        {/* Mobile-Optimized Bar Operations Navigation */}
+        <div className="bg-white rounded-xl shadow-lg p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <FaBeer className="text-xl sm:text-2xl text-blue-600 flex-shrink-0" />
+            <h2 className="text-base sm:text-lg font-semibold text-gray-700 truncate">{t("bar_operations")}</h2>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          {/* Mobile-First Navigation Grid */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
             {navItems.map(({ label, icon, section }) => (
               <button
                 key={section}
                 onClick={() => handleNavClick(section)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-3 sm:py-2 rounded-xl font-medium transition-all duration-200 touch-manipulation min-h-[48px] ${
                   activeSection === section
-                    ? 'bg-blue-100 text-blue-700 shadow'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                    ? 'bg-blue-100 text-blue-700 shadow-md transform scale-105'
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm'
                 }`}
               >
-                <span className="text-lg">{icon}</span>
-                {label}
+                <span className="text-base sm:text-lg flex-shrink-0">{icon}</span>
+                <span className="text-xs sm:text-sm md:text-base truncate">{label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="bg-white rounded-lg shadow">
+        {/* Mobile-Optimized Main Content Area */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {renderContent()}
         </div>
 

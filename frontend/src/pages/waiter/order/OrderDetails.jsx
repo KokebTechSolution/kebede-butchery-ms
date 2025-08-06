@@ -9,6 +9,9 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Get current user from auth context
+  const { user } = useAuth();
+
   console.log('OrderDetails - selectedOrderId:', selectedOrderId);
   console.log('OrderDetails - currentOrder:', currentOrder);
 
@@ -76,12 +79,42 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
 
   const handlePaymentOptionChange = async (orderId, paymentOption) => {
     try {
+      console.log('[DEBUG] handlePaymentOptionChange - Order ID:', orderId);
+      console.log('[DEBUG] handlePaymentOptionChange - Payment Option:', paymentOption);
+      console.log('[DEBUG] handlePaymentOptionChange - Current Order:', currentOrder);
+      
       // We need to refetch or update the order in the parent component's state
       // For now, let's just update the local state for immediate feedback
       const updatedOrder = await updatePaymentOption(orderId, paymentOption);
+      
+      console.log('[DEBUG] handlePaymentOptionChange - Updated Order:', updatedOrder);
+      console.log('[DEBUG] handlePaymentOptionChange - Updated Payment Option:', updatedOrder.payment_option);
+      
       setCurrentOrder(updatedOrder);
+      
+      // Show success message
+      alert(`✅ Payment method updated to: ${paymentOption.charAt(0).toUpperCase() + paymentOption.slice(1)}`);
+      
     } catch (error) {
-      console.error('Failed to update payment option:', error);
+      console.error('[ERROR] Failed to update payment option:', error);
+      
+      let errorMessage = '❌ Failed to update payment method';
+      if (error.response) {
+        console.error('[ERROR] Response status:', error.response.status);
+        console.error('[ERROR] Response data:', error.response.data);
+        
+        if (error.response.status === 404) {
+          errorMessage += ': Order not found';
+        } else if (error.response.status === 400) {
+          errorMessage += ': Invalid payment method';
+        } else if (error.response.data && error.response.data.error) {
+          errorMessage += ': ' + error.response.data.error;
+        }
+      } else {
+        errorMessage += ': ' + error.message;
+      }
+      
+      alert(errorMessage);
     }
   };
 

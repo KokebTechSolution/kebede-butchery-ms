@@ -15,7 +15,7 @@ REM Start React Frontend (Network Mode)
 echo.
 echo ⚛️ Starting React Frontend (Network Mode)...
 cd frontend
-set REACT_APP_API_URL=http://192.168.1.4:8000
+set REACT_APP_API_URL=http://192.168.1.2:8000
 set NODE_ENV=development
 set HOST=0.0.0.0
 start /B npm start

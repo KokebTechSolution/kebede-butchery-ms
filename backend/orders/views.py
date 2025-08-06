@@ -32,18 +32,23 @@ class OrderListView(generics.ListCreateAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Filter by user's branch
-        if hasattr(user, 'branch') and user.branch:
-            queryset = Order.objects.filter(branch=user.branch)
-            print(f"[DEBUG] Filtering orders for branch: {user.branch.name}")
-        elif user.is_superuser:
+        # Check user role and filter accordingly
+        if user.is_superuser:
             # Superuser can see all orders
             queryset = Order.objects.all()
             print(f"[DEBUG] Superuser - showing all orders")
+        elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
+            # Managers, owners, and cashiers can see all orders in their branch
+            if hasattr(user, 'branch') and user.branch:
+                queryset = Order.objects.filter(branch=user.branch)
+                print(f"[DEBUG] {user.role} - showing all orders for branch: {user.branch.name}")
+            else:
+                queryset = Order.objects.all()
+                print(f"[DEBUG] {user.role} without branch - showing all orders")
         else:
-            # For users without branch, show only their own orders
+            # Waiters and other users can only see their own orders
             queryset = Order.objects.filter(created_by=user)
-            print(f"[DEBUG] User without branch - showing only own orders")
+            print(f"[DEBUG] Waiter {user.username} - showing only own orders")
         
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
@@ -96,18 +101,23 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Filter by user's branch
-        if hasattr(user, 'branch') and user.branch:
-            queryset = Order.objects.filter(branch=user.branch).prefetch_related('items')
-            print(f"[DEBUG] Filtering order details for branch: {user.branch.name}")
-        elif user.is_superuser:
+        # Check user role and filter accordingly
+        if user.is_superuser:
             # Superuser can see all orders
             queryset = Order.objects.prefetch_related('items').all()
             print(f"[DEBUG] Superuser - showing all order details")
+        elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
+            # Managers, owners, and cashiers can see all orders in their branch
+            if hasattr(user, 'branch') and user.branch:
+                queryset = Order.objects.filter(branch=user.branch).prefetch_related('items')
+                print(f"[DEBUG] {user.role} - showing all order details for branch: {user.branch.name}")
+            else:
+                queryset = Order.objects.prefetch_related('items').all()
+                print(f"[DEBUG] {user.role} without branch - showing all order details")
         else:
-            # For users without branch, show only their own orders
+            # Waiters and other users can only see their own orders
             queryset = Order.objects.filter(created_by=user).prefetch_related('items')
-            print(f"[DEBUG] User without branch - showing only own order details")
+            print(f"[DEBUG] Waiter {user.username} - showing only own order details")
         
         return queryset
 
@@ -222,26 +232,33 @@ class PrintedOrderListView(generics.ListAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Filter by user's branch
-        if hasattr(user, 'branch') and user.branch:
-            queryset = Order.objects.filter(
-                branch=user.branch,
-                cashier_status__in=['pending', 'printed']
-            )
-            print(f"[DEBUG] Filtering printed orders for branch: {user.branch.name}")
-        elif user.is_superuser:
+        # Check user role and filter accordingly
+        if user.is_superuser:
             # Superuser can see all printed orders
             queryset = Order.objects.filter(
                 cashier_status__in=['pending', 'printed']
             )
             print(f"[DEBUG] Superuser - showing all printed orders")
+        elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
+            # Managers, owners, and cashiers can see all printed orders in their branch
+            if hasattr(user, 'branch') and user.branch:
+                queryset = Order.objects.filter(
+                    branch=user.branch,
+                    cashier_status__in=['pending', 'printed']
+                )
+                print(f"[DEBUG] {user.role} - showing all printed orders for branch: {user.branch.name}")
+            else:
+                queryset = Order.objects.filter(
+                    cashier_status__in=['pending', 'printed']
+                )
+                print(f"[DEBUG] {user.role} without branch - showing all printed orders")
         else:
-            # For users without branch, show only their own printed orders
+            # Waiters and other users can only see their own printed orders
             queryset = Order.objects.filter(
                 created_by=user,
                 cashier_status__in=['pending', 'printed']
             )
-            print(f"[DEBUG] User without branch - showing only own printed orders")
+            print(f"[DEBUG] Waiter {user.username} - showing only own printed orders")
         
         date = self.request.query_params.get('date')
         if date:
@@ -257,11 +274,25 @@ class UpdatePaymentOptionView(generics.UpdateAPIView):
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         payment_option = request.data.get('payment_option')
+        
+        print(f"[DEBUG] UpdatePaymentOptionView - Order ID: {instance.id}")
+        print(f"[DEBUG] UpdatePaymentOptionView - Order Number: {instance.order_number}")
+        print(f"[DEBUG] UpdatePaymentOptionView - Current payment_option: {instance.payment_option}")
+        print(f"[DEBUG] UpdatePaymentOptionView - New payment_option: {payment_option}")
+        print(f"[DEBUG] UpdatePaymentOptionView - Request user: {request.user}")
+        
         if payment_option in ['cash', 'online']:
             instance.payment_option = payment_option
             instance.save()
+            print(f"[DEBUG] UpdatePaymentOptionView - Payment option updated successfully to: {instance.payment_option}")
+            
             serializer = self.get_serializer(instance)
-            return Response(serializer.data)
+            response_data = serializer.data
+            print(f"[DEBUG] UpdatePaymentOptionView - Response payment_option: {response_data.get('payment_option')}")
+            
+            return Response(response_data)
+        
+        print(f"[ERROR] UpdatePaymentOptionView - Invalid payment option: {payment_option}")
         return Response({'error': 'Invalid payment option'}, status=400)
 
 class AcceptbeverageOrderView(APIView):
@@ -345,31 +376,46 @@ class WaiterStatsView(APIView):
 
     def get(self, request, waiter_id):
         from users.models import User
+        from django.utils import timezone
+        
         try:
             waiter = User.objects.get(id=waiter_id)
         except User.DoesNotExist:
             return Response({'error': 'Waiter not found'}, status=404)
 
-        # Only consider orders that are printed or ready for payment
-        orders = Order.objects.filter(created_by=waiter, cashier_status__in=['printed', 'ready_for_payment'])
-        total_orders = orders.count()
-        total_sales = sum(order.total_money or 0 for order in orders if order.total_money)
+        # Get today's date for daily analytics
+        today = timezone.now().date()
+        
+        # Only consider TODAY'S orders that are printed or ready for payment
+        todays_orders = Order.objects.filter(
+            created_by=waiter, 
+            cashier_status__in=['printed', 'ready_for_payment'],
+            created_at__date=today
+        )
+        
+        # Calculate today's statistics
+        total_orders_today = todays_orders.count()
+        total_sales_today = sum(order.total_money or 0 for order in todays_orders if order.total_money)
+        
+        # Count active tables (tables with pending orders today)
+        active_tables_today = Order.objects.filter(
+            created_by=waiter,
+            created_at__date=today,
+            cashier_status__in=['pending', 'ready_for_payment']
+        ).values('table_number').distinct().count()
 
-        # Placeholder for rating and active tables
+        # Placeholder for rating (could be implemented later)
         average_rating = 0.0
-        active_tables = 0
+        
+        print(f"[DEBUG] Daily Waiter Stats for {waiter.username}: Date={today}, Orders={total_orders_today}, Sales={total_sales_today}, ActiveTables={active_tables_today}")
 
         return Response({
-            'total_orders': total_orders,
-            'total_sales': total_sales,
+            'total_orders': total_orders_today,
+            'total_sales': total_sales_today,
             'average_rating': average_rating,
-            'active_tables': active_tables,
+            'active_tables': active_tables_today,
+            'date': today.isoformat(),
         })
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from orders.models import OrderItem
-from orders.serializers import OrderItemSerializer
 from rest_framework.permissions import AllowAny
 from inventory.models import BarmanStock
 from django.db import transaction

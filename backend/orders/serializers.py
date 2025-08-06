@@ -43,10 +43,17 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Order must include 'items'.")
 
         order = Order.objects.create(**validated_data)
+        print(f"[DEBUG] OrderSerializer.create - Order created: {order.id}")
+        
         total = 0
         for item_data in items_data:
             try:
+                print(f"[DEBUG] OrderSerializer.create - Creating item with data: {item_data}")
+                print(f"[DEBUG] OrderSerializer.create - Product field: {item_data.get('product')}")
+                
                 item = OrderItem.objects.create(order=order, **item_data)
+                print(f"[DEBUG] OrderSerializer.create - Item created: {item.id}, Product: {item.product}")
+                
                 if item.status == 'accepted':
                     total += item.price * item.quantity
             except Exception as e:
