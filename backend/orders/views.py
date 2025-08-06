@@ -236,7 +236,7 @@ class PrintedOrderListView(generics.ListAPIView):
         if user.is_superuser:
             # Superuser can see all printed orders
             queryset = Order.objects.filter(
-                cashier_status__in=['pending', 'printed']
+                cashier_status='printed'
             )
             print(f"[DEBUG] Superuser - showing all printed orders")
         elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
@@ -244,19 +244,19 @@ class PrintedOrderListView(generics.ListAPIView):
             if hasattr(user, 'branch') and user.branch:
                 queryset = Order.objects.filter(
                     branch=user.branch,
-                    cashier_status__in=['pending', 'printed']
+                    cashier_status='printed'
                 )
                 print(f"[DEBUG] {user.role} - showing all printed orders for branch: {user.branch.name}")
             else:
                 queryset = Order.objects.filter(
-                    cashier_status__in=['pending', 'printed']
+                    cashier_status='printed'
                 )
                 print(f"[DEBUG] {user.role} without branch - showing all printed orders")
         else:
             # Waiters and other users can only see their own printed orders
             queryset = Order.objects.filter(
                 created_by=user,
-                cashier_status__in=['pending', 'printed']
+                cashier_status='printed'
             )
             print(f"[DEBUG] Waiter {user.username} - showing only own printed orders")
         
