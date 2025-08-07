@@ -31,24 +31,50 @@ const getTableStatus = (table, orders) => {
 
 const TablesPage = ({ onSelectTable }) => {
   const [tables, setTables] = useState([]);
+  const [filteredTables, setFilteredTables] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [seats, setSeats] = useState(4); // Default seats for new table
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'available', 'occupied', 'ready_to_pay'
   
   // Get current user from auth context
   const { user } = useAuth();
+
+  // Filter tables based on active filter
+  const filterTables = (tablesToFilter, filter) => {
+    if (filter === 'all') return tablesToFilter;
+    return tablesToFilter.filter(table => {
+      const status = getTableStatus(table, orders);
+      return status === filter;
+    });
+  };
+
+  // Apply filters and update filtered tables
+  const applyFilters = (tablesToFilter, filter = activeFilter) => {
+    const filtered = filterTables(tablesToFilter, filter);
+    setFilteredTables(filtered);
+  };
 
   // Fetch tables from API
   const fetchTables = async () => {
     try {
       const response = await axiosInstance.get('/branches/tables/');
-      setTables(response.data);
+      const tablesData = response.data;
+      setTables(tablesData);
+      applyFilters(tablesData);
     } catch (err) {
       console.error('Failed to fetch tables:', err);
       setTables([]);
+      setFilteredTables([]);
       setError('Failed to fetch tables.');
     }
+  };
+
+  // Handle filter change
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    applyFilters(tables, filter);
   };
 
   // Fetch orders from API with user-specific filtering
@@ -67,6 +93,11 @@ const TablesPage = ({ onSelectTable }) => {
       // Backend now properly filters by user, so no need for client-side filtering
       console.log(`[DEBUG] TablesPage: Received ${data.length} orders from backend for user ${user.username}`);
       setOrders(data);
+      
+      // Re-apply filters when orders are updated
+      if (tables.length > 0) {
+        applyFilters(tables);
+      }
     } catch (err) {
       console.error('Failed to fetch orders:', err);
       setOrders([]);
@@ -78,6 +109,14 @@ const TablesPage = ({ onSelectTable }) => {
   useEffect(() => {
     fetchTables();
     fetchOrders();
+    
+    // Set up refresh interval (every 30 seconds)
+    const intervalId = setInterval(() => {
+      fetchTables();
+      fetchOrders();
+    }, 30000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   // Handle adding a new table, auto-increment table number
@@ -130,7 +169,7 @@ const TablesPage = ({ onSelectTable }) => {
   const stats = getStatusStats();
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in pb-20 sm:pb-6">
       {/* User Identity Header */}
       {user && user.username && (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-6">
@@ -192,16 +231,60 @@ const TablesPage = ({ onSelectTable }) => {
         </div>
       </div>
 
+      {/* Filter Buttons */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <button
+          onClick={() => handleFilterChange('all')}
+          className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            activeFilter === 'all'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+          }`}
+        >
+          All Tables
+        </button>
+        <button
+          onClick={() => handleFilterChange('available')}
+          className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            activeFilter === 'available'
+              ? 'bg-green-600 text-white'
+              : 'bg-white text-green-700 hover:bg-green-50 border border-green-200'
+          }`}
+        >
+          Available ({stats.available})
+        </button>
+        <button
+          onClick={() => handleFilterChange('ordering')}
+          className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            activeFilter === 'ordering'
+              ? 'bg-orange-600 text-white'
+              : 'bg-white text-orange-700 hover:bg-orange-50 border border-orange-200'
+          }`}
+        >
+          Ordering ({stats.occupied})
+        </button>
+        <button
+          onClick={() => handleFilterChange('ready_to_pay')}
+          className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            activeFilter === 'ready_to_pay'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200'
+          }`}
+        >
+          Ready to Pay ({stats.readyToPay})
+        </button>
+      </div>
+
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        {/* Mobile-Optimized Action Buttons */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
         <button
           onClick={() => { fetchTables(); fetchOrders(); }}
           disabled={loading}
-          className="flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 px-4 sm:px-6 py-3 sm:py-3 rounded-xl shadow-md border border-gray-200 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 touch-manipulation min-h-[48px]"
+          className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-lg shadow-sm border border-gray-200 transition-all duration-200 active:scale-95 disabled:opacity-50 touch-manipulation min-h-[36px] sm:min-h-[40px]"
+          aria-label="Refresh tables"
         >
-          <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 ${loading ? 'animate-spin' : ''} flex-shrink-0`} />
-          <span className="font-semibold text-gray-700 text-sm sm:text-base truncate">
+          <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 ${loading ? 'animate-spin' : ''} flex-shrink-0`} />
+          <span className="font-medium text-gray-700 text-xs sm:text-sm truncate">
             {loading ? 'Refreshing...' : 'Refresh'}
           </span>
         </button>
@@ -209,10 +292,11 @@ const TablesPage = ({ onSelectTable }) => {
         <button
           onClick={handleAddTable}
           disabled={loading}
-          className="flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 sm:px-6 py-3 sm:py-3 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 touch-manipulation min-h-[48px]"
+          className="flex-1 sm:flex-none flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-lg shadow-sm transition-all duration-200 active:scale-95 disabled:opacity-50 touch-manipulation min-h-[36px] sm:min-h-[40px]"
+          aria-label="Add new table"
         >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-          <span className="font-semibold text-sm sm:text-base truncate">
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-white" />
+          <span className="font-medium text-white text-xs sm:text-sm truncate">
             {loading ? 'Adding...' : 'Add Table'}
           </span>
         </button>
@@ -255,49 +339,47 @@ const TablesPage = ({ onSelectTable }) => {
         </div>
       )}
 
-      {/* Tables Grid */}
-      {tables.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users className="w-10 h-10 text-gray-400" />
+      {/* Tables Grid with Better Spacing */}
+      {filteredTables.length === 0 ? (
+        <div className="text-center py-8 sm:py-12 px-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Users className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Tables Yet</h3>
-          <p className="text-gray-500 mb-4">Get started by adding your first table to the restaurant</p>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-1 sm:mb-2">No Tables Yet</h3>
+          <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">Get started by adding your first table</p>
           <button
             onClick={handleAddTable}
             disabled={loading}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl shadow-md transition-all duration-200 active:scale-95 disabled:opacity-50 flex items-center justify-center mx-auto"
           >
-            <Plus className="w-5 h-5 inline mr-2" />
-            Add Your First Table
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1.5 sm:mr-2" />
+            <span className="text-sm sm:text-base">Add Your First Table</span>
           </button>
         </div>
       ) : (
-        // Mobile-First Responsive Table Grid
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-          {tables
-            .slice()
+        // Responsive grid with better spacing for all devices
+        <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-3 md:gap-4 p-2 sm:p-3">
+          {filteredTables
             .sort((a, b) => a.number - b.number)
             .map((table) => (
-              <div key={table.id} className="animate-slide-in-up">
+              <div key={table.id} className="animate-slide-in-up flex">
                 <TableCard
                   table={{ ...table, status: getTableStatus(table, orders) }}
                   onClick={() => onSelectTable(table)}
+                  className="w-full"
                 />
               </div>
             ))}
         </div>
       )}
 
-      {/* Floating Help Button */}
-      <div className="fixed bottom-4 left-4 z-50">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-gray-700">
-              {tables.length} table{tables.length !== 1 ? 's' : ''} total
-            </span>
-          </div>
+      {/* Floating Table Counter - Improved for mobile */}
+      <div className="fixed bottom-16 sm:bottom-6 right-4 z-40">
+        <div className="bg-white rounded-lg shadow-md border border-gray-200 px-3 py-2 flex items-center space-x-2">
+          <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+          <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+            {filteredTables.length} of {tables.length} table{tables.length !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
     </div>

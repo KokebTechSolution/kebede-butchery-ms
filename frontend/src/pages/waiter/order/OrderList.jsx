@@ -11,7 +11,8 @@ import {
   AlertCircle,
   Search,
   Users,
-  Coffee
+  Coffee,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import NotificationPopup from '../../../components/NotificationPopup.jsx';
@@ -41,17 +42,56 @@ const getStatusLabel = (status) => {
 
 const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [orders, setOrders] = useState([]);
-  const [tables, setTables] = useState([]);
+  const [tables, setTables] = useState({});
   const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'printed'
-  const [manualRefreshKey, setManualRefreshKey] = useState(0); // for manual refresh
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [manualRefreshKey, setManualRefreshKey] = useState(0);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOnlyUnavailable, setShowOnlyUnavailable] = useState(false);
   const prevOrderIdsRef = useRef([]);
   const pollingRef = useRef(null);
   
   // Get current user from auth context
   const { user } = useAuth();
+  
+  // Handle order selection
+  const handleOrderSelect = (order) => {
+    if (!order || !order.id) return;
+    
+    const tableId = order.table?.toString() || 'unknown';
+    const tableInfo = tables[tableId] || {};
+    
+    console.log('Table info:', { tableId, tableInfo, order });
+    
+    // Only proceed if table is not available
+    if (tableInfo.status === 'available') {
+      console.log('Skipping selection for available table');
+      return;
+    }
+    
+    console.log('Selecting order:', order.id, 'for table:', tableId);
+    setSelectedOrder(order);
+    setShowOnlyUnavailable(true);
+    
+    // Ensure onSelectOrder is called with the order ID
+    if (onSelectOrder && typeof onSelectOrder === 'function') {
+      onSelectOrder(order.id);
+    } else {
+      console.error('onSelectOrder is not a function or not provided');
+    }
+  };
+  
+  // Reset view to show all non-available tables with orders
+  const resetView = () => {
+    setSelectedOrder(null);
+    setShowOnlyUnavailable(false);
+    onSelectOrder(null);
+    
+    // Refresh the orders list
+    fetchOrders();
+  };
   
   // Fetch tables from API
   const fetchTables = async () => {
@@ -126,17 +166,121 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
 
   // Check if an order is considered unfinished
   const isUnfinishedOrder = (order) => {
+    if (!order) return false;
     const status = order.cashier_status?.toLowerCase() || '';
-    return !['printed', 'ready_for_payment', 'completed', 'paid', 'cancelled'].includes(status);
+    const tableStatus = order.tableStatus?.toLowerCase() || '';
+    
+    // Consider an order unfinished if:
+    // 1. It's not in a terminal state, AND
+    // 2. The table is occupied or in ordering state
+    const isTerminalState = ['printed', 'ready_for_payment', 'completed', 'paid', 'cancelled'].includes(status);
+    const isTableOccupied = ['occupied', 'ordering', 'ready_to_pay'].includes(tableStatus);
+    
+    return !isTerminalState && isTableOccupied;
   };
 
   // Group orders by table and get the most recent order for each table
-  const getGroupedAndFilteredOrders = (orders) => {
+  const getGroupedAndFilteredOrders = (allOrders) => {
     const tableGroups = {};
     
-    // First, filter and sort all orders by created_at (newest first)
-    const sortedOrders = [...orders]
-      .filter(order => order.order_number) // Only include valid orders
+    // First, filter out invalid orders and map to include table info
+    const ordersWithTableInfo = allOrders
+      .filter(order => order && order.id)
+      .map(order => {
+        const tableId = order.table?.toString() || 'unknown';
+        const tableInfo = tables[tableId] || {};
+        return {
+          ...order,
+          tableId,
+          tableStatus: tableInfo.status || 'unknown',
+          tableName: order.table_name || `Table ${tableId}`,
+          tableSeats: tableInfo.seats || 0
+        };
+      });
+    
+    // Filter to only include occupied tables with active orders
+    const filteredOrders = ordersWithTableInfo.filter(order => {
+      // Skip orders from available tables
+      if (order.tableStatus === 'available') {
+        return false;
+      }
+      
+      // If showing a specific table (after selection), only show that table
+      if (showOnlyUnavailable && selectedOrder) {
+        return order.tableId === selectedOrder.table?.toString();
+      }
+      
+      // Otherwise, only show tables with unfinished orders
+      return isUnfinishedOrder(order);
+    });
+    
+    // If showing only unavailable tables and no selected order, return empty
+    if (showOnlyUnavailable && !selectedOrder) {
+      return [];
+    }
+    
+    // Group orders by table
+    filteredOrders.forEach(order => {
+      const tableId = order.tableId;
+      
+      if (!tableGroups[tableId]) {
+        tableGroups[tableId] = {
+          id: tableId,
+          tableName: order.tableName,
+          tableStatus: order.tableStatus,
+          seats: order.tableSeats,
+          orders: [],
+          latestOrder: order,
+          orderCount: 0,
+          unfinishedOrderCount: 0
+        };
+      }
+      
+      tableGroups[tableId].orders.push(order);
+      tableGroups[tableId].orderCount++;
+      
+      if (isUnfinishedOrder(order)) {
+        tableGroups[tableId].unfinishedOrderCount++;
+      }
+      
+      // Update latest order if this one is newer
+      if (order.created_at && (!tableGroups[tableId].latestOrder.created_at || 
+          new Date(order.created_at) > new Date(tableGroups[tableId].latestOrder.created_at))) {
+        tableGroups[tableId].latestOrder = order;
+      }
+    });
+    
+    // Convert to array and filter out tables with no active orders
+    const tableGroupsArray = Object.values(tableGroups).filter(group => {
+      // Only include tables with at least one unfinished order
+      return group.unfinishedOrderCount > 0;
+    });
+    
+    // Sort by table name for better organization
+    return tableGroupsArray
+      .sort((a, b) => {
+        const nameA = a.tableName?.toLowerCase() || '';
+        const nameB = b.tableName?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      })
+      .map(group => ({
+        id: group.latestOrder.id,
+        tableId: group.id,
+        tableName: group.tableName,
+        tableStatus: group.tableStatus,
+        seats: group.seats,
+        orderCount: group.orders.length,
+        unfinishedOrderCount: group.orders.filter(o => isUnfinishedOrder(o)).length,
+        hasUnfinishedOrders: group.unfinishedOrderCount > 0,
+        created_at: group.latestOrder.created_at,
+        cashier_status: group.latestOrder.cashier_status,
+        total: group.latestOrder.total,
+        table: group.id // For backward compatibility
+      }));
+    
+    // Sort all orders by created_at (newest first)
+    const sortedOrders = [...filteredOrders]
+      .filter(order => order.order_number)
       .sort((a, b) => {
         if (b.created_at && a.created_at) {
           return new Date(b.created_at) - new Date(a.created_at);
@@ -150,8 +294,8 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       const tableName = order.table_name || `Table ${tableId}`;
       const tableInfo = tables[tableId] || {};
       
-      // Skip if table is not available (only include available tables with unfinished orders)
-      if (tableInfo.status !== 'available' && tableId !== 'unknown') {
+      // Skip if table is marked as available
+      if (tableInfo.status === 'available') {
         return;
       }
       
@@ -161,21 +305,21 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
            new Date(order.created_at) > new Date(tableGroups[tableId].created_at)))) {
         
         // Get all orders for this table
-        const tableOrders = orders.filter(o => 
+        const tableOrders = filteredOrders.filter(o => 
           (o.table?.toString() || 'unknown') === tableId
         );
         
         // Count unfinished orders for this table
         const unfinishedOrders = tableOrders.filter(isUnfinishedOrder);
-        const hasUnfinishedOrders = unfinishedOrders.length > 0;
         
         // Only include tables with unfinished orders
-        if (hasUnfinishedOrders) {
+        if (unfinishedOrders.length > 0) {
           tableGroups[tableId] = {
             ...order,
-            id: tableId, // Use table ID as the order ID for selection
+            id: order.id, // Use the actual order ID
             tableName,
             tableStatus: tableInfo.status || 'unknown',
+            status: order.cashier_status, // Keep the original order status
             seats: tableInfo.seats || 0,
             orderCount: tableOrders.length,
             unfinishedOrderCount: unfinishedOrders.length,
@@ -261,16 +405,25 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    if (!status) return 'bg-gray-100 border-gray-200 text-gray-800';
+    
+    const statusLower = status.toLowerCase();
+    
+    switch (statusLower) {
       case 'printed':
       case 'ready_for_payment':
         return 'bg-green-100 border-green-200 text-green-800';
       case 'pending':
       case 'preparing':
+      case 'ordering':
         return 'bg-orange-100 border-orange-200 text-orange-800';
       case 'completed':
       case 'paid':
         return 'bg-blue-100 border-blue-200 text-blue-800';
+      case 'available':
+        return 'bg-gray-100 border-gray-200 text-gray-800';
+      case 'occupied':
+        return 'bg-red-100 border-red-200 text-red-800';
       default:
         return 'bg-gray-100 border-gray-200 text-gray-800';
     }
@@ -527,6 +680,16 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
         </div>
       )}
 
+      {/* Back button when showing unavailable tables */}
+      {showOnlyUnavailable && (
+        <button
+          onClick={resetView}
+          className="mb-4 flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back to all orders
+        </button>
+      )}
+      
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-lg border border-gray-200">
@@ -559,14 +722,21 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
             return (
               <div
                 key={order.id}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 transform hover:scale-102 ${
+                className={`p-4 rounded-xl border-2 transition-all duration-200 transform ${
                   isSelected 
                     ? 'border-blue-500 bg-blue-50 shadow-lg' 
                     : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                } ${
+                  order.tableStatus !== 'available' 
+                    ? 'cursor-pointer hover:scale-102 border-red-200 bg-red-50' 
+                    : 'opacity-70 cursor-not-allowed'
                 }`}
                 onClick={() => {
+                  if (order.tableStatus === 'available') {
+                    return; // Don't do anything for available tables
+                  }
                   console.log('Order clicked:', order.id, order);
-                  onSelectOrder(order.id);
+                  handleOrderSelect(order);
                 }}
               >
                 <div className="flex items-center justify-between">

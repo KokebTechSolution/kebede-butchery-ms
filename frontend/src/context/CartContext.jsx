@@ -58,18 +58,48 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   const [activeTableId, setActiveTableId] = useState(null);
   const [orders, setOrders] = useState([]);
 
-  // Fetch orders once on mount — session auth uses cookies automatically
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await axiosInstance.get('/orders/order-list/');
-        setOrders(response.data);
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      }
-    };
+  // Fetch orders and filter them based on status and table availability
+  const fetchAndFilterOrders = async () => {
+    try {
+      // First, fetch all orders
+      const response = await axiosInstance.get('/orders/order-list/');
+      
+      // Then fetch tables to check their status
+      const tablesResponse = await axiosInstance.get('/branches/tables/');
+      const tablesMap = {};
+      tablesResponse.data.forEach(table => {
+        tablesMap[table.number] = table.status || 'available';
+      });
+      
+      // Filter orders to only include those that are active and from occupied tables
+      const filteredOrders = response.data.filter(order => {
+        const tableId = order.table?.toString() || '';
+        const tableStatus = tablesMap[tableId] || 'available';
+        const orderStatus = order.cashier_status?.toLowerCase() || '';
+        
+        // Only include orders that are not in a terminal state and from occupied tables
+        const isActiveOrder = !['printed', 'ready_for_payment', 'completed', 'paid', 'cancelled'].includes(orderStatus);
+        const isTableOccupied = ['occupied', 'ordering', 'ready_to_pay'].includes(tableStatus);
+        
+        return isActiveOrder && isTableOccupied;
+      });
+      
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.error("Failed to fetch orders or tables:", error);
+    }
+  };
 
-    fetchOrders();
+  // Fetch orders on mount and set up polling
+  useEffect(() => {
+    // Initial fetch
+    fetchAndFilterOrders();
+    
+    // Set up polling every 30 seconds
+    const intervalId = setInterval(fetchAndFilterOrders, 30000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {

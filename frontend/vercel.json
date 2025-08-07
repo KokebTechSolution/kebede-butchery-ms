@@ -15,8 +15,8 @@
       "dest": "/static/$1"
     },
     {
-      "src": "/favicon.ico",
-      "dest": "/favicon.ico"
+      "src": "/aurarise-logo.png",
+      "dest": "/aurarise-logo.png"
     },
     {
       "src": "/manifest.json",
