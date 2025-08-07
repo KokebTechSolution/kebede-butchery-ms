@@ -91,10 +91,30 @@ const WaiterDashboard = () => {
 
   // Navigation items
   const navItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
-    { key: 'tables', label: 'Tables', icon: <Utensils className="w-5 h-5" /> },
-    { key: 'orders', label: 'Orders', icon: <ClipboardList className="w-5 h-5" /> },
-    { key: 'profile', label: 'Profile', icon: <UserCircle className="w-5 h-5" /> },
+    { 
+      key: 'dashboard', 
+      label: 'Dashboard', 
+      icon: <Home className="w-5 h-5" />,
+      onClick: () => handleNavigate('dashboard')
+    },
+    { 
+      key: 'tables', 
+      label: 'Tables', 
+      icon: <Utensils className="w-5 h-5" />,
+      onClick: () => handleNavigate('tables')
+    },
+    { 
+      key: 'orders', 
+      label: 'Orders', 
+      icon: <ClipboardList className="w-5 h-5" />,
+      onClick: () => handleNavigate('orders')
+    },
+    { 
+      key: 'profile', 
+      label: 'Profile', 
+      icon: <UserCircle className="w-5 h-5" />,
+      onClick: () => handleNavigate('profile')
+    },
   ];
 
   // Context hooks
@@ -116,27 +136,36 @@ const WaiterDashboard = () => {
   const handleNavigate = (page) => {
     setIsMobileMenuOpen(false);
     
-    if (page === 'order') {
-      setCurrentPage('orderDetails');
-      return;
+    // Handle navigation based on the page
+    switch(page) {
+      case 'order':
+      case 'orderDetails':
+      case 'orders':
+        setCurrentPage('orderDetails');
+        setActiveNav('orders');
+        break;
+        
+      case 'tables':
+      case 'menu':
+        setSelectedOrderId(null);
+        setEditingOrderId(null);
+        setCurrentPage(page);
+        setActiveNav(page);
+        if (page === 'tables') setSelectedTable(null);
+        break;
+        
+      case 'profile':
+        setCurrentPage('profile');
+        setActiveNav('profile');
+        setMessage('');
+        break;
+        
+      case 'dashboard':
+      default:
+        setCurrentPage('dashboard');
+        setActiveNav('dashboard');
+        break;
     }
-    if (page === 'orderDetails') {
-      setCurrentPage('orderDetails');
-      return;
-    }
-    if (page === 'tables' || page === 'menu') {
-      setSelectedOrderId(null);
-      setEditingOrderId(null);
-    }
-    
-    if (page === 'profile') {
-      setCurrentPage('profile');
-      setMessage('');
-      return;
-    }
-    
-    setCurrentPage(page);
-    if (page === 'tables') setSelectedTable(null);
   };
 
   // Render dashboard cards for the main dashboard view
@@ -673,10 +702,7 @@ const WaiterDashboard = () => {
                 {navItems.map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => {
-                      setActiveNav(item.key);
-                      handleNavigate(item.key);
-                    }}
+                    onClick={item.onClick}
                     className={`${activeNav === item.key
                       ? 'border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
                       : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
@@ -707,17 +733,18 @@ const WaiterDashboard = () => {
               </div>
             </div>
             <div className="-mr-2 flex items-center sm:hidden">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-              >
-                <span className="sr-only">Open main menu</span>
-                {isMobileMenuOpen ? (
-                  <X className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <MenuIcon className="block h-6 w-6" aria-hidden="true" />
-                )}
-              </button>
+              <div className="sm:hidden">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <MenuIcon className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -738,8 +765,8 @@ const WaiterDashboard = () => {
                 <button
                   key={item.key}
                   onClick={() => {
-                    setActiveNav(item.key);
-                    handleNavigate(item.key);
+                    item.onClick();
+                    setIsMobileMenuOpen(false);
                   }}
                   className={`${
                     activeNav === item.key
