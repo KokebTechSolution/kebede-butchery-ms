@@ -12,7 +12,7 @@ cd ..
 echo
 echo "⚛️ Starting React Frontend (Network Mode)..."
 cd frontend
-export REACT_APP_API_URL=http://192.168.1.8:8000
+export REACT_APP_API_URL=http://10.240.69.22:8000
 export NODE_ENV=development
 export HOST=0.0.0.0
 npm start &

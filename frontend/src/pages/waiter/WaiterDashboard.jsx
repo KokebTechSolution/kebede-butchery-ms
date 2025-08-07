@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import ResponsiveLayout from '../../components/ResponsiveLayout';
-import ResponsiveNavbar from '../../components/ResponsiveNavbar';
-import TablesPage from './tables/TablesPage.jsx';
-import MenuPage from './menu/MenuPage.jsx';
-import Cart from '../../components/Cart/Cart.jsx';
-import { CartProvider, useCart } from '../../context/CartContext.jsx';
-import OrderDetails from './order/OrderDetails.jsx';
-import OrderList from './order/OrderList.jsx';
-import WaiterProfile from './WaiterProfile.jsx';
-import '../../App.css';
-import './WaiterDashboard.css';
-import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import axiosInstance from '../../api/axiosInstance';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
   Coffee, 
@@ -26,8 +14,26 @@ import {
   Plus,
   ArrowLeft,
   Bell,
-  Utensils
+  Utensils,
+  Menu as MenuIcon,
+  X,
+  LogOut
 } from 'lucide-react';
+
+// Components
+import TablesPage from './tables/TablesPage';
+import MenuPage from './menu/MenuPage';
+import Cart from '../../components/Cart/Cart';
+import OrderDetails from './order/OrderDetails';
+import OrderList from './order/OrderList';
+import WaiterProfile from './WaiterProfile';
+
+// Context
+import { CartProvider, useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+
+// API
+import axiosInstance from '../../api/axiosInstance';
 
 function mergeOrderItems(existingItems, cartItems) {
   const normalize = name => name.trim().toLowerCase();
@@ -65,16 +71,33 @@ function mergeOrderItems(existingItems, cartItems) {
 }
 
 const WaiterDashboard = () => {
+  // Router hooks
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const startPage = params.get('start') || 'tables';
+  const startPage = params.get('start') || 'dashboard';
 
+  // State management
   const [currentPage, setCurrentPage] = useState(startPage);
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [occupiedTables, setOccupiedTables] = useState(0);
+  const [totalTables, setTotalTables] = useState(15);
+  const [activeNav, setActiveNav] = useState('dashboard');
 
+  // Navigation items
+  const navItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
+    { key: 'tables', label: 'Tables', icon: <Utensils className="w-5 h-5" /> },
+    { key: 'orders', label: 'Orders', icon: <ClipboardList className="w-5 h-5" /> },
+    { key: 'profile', label: 'Profile', icon: <UserCircle className="w-5 h-5" /> },
+  ];
+
+  // Context hooks
   const { 
     activeTableId, 
     setActiveTable, 
@@ -87,15 +110,17 @@ const WaiterDashboard = () => {
     user,
     orders
   } = useCart();
+  
   const { tokens, user: authUser } = useAuth();
 
   const handleNavigate = (page) => {
+    setIsMobileMenuOpen(false);
+    
     if (page === 'order') {
       setCurrentPage('orderDetails');
       return;
     }
     if (page === 'orderDetails') {
-      // Allow navigation to orders without requiring table selection
       setCurrentPage('orderDetails');
       return;
     }
@@ -112,6 +137,66 @@ const WaiterDashboard = () => {
     
     setCurrentPage(page);
     if (page === 'tables') setSelectedTable(null);
+  };
+
+  // Render dashboard cards for the main dashboard view
+  const renderDashboardCards = () => {
+    const cards = [
+      {
+        key: 'tables',
+        title: 'Manage Tables',
+        description: 'View and manage all tables',
+        icon: <Utensils className="w-8 h-8" />,
+        bgColor: 'bg-blue-600',
+        hoverColor: 'hover:bg-blue-700',
+        onClick: () => handleNavigate('tables')
+      },
+      {
+        key: 'orders',
+        title: 'View Orders',
+        description: 'Track and manage all orders',
+        icon: <ClipboardList className="w-8 h-8" />,
+        bgColor: 'bg-green-600',
+        hoverColor: 'hover:bg-green-700',
+        onClick: () => handleNavigate('orderDetails')
+      },
+      {
+        key: 'new-order',
+        title: 'New Order',
+        description: 'Create a new order',
+        icon: <Plus className="w-8 h-8" />,
+        bgColor: 'bg-purple-600',
+        hoverColor: 'hover:bg-purple-700',
+        onClick: () => {
+          setSelectedTable(null);
+          setCurrentPage('tables');
+        }
+      }
+    ];
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((card) => (
+          <motion.div 
+            key={card.key}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={card.onClick}
+            className={`${card.bgColor} ${card.hoverColor} text-white rounded-xl p-6 shadow-lg cursor-pointer transition-all duration-200`}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
+                {card.icon}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">{card.title}</h3>
+                <p className="text-sm opacity-90">{card.description}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    );
   };
 
   const handleTableSelect = async (table) => {
@@ -242,41 +327,42 @@ const WaiterDashboard = () => {
     }
   };
 
-  const navItems = [
-    { key: 'tables', label: 'Tables', icon: <Utensils size={20} /> },
-    { key: 'orderDetails', label: 'Orders', icon: <ClipboardList size={20} /> },
-    { key: 'profile', label: 'Profile', icon: <UserCircle size={20} /> },
-  ];
+  // Fetch active orders and table status
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // In a real app, you would fetch this from your API
+        // const response = await axiosInstance.get('/api/waiter/dashboard-stats');
+        // setActiveOrdersCount(response.data.activeOrders);
+        // setOccupiedTables(response.data.occupiedTables);
+        // setTotalTables(response.data.totalTables);
+        
+        // Mock data for now
+        setActiveOrdersCount(5);
+        setOccupiedTables(8);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
 
-  const header = (
-    <ResponsiveNavbar
-      title="Waiter Dashboard"
-      user={user}
-    />
-  );
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+  }, []);
 
-  const sidebar = (
-    <div className="p-4 space-y-3">
-      {/* Welcome Section */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-            <UserCircle className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-800">
-              👋 Welcome, {authUser?.first_name || authUser?.username || 'Waiter'}!
-            </h3>
-            <p className="text-sm text-gray-600">
-              🔒 Your personal workspace - only your orders & tables
-            </p>
-            {authUser?.username && (
-              <p className="text-xs text-blue-600 mt-1">
-                Logged in as: {authUser.username}
-              </p>
-            )}
-          </div>
-        </div>
+  // Render the sidebar navigation
+  const renderSidebar = () => (
+    <div className="space-y-6">
+      {/* User Info */}
+      <div className="p-4 bg-white rounded-xl shadow-sm">
+        <p className="text-sm text-gray-600">
+          🔒 Your personal workspace - only your orders & tables
+        </p>
+        {authUser?.username && (
+          <p className="text-xs text-blue-600 mt-1">
+            Logged in as: {authUser.username}
+          </p>
+        )}
       </div>
 
       {/* Navigation Buttons */}
@@ -347,7 +433,7 @@ const WaiterDashboard = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-xl border">
+      <div className="p-4 bg-gray-50 rounded-xl border">
         <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
           <Bell className="w-4 h-4 mr-2" />
           Today's Summary
@@ -575,55 +661,183 @@ const WaiterDashboard = () => {
   };
 
   return (
-    <ResponsiveLayout
-      header={header}
-      sidebar={sidebar}
-      showSidebar={true}
-      showHeader={true}
-    >
-      {message && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-          <div className={`flex items-center space-x-3 px-6 py-4 rounded-xl shadow-2xl border-l-4 ${
-            message.includes('Error') || message.includes('empty')
-              ? 'bg-red-50 border-red-500 text-red-800'
-              : message.includes('success') || message.includes('placed')
-              ? 'bg-green-50 border-green-500 text-green-800'
-              : 'bg-blue-50 border-blue-500 text-blue-800'
-          }`}>
-            <div className={`p-2 rounded-full ${
-              message.includes('Error') || message.includes('empty')
-                ? 'bg-red-100'
-                : message.includes('success') || message.includes('placed')
-                ? 'bg-green-100'
-                : 'bg-blue-100'
-            }`}>
-              {message.includes('Error') || message.includes('empty') ? (
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              ) : message.includes('success') || message.includes('placed') ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : (
-                <Bell className="w-5 h-5 text-blue-600" />
-              )}
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <span className="text-xl font-bold text-blue-600">Kebede Butchery</span>
+              </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                {navItems.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => {
+                      setActiveNav(item.key);
+                      handleNavigate(item.key);
+                    }}
+                    className={`${activeNav === item.key
+                      ? 'border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                      }`}
+                  >
+                    <span className="mr-1">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-sm">
-                {message.includes('Error') ? '❌ Oops!' : 
-                 message.includes('success') || message.includes('placed') ? '✅ Great!' : 
-                 '📢 Notice'}
-              </p>
-              <p className="text-sm opacity-90">{message}</p>
+            <div className="hidden sm:ml-6 sm:flex sm:items-center">
+              <div className="ml-3 relative">
+                <div>
+                  <button
+                    type="button"
+                    className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    id="user-menu"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      {authUser?.first_name?.[0] || authUser?.username?.[0] || 'U'}
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => setMessage('')}
-              className="ml-2 p-1 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
-            >
-              <span className="text-lg leading-none">×</span>
-            </button>
+            <div className="-mr-2 flex items-center sm:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMobileMenuOpen ? (
+                  <X className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <MenuIcon className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      )}
-      {renderContent()}
-    </ResponsiveLayout>
+      </nav>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="sm:hidden"
+          >
+            <div className="pt-2 pb-3 space-y-1">
+              {navItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => {
+                    setActiveNav(item.key);
+                    handleNavigate(item.key);
+                  }}
+                  className={`${
+                    activeNav === item.key
+                      ? 'bg-blue-50 border-blue-500 text-blue-700'
+                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                  } block pl-3 pr-4 py-2 border-l-4 text-base font-medium w-full text-left`}
+                >
+                  <div className="flex items-center">
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </div>
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  navigate('/logout');
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <div className="flex items-center">
+                  <LogOut className="w-5 h-5 mr-3" />
+                  Sign out
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Status Message */}
+        {message && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-6 p-4 rounded-lg shadow-md ${
+              message.includes('Error') ? 'bg-red-100 text-red-700' : 
+              message.includes('success') || message.includes('placed') ? 'bg-green-100 text-green-700' : 
+              'bg-blue-100 text-blue-700'
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <p className="flex items-center">
+                {message.includes('Error') ? (
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                ) : message.includes('success') || message.includes('placed') ? (
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                ) : (
+                  <Bell className="w-5 h-5 mr-2" />
+                )}
+                {message}
+              </p>
+              <button 
+                onClick={() => setMessage('')}
+                className="text-xl font-semibold hover:opacity-75 transition-opacity"
+                aria-label="Close message"
+              >
+                &times;
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Page Content */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden">
+        <div className="flex justify-around">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => {
+                setActiveNav(item.key);
+                handleNavigate(item.key);
+              }}
+              className={`flex flex-col items-center justify-center w-full py-3 text-xs ${
+                activeNav === item.key ? 'text-blue-600' : 'text-gray-500'
+              }`}
+            >
+              <div className="text-xl mb-1">
+                {React.cloneElement(item.icon, {
+                  className: `w-6 h-6 ${activeNav === item.key ? 'text-blue-600' : 'text-gray-500'}`
+                })}
+              </div>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Add bottom padding to account for mobile nav */}
+      <div className="h-16 md:hidden"></div>
+    </div>
   );
 };
 

@@ -30,11 +30,5 @@
   "env": {
     "REACT_APP_API_URL": "https://kebede-butchery-ms.onrender.com",
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
-  

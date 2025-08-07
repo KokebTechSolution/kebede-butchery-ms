@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getMyOrders } from '../../../api/cashier'; // adjust path as needed
+import axiosInstance from '../../../api/axiosInstance';
 import { 
   FileText, 
   Calendar, 
@@ -40,6 +41,7 @@ const getStatusLabel = (status) => {
 
 const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [orders, setOrders] = useState([]);
+  const [tables, setTables] = useState([]);
   const [filterDate, setFilterDate] = useState(getTodayDateString());
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'printed'
   const [manualRefreshKey, setManualRefreshKey] = useState(0); // for manual refresh
@@ -50,6 +52,27 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   
   // Get current user from auth context
   const { user } = useAuth();
+  
+  // Fetch tables from API
+  const fetchTables = async () => {
+    try {
+      const response = await axiosInstance.get('/branches/tables/');
+      // Convert tables to a map for easier lookup
+      const tablesMap = {};
+      response.data.forEach(table => {
+        tablesMap[table.number] = table;
+      });
+      setTables(tablesMap);
+    } catch (err) {
+      console.error('Failed to fetch tables:', err);
+      setTables({});
+    }
+  };
+  
+  // Fetch tables on component mount
+  useEffect(() => {
+    fetchTables();
+  }, []);
 
   const fetchOrders = async (date) => {
     try {
@@ -101,39 +124,85 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
     return () => clearInterval(pollingRef.current);
   }, [filterDate]);
 
-  // Sort orders descending by order_number (or created_at if available)
-  const sortedOrders = [...orders].sort((a, b) => {
-    if (b.order_number && a.order_number) {
-      return b.order_number.localeCompare(a.order_number);
-    }
-    if (b.created_at && a.created_at) {
-      return new Date(b.created_at) - new Date(a.created_at);
-    }
-    return 0;
-  });
+  // Check if an order is considered unfinished
+  const isUnfinishedOrder = (order) => {
+    const status = order.cashier_status?.toLowerCase() || '';
+    return !['printed', 'ready_for_payment', 'completed', 'paid', 'cancelled'].includes(status);
+  };
 
-  // Filter orders by status with improved logic
-  const filteredOrders = sortedOrders.filter(order => {
-    // Always show orders with order numbers
-    if (!order.order_number) return false;
+  // Group orders by table and get the most recent order for each table
+  const getGroupedAndFilteredOrders = (orders) => {
+    const tableGroups = {};
     
-    // Show all orders when 'all' is selected
-    if (statusFilter === 'all') return true;
+    // First, filter and sort all orders by created_at (newest first)
+    const sortedOrders = [...orders]
+      .filter(order => order.order_number) // Only include valid orders
+      .sort((a, b) => {
+        if (b.created_at && a.created_at) {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+        return 0;
+      });
     
-    // Handle pending orders (not printed and not ready for payment)
+    // Group by table and keep only the most recent order for each table
+    sortedOrders.forEach(order => {
+      const tableId = order.table?.toString() || 'unknown';
+      const tableName = order.table_name || `Table ${tableId}`;
+      const tableInfo = tables[tableId] || {};
+      
+      // Skip if table is not available (only include available tables with unfinished orders)
+      if (tableInfo.status !== 'available' && tableId !== 'unknown') {
+        return;
+      }
+      
+      // Only process if we haven't seen this table yet or if this order is newer
+      if (!tableGroups[tableId] || 
+          (order.created_at && (!tableGroups[tableId].created_at || 
+           new Date(order.created_at) > new Date(tableGroups[tableId].created_at)))) {
+        
+        // Get all orders for this table
+        const tableOrders = orders.filter(o => 
+          (o.table?.toString() || 'unknown') === tableId
+        );
+        
+        // Count unfinished orders for this table
+        const unfinishedOrders = tableOrders.filter(isUnfinishedOrder);
+        const hasUnfinishedOrders = unfinishedOrders.length > 0;
+        
+        // Only include tables with unfinished orders
+        if (hasUnfinishedOrders) {
+          tableGroups[tableId] = {
+            ...order,
+            id: tableId, // Use table ID as the order ID for selection
+            tableName,
+            tableStatus: tableInfo.status || 'unknown',
+            seats: tableInfo.seats || 0,
+            orderCount: tableOrders.length,
+            unfinishedOrderCount: unfinishedOrders.length,
+            hasUnfinishedOrders: true
+          };
+        }
+      }
+    });
+    
+    // Convert to array and sort by table name
+    let result = Object.values(tableGroups).sort((a, b) => {
+      const nameA = a.tableName?.toLowerCase() || '';
+      const nameB = b.tableName?.toLowerCase() || '';
+      return nameA.localeCompare(nameB);
+    });
+    
+    // Apply status filter if needed
     if (statusFilter === 'pending') {
-      return order.cashier_status !== 'printed' && 
-             order.cashier_status !== 'ready_for_payment';
+      result = result.filter(order => isUnfinishedOrder(order));
+    } else if (statusFilter === 'printed') {
+      result = result.filter(order => !isUnfinishedOrder(order));
     }
     
-    // Handle printed/completed orders
-    if (statusFilter === 'printed') {
-      return order.cashier_status === 'printed' || 
-             order.cashier_status === 'ready_for_payment';
-    }
-    
-    return true;
-  });
+    return result;
+  };
+  
+  const filteredOrders = getGroupedAndFilteredOrders(orders);
 
   const getStatusStats = () => {
     // Get today's date for daily analytics
@@ -178,11 +247,14 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'printed':
+      case 'ready_for_payment':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'pending':
+      case 'preparing':
         return <Clock className="w-4 h-4 text-orange-600" />;
-      case 'ready_for_payment':
-        return <AlertCircle className="w-4 h-4 text-blue-600" />;
+      case 'completed':
+      case 'paid':
+        return <CheckCircle className="w-4 h-4 text-blue-600" />;
       default:
         return <FileText className="w-4 h-4 text-gray-600" />;
     }
@@ -191,13 +263,16 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'printed':
-        return 'bg-green-50 border-green-200 text-green-800';
-      case 'pending':
-        return 'bg-orange-50 border-orange-200 text-orange-800';
       case 'ready_for_payment':
-        return 'bg-blue-50 border-blue-200 text-blue-800';
+        return 'bg-green-100 border-green-200 text-green-800';
+      case 'pending':
+      case 'preparing':
+        return 'bg-orange-100 border-orange-200 text-orange-800';
+      case 'completed':
+      case 'paid':
+        return 'bg-blue-100 border-blue-200 text-blue-800';
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
+        return 'bg-gray-100 border-gray-200 text-gray-800';
     }
   };
 
@@ -501,16 +576,31 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
                     }`}>
                       {getStatusIcon(order.cashier_status)}
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-800 text-lg">
-                        Order #{order.order_number}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {order.table_name || `Table ${order.table}` || 'Unknown Table'}
-                      </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between space-x-2">
+                        <h4 className="font-semibold text-gray-800 text-lg truncate">
+                          {order.tableName}
+                        </h4>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(order.cashier_status)}`}>
+                          {getStatusLabel(order.cashier_status)}
+                        </span>
+                      </div>
+                      
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {order.unfinishedOrderCount} active {order.unfinishedOrderCount === 1 ? 'order' : 'orders'}
+                        </span>
+                        
+                        {order.orderCount > order.unfinishedOrderCount && (
+                          <span className="inline-flex items-center bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {order.orderCount - order.unfinishedOrderCount} completed
+                          </span>
+                        )}
+                      </div>
+                      
                       {order.created_at && (
-                        <p className="text-xs text-gray-500">
-                          {new Date(order.created_at).toLocaleTimeString()}
+                        <p className="mt-1 text-xs text-gray-500">
+                          Last update: {new Date(order.created_at).toLocaleTimeString()}
                         </p>
                       )}
                     </div>
