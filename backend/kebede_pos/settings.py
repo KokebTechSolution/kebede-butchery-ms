@@ -120,19 +120,14 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-import os
-
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME', 'kebede_pos_db'),
-        'USER': os.environ.get('DATABASE_USER', 'kebede_user'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', '1234'),
-        'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DATABASE_PORT', '5433'),
+        'NAME': 'kebede_pos_db',
+        'USER': 'kebede_user',
+        'PASSWORD': '1234',
+        'HOST': '127.0.0.1',
+        'PORT': '5433',
     }
 }
 
@@ -174,12 +169,6 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 STATIC_URL = 'static/'
 
-# Static files configuration for production
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Additional locations of static files (empty for now)
-STATICFILES_DIRS = []
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -199,12 +188,10 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168
 """
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React frontend
-    "https://your-frontend-domain.netlify.app",  # Add your Netlify domain here
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",  # Important!
-    "https://your-frontend-domain.netlify.app",  # Add your Netlify domain here
 ]
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  # For local dev
