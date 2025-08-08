@@ -1,0 +1,19 @@
+{
+  "extends": [
+    "react-app",
+    "react-app/jest"
+  ],
+  "rules": {
+    "no-unused-vars": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/heading-has-content": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.js", "**/*.test.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
+}

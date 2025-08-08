@@ -18,9 +18,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://192.168.1.2:3000",
     'http://10.240.69.22:3000',
+    'https://kebede-butchery-ms.vercel.app',
     "http://192.168.1.8:3001",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
+    "https://kebede-butchery-ms.onrender.com"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -28,9 +30,12 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://192.168.1.2:3000",
     'http://10.240.69.22:3000',
+    'https://kebede-butchery-ms.vercel.app',
+    'https://kebede-butchery-ms.onrender.com',
+    "http://192.168.1.8:3001",
     "http://192.168.1.120:3001",
     "http://localhost:3001",
-    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3001"
 ]
 
 EXTRA_CSRF_ORIGINS = [
