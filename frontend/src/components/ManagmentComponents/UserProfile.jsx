@@ -25,15 +25,15 @@ const UserProfile = ({ first_name, role }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-2 px-2 py-1 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors h-10"
+        className="flex items-center gap-2 px-3 py-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors h-12"
       >
         {/* User Icon */}
-        <UserCircle2 className="w-6 h-6 text-white shrink-0" />
+        <UserCircle2 className="w-7 h-7 text-white shrink-0" />
 
         {/* Name and Role */}
         <div className="flex flex-col items-start text-left min-w-0">
-          <span className="text-white font-bold leading-none text-xs truncate">{first_name}</span>
-          <span className="text-gray-200 text-[10px] italic truncate">({role})</span>
+          <span className="text-white font-bold leading-none text-sm truncate">{first_name}</span>
+          <span className="text-gray-200 text-xs italic truncate">({role})</span>
         </div>
       </button>
 

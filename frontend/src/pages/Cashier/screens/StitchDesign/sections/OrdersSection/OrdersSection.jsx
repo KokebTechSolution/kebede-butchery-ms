@@ -3,8 +3,9 @@ import {
   FileTextIcon,
   ListChecksIcon,
   UsersIcon,
+  MenuIcon,
 } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 import {
   Avatar,
   AvatarFallback,
@@ -13,6 +14,8 @@ import {
 import { Button } from "../../../../components/ui/button";
 
 export const OrdersSection = ({ activeSection, onSectionChange }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   // Navigation menu items data
   const menuItems = [
     {
@@ -37,33 +40,89 @@ export const OrdersSection = ({ activeSection, onSectionChange }) => {
     },
   ];
 
-  return (
-    <aside className="w-80 flex flex-col h-full">
-      <div className="flex flex-col min-h-[700px] p-4 bg-white w-full h-full flex-1 justify-between">
-        <div className="space-y-4">
-          {/* Header with profile */}
-          {/* Avatar removed as requested */}
+  const handleSectionChange = (sectionKey) => {
+    onSectionChange(sectionKey);
+    setIsDropdownOpen(false); // Close dropdown after selection
+  };
 
-          {/* Navigation menu */}
-          <nav className="flex flex-col gap-2">
-            {menuItems.map((item, index) => (
-              <Button
-                key={index}
-                variant={activeSection === item.key ? "secondary" : "ghost"}
-                className={`justify-start gap-3 w-full py-2 px-3 h-auto ${
-                  activeSection === item.key ? "bg-[#f4efef] hover:bg-[#ebe5e5]" : ""
-                }`}
-                onClick={() => onSectionChange(item.key)}
-              >
-                {item.icon}
-                <span className="font-['Work_Sans',Helvetica] font-medium text-sm text-[#161111] leading-[21px]">
-                  {item.label}
-                </span>
-              </Button>
-            ))}
-          </nav>
+  const getCurrentSectionLabel = () => {
+    const currentItem = menuItems.find(item => item.key === activeSection);
+    return currentItem ? currentItem.label : "Orders";
+  };
+
+  const getCurrentSectionIcon = () => {
+    const currentItem = menuItems.find(item => item.key === activeSection);
+    return currentItem ? currentItem.icon : <ListChecksIcon className="w-6 h-6" />;
+  };
+
+  return (
+    <>
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className="hidden md:block w-80 flex flex-col h-full">
+        <div className="flex flex-col min-h-[700px] p-4 bg-white w-full h-full flex-1 justify-between">
+          <div className="space-y-4">
+            {/* Navigation menu */}
+            <nav className="flex flex-col gap-2">
+              {menuItems.map((item, index) => (
+                <Button
+                  key={index}
+                  variant={activeSection === item.key ? "secondary" : "ghost"}
+                  className={`justify-start gap-3 w-full py-2 px-3 h-auto ${
+                    activeSection === item.key ? "bg-[#f4efef] hover:bg-[#ebe5e5]" : ""
+                  }`}
+                  onClick={() => onSectionChange(item.key)}
+                >
+                  {item.icon}
+                  <span className="font-['Work_Sans',Helvetica] font-medium text-sm text-[#161111] leading-[21px]">
+                    {item.label}
+                  </span>
+                </Button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Navigation - Visible only on mobile */}
+      <div className="md:hidden w-full">
+        <div className="bg-white p-4 shadow-sm border-b">
+          <h1 className="text-xl font-bold text-gray-800 mb-4">Cashier Dashboard</h1>
+          
+          {/* Mobile Dropdown Navigation */}
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-left hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg text-gray-600">{getCurrentSectionIcon()}</span>
+                <span className="font-medium text-gray-700">{getCurrentSectionLabel()}</span>
+              </div>
+              <MenuIcon className="text-gray-600" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                {menuItems.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSectionChange(item.key)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      activeSection === item.key
+                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </aside>
+    </>
   );
 };

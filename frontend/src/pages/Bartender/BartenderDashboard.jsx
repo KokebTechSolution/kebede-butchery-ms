@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaLock } from "react-icons/fa";
+import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaLock, FaBars } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
 import { useBeverages } from "./hooks/useBeverages";
@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 export default function BartenderDashboard() {
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('Orders');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const userName = t("bartender"); // use translated name
   const { lastMessage } = useNotifications();
@@ -76,15 +77,9 @@ export default function BartenderDashboard() {
     }
   };
 
-  const navItems = [
-    { label: t('orders'), icon: <FaClipboardList />, section: 'Orders' },
-    { label: t('closed'), icon: <FaLock />, section: 'Closed' },
-    { label: t('inventory'), icon: <FaBoxes />, section: 'Inventory' },
-    { label: t('reports'), icon: <FaChartBar />, section: 'Reports' },
-  ];
-
   const handleNavClick = (section) => {
     setActiveSection(section);
+    setIsDropdownOpen(false); // Close dropdown after selection
     if (section === 'Closed') {
       // Set filterDate to today when Closed tab is clicked
       const today = new Date();
@@ -108,37 +103,84 @@ export default function BartenderDashboard() {
           </p>
         </div>
 
-        {/* Bar Operations Navigation */}
+        {/* Bar Operations Navigation - Direct Buttons + Dropdown */}
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3 mb-4">
             <FaBeer className="text-2xl text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {navItems.map(({ label, icon, section }) => (
+          <div className="flex items-center gap-3">
+            {/* Direct Buttons for Orders and Closed */}
+            <button
+              onClick={() => handleNavClick('Orders')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                activeSection === 'Orders'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <FaClipboardList className="text-lg" />
+              {t('orders')}
+            </button>
+
+            <button
+              onClick={() => handleNavClick('Closed')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                activeSection === 'Closed'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <FaLock className="text-lg" />
+              {t('closed')}
+            </button>
+
+            {/* Dropdown for Inventory and Reports */}
+            <div className="relative">
               <button
-                key={section}
-                onClick={() => handleNavClick(section)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
-                  activeSection === section
-                    ? 'bg-blue-100 text-blue-700 shadow'
-                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                }`}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
               >
-                <span className="text-lg">{icon}</span>
-                {label}
+                <FaBars className="text-lg" />
+                More
               </button>
-            ))}
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
+                  <button
+                    onClick={() => handleNavClick('Inventory')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      activeSection === 'Inventory'
+                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    <FaBoxes className="text-lg" />
+                    {t('inventory')}
+                  </button>
+                  <button
+                    onClick={() => handleNavClick('Reports')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      activeSection === 'Reports'
+                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    <FaChartBar className="text-lg" />
+                    {t('reports')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <div className="bg-white rounded-lg shadow">
           {renderContent()}
         </div>
-
-        {/* Remove per-page footer. Footer is now global. */}
       </main>
     </div>
   );

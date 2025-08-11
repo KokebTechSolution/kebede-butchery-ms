@@ -26,7 +26,8 @@ export const StitchDesign = () => {
 
   return (
     <main className="bg-white w-full min-h-screen">
-      <div className="flex flex-row items-start p-6 gap-4 h-full">
+      {/* Desktop Layout */}
+      <div className="hidden md:flex flex-row items-start p-6 gap-4 h-full">
         <div className="flex-1">
           <OrdersSection 
             activeSection={activeSection} 
@@ -35,6 +36,17 @@ export const StitchDesign = () => {
         </div>
         <Separator orientation="vertical" className="h-auto" />
         <div className="flex-[3]">
+          {renderMainContent()}
+        </div>
+      </div>
+
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        <OrdersSection 
+          activeSection={activeSection} 
+          onSectionChange={setActiveSection} 
+        />
+        <div className="p-4">
           {renderMainContent()}
         </div>
       </div>
