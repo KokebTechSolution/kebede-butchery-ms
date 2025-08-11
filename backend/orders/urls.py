@@ -1,4 +1,4 @@
-from .views import OrderListView, OrderDetailView, FoodOrderListView, BeverageOrderListView, UpdateCashierStatusView, PrintedOrderListView, UpdatePaymentOptionView, PrintOrderView, AcceptbeverageOrderView, DailySalesSummaryView, SalesReportView, OrderItemStatusUpdateView, WaiterStatsView, test_order_update, get_waiter_actions_view
+from .views import OrderListView, OrderDetailView, FoodOrderListView, BeverageOrderListView, UpdateCashierStatusView, PrintedOrderListView, UpdatePaymentOptionView, PrintOrderView, AcceptbeverageOrderView, CancelOrderView, DailySalesSummaryView, SalesReportView, OrderItemStatusUpdateView, WaiterStatsView, test_order_update, get_waiter_actions_view
 from django.urls import path
 
 urlpatterns = [
@@ -11,6 +11,7 @@ urlpatterns = [
     path('beverages/', BeverageOrderListView.as_view(), name='beverage-order-list'),
     path('printed-orders/', PrintedOrderListView.as_view(), name='printed-order-list'),
     path('<int:pk>/accept-beverage/', AcceptbeverageOrderView.as_view(), name='accept-beverage-order'),
+    path('<int:pk>/cancel/', CancelOrderView.as_view(), name='cancel-order'),
     path('sales-summary/', DailySalesSummaryView.as_view(), name='sales-summary'),
     path('sales-report/', SalesReportView.as_view(), name='sales-report'),
     path('order-item/<int:pk>/update-status/', OrderItemStatusUpdateView.as_view(), name='order-item-update-status'),

@@ -87,6 +87,7 @@ export const useOrders = (filterDate) => {
 
   const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
   const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
+  const cancelOrderItem = (itemId) => updateOrderItemStatus(itemId, 'cancelled');
 
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
@@ -110,6 +111,7 @@ export const useOrders = (filterDate) => {
     getActiveOrders,
     acceptOrderItem,
     rejectOrderItem,
+    cancelOrderItem,
     setOrderPrinted // <-- export the new function
   };
 };

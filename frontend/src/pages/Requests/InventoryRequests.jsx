@@ -8,7 +8,7 @@ import {
 } from '../../api/inventory';
 import NewRequest from './NewRequest';
 import { useAuth } from '../../context/AuthContext';
-import { FaSearch, FaTimes, FaCheck, FaTimes as FaReject, FaEdit, FaTrash, FaClipboardList, FaFilter } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaCheck, FaTimes as FaReject, FaEdit, FaTrash, FaClipboardList, FaFilter, FaClock } from 'react-icons/fa';
 
 const InventoryRequestList = () => {
   const { t } = useTranslation();
@@ -153,31 +153,7 @@ const InventoryRequestList = () => {
     }
   };
 
-  const handleReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await axiosInstance.post(`inventory/requests/${id}/reach/`, {});
-      await loadRequests();
-      setFormMessage(t('request_reached'));
-    } catch (err) {
-      setFormMessage(t('failed_to_mark_reached'));
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
-  const handleNotReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await axiosInstance.post(`inventory/requests/${id}/not_reach/`, {});
-      await loadRequests();
-      setFormMessage(t('request_not_reached'));
-    } catch (err) {
-      setFormMessage(t('failed_to_mark_not_reached'));
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
   const handleFormChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -276,22 +252,23 @@ const InventoryRequestList = () => {
               </>
             )}
           </>
+        ) : req.status === 'fulfilled' ? (
+          <div className="flex gap-2">
+            <span className="bg-green-100 text-green-800 px-3 py-2 rounded text-sm font-medium flex items-center">
+              <FaCheck className="mr-1" /> {t('fulfilled')}
+            </span>
+          </div>
+        ) : req.status === 'accepted' ? (
+          <div className="flex gap-2">
+            <span className="bg-blue-100 text-blue-800 px-3 py-2 rounded text-sm font-medium flex items-center">
+              <FaClock className="mr-1" /> {t('accepted')}
+            </span>
+          </div>
         ) : (
           <div className="flex gap-2">
-            <button
-              onClick={() => handleReach(req.id)}
-              disabled={processingId === req.id}
-              className="bg-blue-500 text-white px-3 py-2 rounded text-sm flex items-center hover:bg-blue-600 disabled:opacity-50"
-            >
-              {t('mark_reached')}
-            </button>
-            <button
-              onClick={() => handleNotReach(req.id)}
-              disabled={processingId === req.id}
-              className="bg-gray-500 text-white px-3 py-2 rounded text-sm flex items-center hover:bg-gray-600 disabled:opacity-50"
-            >
-              {t('mark_not_reached')}
-            </button>
+            <span className="bg-red-100 text-red-800 px-3 py-2 rounded text-sm font-medium flex items-center">
+              <FaTimes className="mr-1" /> {t('rejected')}
+            </span>
           </div>
         )}
       </div>
@@ -502,23 +479,18 @@ const InventoryRequestList = () => {
                               </>
                             )}
                           </>
+                        ) : req.status === 'fulfilled' ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            {t('fulfilled')}
+                          </span>
+                        ) : req.status === 'accepted' ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {t('accepted')}
+                          </span>
                         ) : (
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded text-sm disabled:opacity-50"
-                            >
-                              {t('mark_reached')}
-                            </button>
-                            <button
-                              onClick={() => handleNotReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-sm disabled:opacity-50"
-                            >
-                              {t('mark_not_reached')}
-                            </button>
-                          </div>
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            {t('rejected')}
+                          </span>
                         )}
                       </td>
                     </tr>

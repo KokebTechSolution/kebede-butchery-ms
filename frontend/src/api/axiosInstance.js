@@ -51,6 +51,17 @@ axiosInstance.interceptors.response.use(
       if (response.data.csrf_token) {
         localStorage.setItem('csrf_token', response.data.csrf_token);
       }
+      
+      // Force refresh CSRF token after login
+      setTimeout(async () => {
+        try {
+          const { refreshCSRFToken } = await import('../utils/csrfManager');
+          await refreshCSRFToken();
+          console.log('✅ CSRF token refreshed after login');
+        } catch (error) {
+          console.error('❌ Error refreshing CSRF token after login:', error);
+        }
+      }, 100);
     }
     return response;
   },

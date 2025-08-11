@@ -12,6 +12,7 @@ import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
 import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { FaSearch, FaTimes, FaEdit, FaPlus, FaBoxes } from 'react-icons/fa';
 
 const ProductListPage = () => {
@@ -162,10 +163,10 @@ const ProductListPage = () => {
     }
 
     try {
-      const response = await axios.post(`/api/inventory/stocks/${restockingStock.id}/restock/`, {
-        restock_quantity: parseFloat(restockData.restock_quantity),
-        restock_type: restockData.restock_type,
-        restock_price: parseFloat(restockData.restock_price),
+      const response = await axiosInstance.post(`inventory/stocks/${restockingStock.id}/restock/`, {
+        quantity: parseFloat(restockData.restock_quantity),
+        type: restockData.restock_type,
+        price_per_unit: parseFloat(restockData.restock_price),
       });
 
       if (response.status === 200) {
@@ -222,12 +223,15 @@ const ProductListPage = () => {
         >
           <FaEdit className="mr-1" /> {t('edit')}
         </button>
-        <button 
-          onClick={() => handleRestockClick(stock)} 
-          className="flex-1 bg-green-600 text-white p-2 rounded text-sm flex items-center justify-center hover:bg-green-700"
-        >
-          <FaBoxes className="mr-1" /> {t('restock')}
-        </button>
+        {/* Restock button - only for managers */}
+        {user?.role === 'manager' && (
+          <button 
+            onClick={() => handleRestockClick(stock)} 
+            className="flex-1 bg-green-600 text-white p-2 rounded text-sm flex items-center justify-center hover:bg-green-700"
+          >
+            <FaBoxes className="mr-1" /> {t('restock')}
+          </button>
+        )}
       </div>
     </div>
   );

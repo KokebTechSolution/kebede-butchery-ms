@@ -52,10 +52,10 @@ export default function BranchManagerDashboard() {
       path: '/branch-manager/menu'
     },
     { 
-      key: 'orders', 
-      label: 'Orders', 
+      key: 'requests', 
+      label: 'requests', 
       icon: <FaClipboardCheck className="w-5 h-5" />,
-      path: '/meat/closed-orders'
+      path: '/branch-manager/request'
     },
   ];
 

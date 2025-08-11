@@ -208,7 +208,7 @@ class FoodOrderListView(generics.ListAPIView):
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='food'  # Only orders with food items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] Filtering food orders for branch: {user.branch.name}")
         elif user.is_superuser:
             # Superuser can see all food orders
@@ -216,7 +216,7 @@ class FoodOrderListView(generics.ListAPIView):
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='food'  # Only orders with food items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] Superuser - showing all food orders")
         else:
             # For users without branch, show only their own food orders
@@ -225,7 +225,7 @@ class FoodOrderListView(generics.ListAPIView):
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='food'  # Only orders with food items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] User without branch - showing only own food orders")
         
         date = self.request.query_params.get('date')
@@ -245,12 +245,14 @@ class BeverageOrderListView(generics.ListAPIView):
         
         # Filter by user's branch and ensure orders actually contain beverage items
         if hasattr(user, 'branch') and user.branch:
+            # Show orders that have beverage items AND are pending beverage preparation
+            # This includes mixed orders (food + beverage) - they appear in both dashboards
             queryset = Order.objects.filter(
                 branch=user.branch,
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='beverage'  # Only orders with beverage items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] Filtering beverage orders for branch: {user.branch.name}")
         elif user.is_superuser:
             # Superuser can see all beverage orders
@@ -258,7 +260,7 @@ class BeverageOrderListView(generics.ListAPIView):
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='beverage'  # Only orders with beverage items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] Superuser - showing all beverage orders")
         else:
             # For users without branch, show only their own beverage orders
@@ -267,7 +269,7 @@ class BeverageOrderListView(generics.ListAPIView):
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
                 items__item_type='beverage'  # Only orders with beverage items
-            ).distinct()
+            ).prefetch_related('items').distinct()
             print(f"[DEBUG] User without branch - showing only own beverage orders")
         
         date = self.request.query_params.get('date')
@@ -411,6 +413,46 @@ class AcceptbeverageOrderView(APIView):
             order.save()
             return Response({'message': 'beverage order accepted and set to preparing.'}, status=status.HTTP_200_OK)
         return Response({'error': 'Order is not in pending state.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CancelOrderView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+            
+            # Get cancellation reason from request
+            reason = request.data.get('reason', 'No reason provided')
+            
+            # Update order status to cancelled
+            if order.food_status in ['pending', 'preparing']:
+                order.food_status = 'cancelled'
+            if order.beverage_status in ['pending', 'preparing']:
+                order.beverage_status = 'cancelled'
+            
+            # Update all pending items to cancelled
+            pending_items = order.items.filter(status='pending')
+            for item in pending_items:
+                item.status = 'cancelled'
+                item.save()
+            
+            order.save()
+            
+            # Log the cancellation for reporting
+            print(f"[CANCELLATION] Order {order.order_number} cancelled. Reason: {reason}")
+            
+            return Response({
+                'message': 'Order cancelled successfully',
+                'order_number': order.order_number,
+                'reason': reason
+            })
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+        except Exception as e:
+            return Response({'error': f'Error cancelling order: {str(e)}'}, status=500)
+
 
 class DailySalesSummaryView(APIView):
     permission_classes = [AllowAny]

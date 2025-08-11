@@ -25,7 +25,7 @@ export default function SidebarNav() {
     { label: t("inventory"), icon: <FaClipboardList />, path: "/branch-manager/inventory" },
     { label: t("request"), icon: <FaClipboardList />, path: "/branch-manager/request" },
     { label: t("menu_management"), icon: <FaUtensils />, path: "/branch-manager/menu" },
-    { label: "Closed Orders", icon: <FaClipboardList />, path: "/meat/closed-orders" },
+ 
   ];
 
   return (

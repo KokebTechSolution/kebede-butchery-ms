@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
+import { formatPrice, calculateItemTotal } from '../../utils/priceUtils';
 import './Cart.css';
 
 const CartItem = ({ item }) => {
@@ -29,7 +30,7 @@ const CartItem = ({ item }) => {
         <div className="cart-item-details">
           <h3>{item.name}</h3>
           <p>{item.desc}</p>
-          <span className="cart-item-price">ETB {item.price}</span>
+          <span className="cart-item-price">{formatPrice(item.price)}</span>
         </div>
       </div>
       <div className="cart-item-actions">
@@ -49,7 +50,7 @@ const CartItem = ({ item }) => {
           </button>
         </div>
         <div className="cart-item-subtotal">
-          ETB {item.price * item.quantity}
+          {formatPrice(calculateItemTotal(item))}
         </div>
         <button
           onClick={handleRemove}

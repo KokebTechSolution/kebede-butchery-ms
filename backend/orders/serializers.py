@@ -47,7 +47,10 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['items'] = OrderItemSerializer(instance.items.all(), many=True).data
+        # Only override items if this is the base OrderSerializer
+        # Child serializers (FoodOrderSerializer, BeverageOrderSerializer) will handle their own items
+        if not hasattr(self, 'get_items'):
+            representation['items'] = OrderItemSerializer(instance.items.all(), many=True).data
         return representation
 
     def create(self, validated_data):
@@ -218,11 +221,11 @@ class OrderSerializer(serializers.ModelSerializer):
 class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'status']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
         
 
 class FoodOrderSerializer(OrderSerializer):
-    items = FoodOrderItemSerializer(many=True, source='food_items')
+    items = serializers.SerializerMethodField()
     status = serializers.CharField(source='food_status')
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)
@@ -233,6 +236,11 @@ class FoodOrderSerializer(OrderSerializer):
             'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
             'status', 'items', 'created_at', 'has_payment'
         ]
+    
+    def get_items(self, obj):
+        # Only return food items
+        food_items = obj.items.filter(item_type='food')
+        return FoodOrderItemSerializer(food_items, many=True).data
 
 
 class BeverageOrderItemSerializer(serializers.ModelSerializer):
@@ -242,7 +250,7 @@ class BeverageOrderItemSerializer(serializers.ModelSerializer):
 
 
 class BeverageOrderSerializer(OrderSerializer):
-    items = BeverageOrderItemSerializer(many=True, source='beverage_items')
+    items = serializers.SerializerMethodField()
     status = serializers.CharField(source='beverage_status')
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)
@@ -254,3 +262,8 @@ class BeverageOrderSerializer(OrderSerializer):
             'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
             'status', 'items', 'created_at', 'has_payment','branch_id'
         ]
+    
+    def get_items(self, obj):
+        # Only return beverage items
+        beverage_items = obj.items.filter(item_type='beverage')
+        return BeverageOrderItemSerializer(beverage_items, many=True).data

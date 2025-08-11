@@ -77,6 +77,47 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!currentOrder || !currentOrder.id) {
+      alert('No order to cancel');
+      return;
+    }
+
+    const reason = prompt('Please provide a reason for cancellation:');
+    if (!reason) {
+      alert('Cancellation cancelled - no reason provided');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${currentOrder.id}/cancel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ Order cancelled successfully!\nReason: ${reason}`);
+        // Refresh order details
+        await fetchOrderDetails();
+        // Notify parent component
+        if (onOrderDeleted) {
+          onOrderDeleted();
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`❌ Failed to cancel order: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('❌ Error cancelling order. Please try again.');
+    }
+  };
+
   const handlePaymentOptionChange = async (orderId, paymentOption) => {
     try {
       console.log('[DEBUG] handlePaymentOptionChange - Order ID:', orderId);
@@ -186,6 +227,7 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
           >
             🖨️
           </span>
+          <span className="icon" onClick={handleCancelOrder}>❌</span>
           <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
         </div>
       </div>

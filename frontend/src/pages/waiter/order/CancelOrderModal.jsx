@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Trash2, AlertCircle } from 'lucide-react';
 import { deleteOrder } from '../../../api/waiterApi';
+import { safeFormatPrice } from '../../../utils/priceUtils';
 import './CancelOrderModal.css';
 
 const CancelOrderModal = ({ isOpen, onClose, order, onOrderCancelled }) => {
@@ -102,7 +103,14 @@ const CancelOrderModal = ({ isOpen, onClose, order, onOrderCancelled }) => {
             </div>
             <div className="info-row">
               <span className="label">Total Amount:</span>
-              <span className="value">ETB {order.total_money?.toFixed(2) || '0.00'}</span>
+              <span className="value">
+                {order.total_money && !isNaN(Number(order.total_money)) 
+                  ? safeFormatPrice(order.total_money)
+                  : order.items && order.items.length > 0
+                    ? safeFormatPrice(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))
+                    : safeFormatPrice(0)
+                }
+              </span>
             </div>
             <div className="info-row">
               <span className="label">Status:</span>

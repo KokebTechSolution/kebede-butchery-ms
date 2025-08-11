@@ -50,10 +50,9 @@ export async function refreshCSRFToken() {
 export async function ensureCSRFToken() {
   let csrfToken = getCSRFToken();
   
-  if (!csrfToken) {
-    console.log('🔄 No CSRF token found, refreshing...');
-    csrfToken = await refreshCSRFToken();
-  }
+  // Always refresh CSRF token to ensure it's current with the session
+  console.log('🔄 Refreshing CSRF token...');
+  csrfToken = await refreshCSRFToken();
   
   return csrfToken;
 }

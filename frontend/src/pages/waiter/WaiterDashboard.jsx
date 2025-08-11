@@ -585,46 +585,49 @@ const WaiterDashboard = () => {
                 </div>
               </div>
               <TablesPage onSelectTable={handleTableSelect} />
+              
+              {/* Table Status Legend - Enhanced version */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Table Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Available</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Ordering</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Ready to Pay</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-red-800">Occupied</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Click on any table to view details or start taking orders
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
       case 'menu':
         return (
-          <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-4">
+          <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-4 sm:p-6">
             <div className="max-w-7xl mx-auto">
-              {/* Header with Back Button */}
-              <div className="mb-6">
-                <button
-                  onClick={handleBackFromMenu}
-                  className="flex items-center space-x-2 bg-white hover:bg-gray-50 px-6 py-3 rounded-xl shadow-md border border-gray-200 transition-all duration-200 transform hover:scale-105 mb-4"
-                >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
-                  <span className="font-semibold text-gray-700">Back to Tables</span>
-                </button>
-                {selectedTable && (
-                  <div className="bg-white rounded-xl p-6 shadow-lg border border-orange-100">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-orange-500 p-3 rounded-full">
-                        <Coffee className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Table {selectedTable.number}</h2>
-                        <p className="text-gray-600">Select items from the menu below</p>
-                      </div>
-                      {cartItems.length > 0 && (
-                        <div className="ml-auto bg-orange-100 px-4 py-2 rounded-full">
-                          <span className="text-orange-700 font-semibold">
-                            {cartItems.length} item{cartItems.length > 1 ? 's' : ''} in cart
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+              {/* Mobile-First Responsive Layout */}
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+                {/* Menu Section - Takes full width on mobile, 3 columns on desktop */}
+                <div className="xl:col-span-3 order-1">
                   <MenuPage 
                     table={selectedTable}
                     onBack={handleBackFromMenu}
@@ -632,7 +635,9 @@ const WaiterDashboard = () => {
                     onOrder={handleOrder}
                   />
                 </div>
-                <div className="lg:col-span-1">
+                
+                {/* Cart Section - Hidden on mobile (shown in mobile order summary), 1 column on desktop */}
+                <div className="xl:col-span-1 order-2 xl:order-2 hidden xl:block">
                   <div className="sticky top-4">
                     <Cart 
                       onOrder={handleOrder}
@@ -714,6 +719,34 @@ const WaiterDashboard = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Table Status Legend for Order Management */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Order Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Pending</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Preparing</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Completed</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Monitor order progress and manage customer requests
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -743,7 +776,53 @@ const WaiterDashboard = () => {
         return (
           <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
             <div className="max-w-7xl mx-auto">
-              <TablesPage onSelectTable={handleTableSelect} />
+              {/* Dashboard Header */}
+              <div className="mb-8 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="bg-blue-500 p-3 rounded-full mr-4">
+                    <Home className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Waiter Dashboard</h1>
+                    <p className="text-gray-600 mt-1">Welcome back! Manage your tables and orders</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Dashboard Cards */}
+              {renderDashboardCards()}
+              
+              {/* Table Status Legend */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Table Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Available</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Ordering</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Ready to Pay</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-red-800">Occupied</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Use the cards above to navigate to different sections
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -858,32 +937,32 @@ const WaiterDashboard = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
         {/* Status Message */}
         {message && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mb-6 p-4 rounded-lg shadow-md ${
+            className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg shadow-md ${
               message.includes('Error') ? 'bg-red-100 text-red-700' : 
               message.includes('success') || message.includes('placed') ? 'bg-green-100 text-green-700' : 
               'bg-blue-100 text-blue-700'
             }`}
           >
             <div className="flex justify-between items-center">
-              <p className="flex items-center">
+              <p className="flex items-center text-sm sm:text-base">
                 {message.includes('Error') ? (
-                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 ) : message.includes('success') || message.includes('placed') ? (
-                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 ) : (
-                  <Bell className="w-5 h-5 mr-2" />
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 )}
                 {message}
               </p>
               <button 
                 onClick={() => setMessage('')}
-                className="text-xl font-semibold hover:opacity-75 transition-opacity"
+                className="text-lg sm:text-xl font-semibold hover:opacity-75 transition-opacity p-1"
                 aria-label="Close message"
               >
                 &times;
@@ -899,8 +978,8 @@ const WaiterDashboard = () => {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden">
-        <div className="flex justify-around">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden shadow-lg">
+        <div className="flex justify-around px-2 py-1">
           {navItems.map((item) => (
             <button
               key={item.key}
@@ -908,8 +987,10 @@ const WaiterDashboard = () => {
                 setActiveNav(item.key);
                 handleNavigate(item.key);
               }}
-              className={`flex flex-col items-center justify-center w-full py-3 text-xs ${
-                activeNav === item.key ? 'text-blue-600' : 'text-gray-500'
+              className={`flex flex-col items-center justify-center w-full py-2 px-1 rounded-lg transition-all duration-200 ${
+                activeNav === item.key 
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <div className="text-xl mb-1">
@@ -917,14 +998,14 @@ const WaiterDashboard = () => {
                   className: `w-6 h-6 ${activeNav === item.key ? 'text-blue-600' : 'text-gray-500'}`
                 })}
               </div>
-              <span>{item.label}</span>
+              <span className="text-xs font-medium">{item.label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Add bottom padding to account for mobile nav */}
-      <div className="h-16 md:hidden"></div>
+      <div className="h-20 md:hidden"></div>
 
       {/* Payment Method Modal */}
       <PaymentMethodModal

@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { resetUserPassword, fetchStaffList, updateUser, deleteUser } from '../../api/stafflist';
+import { resetUserPassword, fetchStaffList, updateUser, deleteUser, fetchBranches } from '../../api/stafflist';
 import AddStaffForm from './AddStaffForm';
-import { FaEdit, FaKey, FaSearch, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaEdit, FaKey, FaSearch, FaTimes, FaChevronLeft, FaChevronRight, FaSync } from 'react-icons/fa';
 
 function StaffListPage() {
   const { t } = useTranslation();
@@ -56,19 +56,36 @@ function StaffListPage() {
     is_active: true,
   });
 
+  const [branches, setBranches] = useState([]);
+  const [roles] = useState([
+    { value: 'waiter', label: 'Waiter' },
+    { value: 'bartender', label: 'Bartender' },
+    { value: 'meat', label: 'Meat Counter' },
+    { value: 'cashier', label: 'Cashier' },
+    { value: 'manager', label: 'Branch Manager' },
+    { value: 'owner', label: 'Owner' },
+  ]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchStaffList()
-      .then(data => {
-        setStaffList(data);
+    const loadData = async () => {
+      try {
+        const [staffData, branchesData] = await Promise.all([
+          fetchStaffList(),
+          fetchBranches()
+        ]);
+        setStaffList(staffData);
+        setBranches(branchesData);
         setLoading(false);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error(err);
         setError(t('failed_load_staff_list'));
         setLoading(false);
-      });
+      }
+    };
+    
+    loadData();
   }, [t]);
 
   const handleEdit = (user) => {
@@ -79,7 +96,7 @@ function StaffListPage() {
       role: user.role,
       first_name: user.first_name,
       last_name: user.last_name,
-      branch: user.branch,
+      branch: user.branch?.id || user.branch,
       is_active: user.is_active,
     });
   };
@@ -89,17 +106,31 @@ function StaffListPage() {
   };
 
   const handleEditSubmit = async () => {
+    // Basic validation
+    if (!formData.username || !formData.first_name || !formData.last_name || !formData.role || !formData.branch) {
+      alert(t('please_fill_all_required_fields'));
+      return;
+    }
+    
     try {
       const updated = await updateUser(editUser.id, formData);
-      setStaffList(prev => prev.map(user => user.id === updated.id ? updated : user));
+      // Refresh the staff list to get the latest data
+      const freshStaffList = await fetchStaffList();
+      setStaffList(freshStaffList);
       setEditUser(null);
+      alert(t('user_updated_successfully'));
     } catch (err) {
       console.error('Update failed:', err);
-      alert(t('failed_update_user'));
+      alert(err.message || t('failed_update_user'));
     }
   };
 
   const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      alert(t('password_too_short'));
+      return;
+    }
+    
     try {
       await resetUserPassword(resetUser.id, newPassword);
       setResetUser(null);
@@ -107,7 +138,7 @@ function StaffListPage() {
       alert(t('password_reset_success'));
     } catch (err) {
       console.error('Password reset failed:', err);
-      alert(t('failed_reset_password'));
+      alert(err.message || t('failed_reset_password'));
     }
   };
 
@@ -120,6 +151,23 @@ function StaffListPage() {
         console.error('Delete failed:', err);
         alert(t('failed_delete_user'));
       }
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      const [staffData, branchesData] = await Promise.all([
+        fetchStaffList(),
+        fetchBranches()
+      ]);
+      setStaffList(staffData);
+      setBranches(branchesData);
+    } catch (err) {
+      console.error('Refresh failed:', err);
+      alert(t('failed_refresh_data'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,7 +188,7 @@ function StaffListPage() {
       </div>
       <div className="mt-3 pt-3 border-t border-gray-100 text-sm">
         <p className="text-gray-700"><span className="font-medium">{t('role')}:</span> {t(`roles.${user.role}`)}</p>
-        <p className="text-gray-700"><span className="font-medium">{t('branch')}:</span> {user.branch}</p>
+        <p className="text-gray-700"><span className="font-medium">{t('branch')}:</span> {user.branch?.name || user.branch}</p>
         <p className="text-gray-500 text-xs mt-2">
           {new Date(user.date_joined).toLocaleDateString()}
         </p>
@@ -197,12 +245,22 @@ function StaffListPage() {
                 </button>
               )}
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 whitespace-nowrap"
-            >
-              + {t('add_staff')}
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors duration-200 flex items-center justify-center"
+                title={t('refresh')}
+              >
+                <FaSync className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 whitespace-nowrap"
+              >
+                + {t('add_staff')}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -233,6 +291,16 @@ function StaffListPage() {
               {searchTerm ? t('try_different_search') : t('no_staff_members_yet')}
             </p>
             <div className="mt-6">
+                          <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={loading}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <FaSync className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                {t('refresh')}
+              </button>
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
@@ -243,6 +311,7 @@ function StaffListPage() {
                 </svg>
                 {t('add_staff')}
               </button>
+            </div>
             </div>
           </div>
         ) : isMobile ? (
@@ -295,7 +364,7 @@ function StaffListPage() {
                         <div className="text-sm text-gray-500">{user.phone_number}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.branch}</div>
+                        <div className="text-sm text-gray-900">{user.branch?.name || user.branch}</div>
                         <div className="text-xs text-gray-500">
                           {new Date(user.date_joined).toLocaleDateString()}
                         </div>
@@ -450,17 +519,78 @@ function StaffListPage() {
           <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">{t('edit_staff')}</h2>
-              {['username', 'first_name', 'last_name', 'phone_number', 'role', 'branch'].map((field) => (
-                <input
-                  key={field}
-                  type={field === 'branch' ? 'number' : 'text'}
-                  name={field}
-                  value={formData[field]}
-                  onChange={handleEditChange}
-                  placeholder={t(field)}
-                  className="w-full mb-3 border px-4 py-2 rounded"
-                />
-              ))}
+              
+              {/* Username */}
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleEditChange}
+                placeholder={t('username')}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              />
+              
+              {/* First Name */}
+              <input
+                type="text"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleEditChange}
+                placeholder={t('first_name')}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              />
+              
+              {/* Last Name */}
+              <input
+                type="text"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleEditChange}
+                placeholder={t('last_name')}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              />
+              
+              {/* Phone Number */}
+              <input
+                type="text"
+                name="phone_number"
+                value={formData.phone_number}
+                onChange={handleEditChange}
+                placeholder={t('phone_number')}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              />
+              
+              {/* Role Dropdown */}
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleEditChange}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              >
+                <option value="">{t('select_role')}</option>
+                {roles.map(role => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Branch Dropdown */}
+              <select
+                name="branch"
+                value={formData.branch}
+                onChange={handleEditChange}
+                className="w-full mb-3 border px-4 py-2 rounded"
+              >
+                <option value="">{t('select_branch')}</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Active Status */}
               <div className="mb-3">
                 <label className="flex items-center">
                   <input
@@ -473,6 +603,7 @@ function StaffListPage() {
                   {t('is_active')}
                 </label>
               </div>
+              
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setEditUser(null)}
@@ -498,13 +629,22 @@ function StaffListPage() {
               <h2 className="text-xl font-bold mb-4">
                 {t('reset_password_for', { username: resetUser.username })}
               </h2>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder={t('new_password')}
-                className="w-full mb-3 border px-4 py-2 rounded"
-              />
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('new_password')}
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={t('enter_new_password')}
+                  className="w-full border px-4 py-2 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  minLength="6"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('password_min_length')}
+                </p>
+              </div>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => {
@@ -517,7 +657,12 @@ function StaffListPage() {
                 </button>
                 <button
                   onClick={handleResetPassword}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                  disabled={!newPassword || newPassword.length < 6}
+                  className={`px-4 py-2 rounded ${
+                    newPassword && newPassword.length >= 6
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   {t('reset')}
                 </button>

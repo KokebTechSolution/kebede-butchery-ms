@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
+from users.models import User
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -19,6 +20,21 @@ from .serializers import (
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+
+# Custom permission class for managers only
+class IsManager(BasePermission):
+    """
+    Custom permission to only allow managers to access certain actions.
+    """
+    def has_permission(self, request, view):
+        # Check if user is authenticated and is a manager
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            hasattr(request.user, 'role') and 
+            request.user.role == 'manager'
+        )
+
 # Branch
 class BranchViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Branch.objects.all()
@@ -65,7 +81,7 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
     # Reach: Deduct stock and update status
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def reach(self, request, pk=None):
         req = self.get_object()
@@ -619,7 +635,7 @@ class StockViewSet(viewsets.ModelViewSet):
             
             return response
 
-    @action(detail=True, methods=['post'], url_path='restock')
+    @action(detail=True, methods=['post'], url_path='restock', permission_classes=[IsManager])
     @transaction.atomic
     def restock(self, request, pk=None):
         stock = self.get_object()
@@ -809,7 +825,7 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(bartender=user)
 
-    @action(detail=True, methods=['post'], url_path='restock')
+    @action(detail=True, methods=['post'], url_path='restock', permission_classes=[IsManager])
     @transaction.atomic
     def restock(self, request, pk=None):
         barman_stock = self.get_object()

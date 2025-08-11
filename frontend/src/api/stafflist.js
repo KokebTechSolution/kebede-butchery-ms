@@ -48,7 +48,7 @@ export const addUser = async (formData) => {
 
 export const updateUser = async (id, formData) => {
   try {
-    const response = await axiosInstance.put(`users/${id}/`, formData);
+    const response = await axiosInstance.put(`users/users/${id}/`, formData);
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
@@ -58,7 +58,7 @@ export const updateUser = async (id, formData) => {
 
 export const deleteUser = async (id) => {
   try {
-    await axiosInstance.delete(`users/${id}/`);
+    await axiosInstance.delete(`users/users/${id}/`);
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
     throw new Error(message);
@@ -67,11 +67,11 @@ export const deleteUser = async (id) => {
 
 export const resetUserPassword = async (id, newPassword) => {
   try {
-    const response = await axiosInstance.post(`users/${id}/reset-password/`, { password: newPassword });
+    const response = await axiosInstance.post(`users/users/${id}/reset-password/`, { password: newPassword });
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
-    throw new Error(message);
+    throw new Error(error.response?.data?.error || 'Password reset failed');
   }
 };
 

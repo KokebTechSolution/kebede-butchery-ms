@@ -6,7 +6,8 @@ import {
   FaChartBar, 
   FaLock,
   FaCalendarAlt,
-  FaSyncAlt
+  FaSyncAlt,
+  FaCheckCircle
 } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
 import NotificationToast from "../../components/NotificationToast";
@@ -14,6 +15,7 @@ import ClosedOrders from "./screens/Pending/ClosedOrders";
 import { useBeverages } from "./hooks/useBeverages";
 import Pending from "./screens/Pending/Pending";
 import Inventory from "./Inventory/InventoryRequests";
+import ReachedRequests from "./Inventory/ReachedRequests";
 import Reports from "./screens/Reports";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
@@ -69,6 +71,8 @@ export default function BartenderDashboard() {
     switch (activeSection) {
       case 'Inventory':
         return <Inventory requests={inventoryRequests} />;
+      case 'Reached':
+        return <ReachedRequests />;
       case 'Reports':
         return <Reports />;
       case 'Closed':
@@ -97,6 +101,12 @@ export default function BartenderDashboard() {
       icon: <FaBoxes className="w-5 h-5" />, 
       section: 'Inventory',
       color: 'purple'
+    },
+    { 
+      label: t('reached'), 
+      icon: <FaCheckCircle className="w-5 h-5" />, 
+      section: 'Reached',
+      color: 'teal'
     },
     { 
       label: t('reports'), 
@@ -190,6 +200,58 @@ export default function BartenderDashboard() {
             </div>
           </div>
         )}
+
+        {/* Desktop Navigation Tabs */}
+        <div className="hidden md:block border-t border-gray-200 bg-white">
+          <div className="px-4 py-2">
+            <div className="flex space-x-1">
+              {navItems.map((item) => {
+                // Get count for each section
+                let count = 0;
+                switch (item.section) {
+                  case 'Orders':
+                    count = orders.length;
+                    break;
+                  case 'Closed':
+                    count = getClosedOrders().length;
+                    break;
+                  case 'Inventory':
+                    count = inventoryRequests.length;
+                    break;
+                  case 'Reached':
+                    count = inventoryRequests.filter(req => req.status === 'accepted' && !req.reached_status).length;
+                    break;
+                  default:
+                    count = 0;
+                }
+                
+                return (
+                  <button
+                    key={item.section}
+                    onClick={() => handleNavClick(item.section)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative ${
+                      activeSection === item.section
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800 border border-transparent'
+                    }`}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {count > 0 && (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded-full font-bold ${
+                        activeSection === item.section
+                          ? 'bg-blue-200 text-blue-800'
+                          : 'bg-gray-200 text-gray-700'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -262,6 +324,7 @@ export default function BartenderDashboard() {
                   {activeSection === 'Orders' && `${orders.length} orders`}
                   {activeSection === 'Closed' && `${getClosedOrders().length} closed`}
                   {activeSection === 'Inventory' && `${inventoryRequests.length} requests`}
+                  {activeSection === 'Reached' && `${inventoryRequests.filter(req => req.status === 'accepted' && !req.reached_status).length} pending`}
                 </span>
               </div>
             </div>
@@ -280,10 +343,10 @@ export default function BartenderDashboard() {
             <button
               key={item.section}
               onClick={() => handleNavClick(item.section)}
-              className={`flex flex-col items-center justify-center w-full py-3 transition-all duration-200 ${
+              className={`relative flex flex-col items-center justify-center w-full py-3 transition-all duration-200 ${
                 activeSection === item.section 
-                  ? 'text-blue-600 transform scale-105' 
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <div className={`text-xl mb-1 transition-colors ${
@@ -295,7 +358,7 @@ export default function BartenderDashboard() {
               
               {/* Active Indicator */}
               {activeSection === item.section && (
-                <div className="absolute bottom-0 w-1/2 h-1 bg-blue-600 rounded-t-full"></div>
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-blue-600 rounded-t-full"></div>
               )}
             </button>
           ))}
@@ -303,7 +366,7 @@ export default function BartenderDashboard() {
       </div>
 
       {/* Bottom padding for mobile navigation */}
-      <div className="h-20 md:h-0"></div>
+      <div className="h-24 md:h-0"></div>
     </div>
   );
 }

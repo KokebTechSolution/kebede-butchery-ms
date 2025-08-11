@@ -12,6 +12,7 @@ class Order(models.Model):
         ('preparing', 'Preparing'),
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
         ('not_applicable', 'Not Applicable'),
     ]
     order_number = models.CharField(max_length=255, unique=True)
@@ -105,6 +106,7 @@ class OrderItem(models.Model):
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=100)

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   fetchRequests,
-  ReachRequest,
-  NotReachRequest,
   fetchProductMeasurements,
   cancelRequest,
   updateRequest,
+  ReachRequest,
 } from '../../../api/inventory';
 import api from '../../../api/axiosInstance';
 import NewRequest from './NewRequest';
@@ -117,31 +116,7 @@ const InventoryRequestList = () => {
     }
   };
 
-  const handleReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await api.post(`/inventory/requests/${id}/reach/`);
-      await loadRequests();
-      setFormMessage('Marked as reached!');
-    } catch (err) {
-      setFormMessage('Failed to mark as reached.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
-  const handleNotReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await api.post(`/inventory/requests/${id}/not-reach/`);
-      await loadRequests();
-      setFormMessage('Marked as not reached!');
-    } catch (err) {
-      setFormMessage('Failed to mark as not reached.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
   const handleCancelRequest = async (id) => {
     if (!window.confirm('Are you sure you want to cancel this request?')) return;
@@ -166,6 +141,19 @@ const InventoryRequestList = () => {
       setFormMessage('Request updated!');
     } catch (err) {
       setFormMessage('Failed to update request.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReach = async (id) => {
+    setProcessingId(id);
+    try {
+      await ReachRequest(id);
+      await loadRequests();
+      setFormMessage('Request marked as reached!');
+    } catch (err) {
+      setFormMessage('Failed to mark request as reached.');
     } finally {
       setProcessingId(null);
     }
@@ -386,42 +374,46 @@ const InventoryRequestList = () => {
                       </button>
                     )}
 
-                    {/* Reach/Not Reach buttons - only if accepted */}
-                    {req.status === 'accepted' && isBartender && !reached && (
+                    {/* Bartender: Mark accepted requests as reached */}
+                    {isBartender && req.status === 'accepted' && !req.reached_status && (
                       <button
                         onClick={() => handleReach(req.id)}
                         disabled={processingId === req.id}
                         className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
                       >
                         <FaCheckCircle className="w-4 h-4" />
-                        <span>{t('mark_reached')}</span>
+                        <span>{t('reached') || 'Reached'}</span>
                       </button>
                     )}
-                    
-                    {req.status === 'accepted' && isBartender && reached && (
+
+                    {/* Status indicators for non-pending requests */}
+                    {req.status === 'fulfilled' && (
                       <span className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
                         <FaCheckCircle className="w-4 h-4" />
-                        <span>{t('reached')}</span>
+                        <span>{t('fulfilled')}</span>
                       </span>
                     )}
-
-                    {/* No actions available */}
-                    {!canEditOrCancel &&
-                      !(isManager && req.status === 'pending') &&
-                      !(req.status === 'accepted' && isBartender) &&
-                      reached && (
-                        <span className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
-                          <FaCheckCircle className="w-4 h-4" />
-                          <span>{t('reached')}</span>
-                        </span>
-                      )}
                     
-                    {!canEditOrCancel &&
-                      !(isManager && req.status === 'pending') &&
-                      !(req.status === 'accepted' && isBartender) &&
-                      !reached && (
-                        <span className="text-gray-500 italic px-4 py-2">{t('no_action_available')}</span>
-                      )}
+                    {req.status === 'accepted' && !req.reached_status && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium">
+                        <FaClock className="w-4 h-4" />
+                        <span>{t('accepted')}</span>
+                      </span>
+                    )}
+                    
+                    {req.status === 'accepted' && req.reached_status && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
+                        <FaCheckCircle className="w-4 h-4" />
+                        <span>{t('reached') || 'Reached'}</span>
+                      </span>
+                    )}
+                    
+                    {req.status === 'rejected' && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg font-medium">
+                        <FaTimes className="w-4 h-4" />
+                        <span>{t('rejected')}</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
