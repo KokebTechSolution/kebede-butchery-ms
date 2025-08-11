@@ -16,10 +16,10 @@ const LoginPage = () => {
     // Always clear user state and localStorage on login page load
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user');
+      localStorage.removeItem('session_key');
     }
-    // Optionally, if setUser is available:
-    // setUser && setUser(null);
-    // Fetch CSRF cookie
+    
+    // Fetch CSRF cookie to ensure it's available
     axiosInstance.get('users/csrf/').catch(err => {
       console.log('CSRF fetch error (expected on first load):', err);
     });
@@ -34,18 +34,20 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     try {
-
+      console.log('🔄 Attempting login...');
       
       // Use unified login endpoint for both local and network access
       const response = await axiosInstance.post('users/login/', formData);
-      console.log('Login response:', response.data);
+      console.log('✅ Login response:', response.data);
       
-      login(response.data); // Call AuthContext login
+      // Call AuthContext login with the user data
+      await login(response.data);
       setShowLoading(true); // Show loading page instead of immediate navigation
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       setError(err.response?.data?.error || err.message || 'Something went wrong');
     }
   };

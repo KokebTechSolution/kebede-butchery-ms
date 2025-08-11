@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaLock, FaEdit } from 'react-icons/fa';
+import { FaLock, FaEdit, FaUser, FaClock, FaDollarSign, FaCheck, FaTimes, FaSync, FaClipboardList } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext.jsx';
 import { useBeverages  } from '../../hooks/useBeverages';
@@ -21,14 +21,14 @@ export const Pending = ({ orders, filterDate, setFilterDate }) => {
 
   const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
-
   // Use only active orders
   const allOrders = getActiveOrders()
+    .filter(order => String(order.branch_id) === String(branchId))
+    .slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   
-  .filter(order => String(order.branch_id) === String(branchId))
-  .slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   console.log('Fetched orders:', allOrders);
-console.log('Current branchId:', branchId);
+  console.log('Current branchId:', branchId);
+  
   // Group by table_number, fallback to 'N/A' if missing
   const groupedByTableNumber = allOrders.reduce((acc, order) => {
     const tableNum = order.table_number !== undefined && order.table_number !== null ? order.table_number : 'N/A';
@@ -36,6 +36,7 @@ console.log('Current branchId:', branchId);
     acc[tableNum].push(order);
     return acc;
   }, {});
+  
   // Sort tables: tables with pending orders first, then by most recent order
   const tableEntries = Object.entries(groupedByTableNumber).sort(([tableA, ordersA], [tableB, ordersB]) => {
     const aHasPending = ordersA.some(order => order.items.some(item => item.status === 'pending'));
@@ -190,10 +191,9 @@ console.log('Current branchId:', branchId);
     const item = order.items.find(i => i.id === itemId);
     if (item) handleItemUpdate(order, item, 'accept');
   };
-  // Similarly for reject, quantity, remove...
 
   return (
-    <div className="p-8">
+    <div className="p-4 space-y-4">
       {showNotification && notificationOrder && (
         <NotificationPopup
           message="New order or item added!"
@@ -203,93 +203,169 @@ console.log('Current branchId:', branchId);
           onClose={() => setShowNotification(false)}
         />
       )}
-      <div className="mb-6 flex items-center gap-4">
-        <label htmlFor="order-date-filter" className="font-medium">Filter by Date:</label>
-        <input
-          id="order-date-filter"
-          type="date"
-          value={filterDate}
-          onChange={e => setFilterDate(e.target.value)}
-          className="p-2 border rounded"
-        />
-      </div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+
+      {/* Mobile-Optimized Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <FaClipboardList className="text-blue-600 text-lg" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Beverage Orders</h1>
+            <p className="text-sm text-gray-500">Manage incoming drink orders</p>
+          </div>
+        </div>
+        
         <button
           onClick={refetch}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm flex items-center space-x-2"
         >
-          Refresh
+                          <FaSync className="w-4 h-4" />
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
+
+      {/* Empty State */}
       {Object.keys(groupedByTableNumber).length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No active orders</p>
+        <div className="text-center py-16 px-4">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FaClipboardList className="text-gray-400 text-3xl" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No active orders</h3>
+          <p className="text-gray-500">All beverage orders have been processed</p>
         </div>
       ) : (
-        <div className="space-y-8">
+        /* Orders List */
+        <div className="space-y-6">
           {tableEntries.map(([tableNum, tableOrders]) => (
-            <div key={tableNum} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Table {tableNum}</h2>
+            <div key={tableNum} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              {/* Table Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
+                    <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                      {tableNum}
+                    </span>
+                    <span>Table {tableNum}</span>
+                  </h2>
+                  <span className="text-sm text-gray-600 font-medium">
+                    {tableOrders.length} order{tableOrders.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-4">
+
+              {/* Orders for this table */}
+              <div className="divide-y divide-gray-100">
                 {tableOrders.map(order => {
-                  // Determine if there are any pending items
                   const waiter = order.waiterName || order.created_by_username || 'Unknown';
+                  const orderTotal = (
+                    order.total_money && Number(order.total_money) > 0
+                      ? Number(order.total_money)
+                      : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
+                  ).toFixed(2);
+                  
                   return (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-semibold text-gray-900">
-                          Order #{order.order_number} <span style={{ color: '#888', marginLeft: 8 }}>({waiter})</span>
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
-                        </span>
-                        <span className="text-lg font-bold text-blue-700">
-                          ${(
-                            order.total_money && Number(order.total_money) > 0
-                              ? Number(order.total_money)
-                              : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)
-                          ).toFixed(2)}
-                        </span>
-                        {/* Inline update message */}
-                        {lastUpdate.orderId === order.id && lastUpdate.message && (
-                          <span style={{ color: '#16a34a', marginLeft: 12, fontWeight: 500 }}>
+                    <div key={order.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      {/* Order Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="font-bold text-gray-900 text-lg">
+                              #{order.order_number}
+                            </h3>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                              {order.items.filter(i => i.status === 'pending').length} pending
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <div className="flex items-center space-x-1">
+                              <FaUser className="w-3 h-3" />
+                              <span>{waiter}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <FaClock className="w-3 h-3" />
+                              <span>{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <div className="text-right">
+                            <div className="text-sm text-gray-500">Total</div>
+                            <div className="text-xl font-bold text-blue-600 flex items-center space-x-1">
+                              <FaDollarSign className="w-4 h-4" />
+                              <span>{orderTotal}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Update Message */}
+                      {lastUpdate.orderId === order.id && lastUpdate.message && (
+                        <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                          <span className="text-sm text-green-700 font-medium">
                             {lastUpdate.message}
                           </span>
-                        )}
-                      </div>
-                      {/* Only item-level Accept/Reject below */}
-                      <div className="space-y-2 mt-2">
+                        </div>
+                      )}
+
+                      {/* Order Items */}
+                      <div className="space-y-3">
                         {order.items.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
-                            <span>{item.name} × {item.quantity}</span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
-                            <span className="ml-4">
-                              {item.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => acceptOrderItemWithMsg(item.id, order)}
-                                    className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
-                                  >
-                                    Accept
-                                  </button>
-                                  <button
-                                    onClick={() => rejectOrderItem(item.id)}
-                                    className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {item.status === 'accepted' && (
-                                <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
-                              )}
-                              {item.status === 'rejected' && (
-                                <span className="text-red-700">Rejected</span>
-                              )}
-                            </span>
+                          <div key={index} className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{item.name}</div>
+                                <div className="text-sm text-gray-600">
+                                  Qty: {item.quantity} × ETB {(Number(item.price) || 0).toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-gray-900">
+                                  ETB {((Number(item.price) || 0) * (Number(item.quantity) || 0)).toFixed(2)}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {item.status === 'pending' && 'Pending'}
+                                  {item.status === 'accepted' && 'Accepted'}
+                                  {item.status === 'rejected' && 'Rejected'}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            {item.status === 'pending' && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => acceptOrderItemWithMsg(item.id, order)}
+                                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                >
+                                  <FaCheck className="w-4 h-4" />
+                                  <span>Accept</span>
+                                </button>
+                                <button
+                                  onClick={() => rejectOrderItem(item.id)}
+                                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                                >
+                                  <FaTimes className="w-4 h-4" />
+                                  <span>Reject</span>
+                                </button>
+                              </div>
+                            )}
+                            
+                            {item.status === 'accepted' && (
+                              <div className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
+                                <FaLock className="w-4 h-4" />
+                                <span className="font-medium">Accepted</span>
+                              </div>
+                            )}
+                            
+                            {item.status === 'rejected' && (
+                              <div className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg">
+                                <FaTimes className="w-4 h-4" />
+                                <span className="font-medium">Rejected</span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

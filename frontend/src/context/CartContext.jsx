@@ -31,7 +31,7 @@ function mergeCartItems(items) {
 }
 
 export const CartProvider = ({ children, initialActiveTableId }) => {
-  const { user } = useAuth(); // No tokens here, only user
+  const { isAuthenticated, user } = useAuth();
   const [tableCarts, setTableCarts] = useState(() => {
     try {
       const localData = localStorage.getItem('tableCarts');
@@ -90,17 +90,19 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     }
   };
 
-  // Fetch orders on mount and set up polling
+  // Fetch orders on mount and set up polling - ONLY when authenticated
   useEffect(() => {
-    // Initial fetch
-    fetchAndFilterOrders();
-    
-    // Set up polling every 30 seconds
-    const intervalId = setInterval(fetchAndFilterOrders, 30000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(intervalId);
-  }, []);
+    if (isAuthenticated && user) {
+      // Initial fetch
+      fetchAndFilterOrders();
+      
+      // Set up polling every 30 seconds
+      const intervalId = setInterval(fetchAndFilterOrders, 30000);
+      
+      // Clean up interval on unmount
+      return () => clearInterval(intervalId);
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     try {
@@ -136,7 +138,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   }, []);
 
   const cartItems = activeTableId ? (tableCarts[activeTableId] || []) : [];
-  console.log('CartContext: Current cart items for table', activeTableId, ':', cartItems);
+
+  // Add useEffect to log cart changes
+  useEffect(() => {
+    console.log('CartContext: Cart items changed for table', activeTableId, ':', cartItems);
+  }, [cartItems, activeTableId]);
 
   const addToCart = (item) => {
     if (!activeTableId) {
@@ -195,17 +201,39 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       removeFromCart(itemId);
       return;
     }
+    console.log('CartContext: updateQuantity called with itemId:', itemId, 'quantity:', quantity);
+    console.log('CartContext: Current cart items:', cartItems);
+    
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      const updatedTableCart = mergeCartItems(currentTableCart.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              quantity,
-              status: item.status
-            }
-          : item
-      ));
+      console.log('CartContext: Current table cart:', currentTableCart);
+      
+      // First try to find by id
+      let foundItem = currentTableCart.find(item => item.id === itemId);
+      
+      // If not found by id, try to find by name and price (fallback for items without id)
+      if (!foundItem && typeof itemId === 'string') {
+        // If itemId is a string, it might be a name
+        foundItem = currentTableCart.find(item => item.name === itemId);
+      }
+      
+      if (!foundItem) {
+        console.warn('CartContext: Could not find item with id:', itemId, 'in cart:', currentTableCart);
+        return prevTableCarts;
+      }
+      
+      const updatedTableCart = currentTableCart.map((item) => {
+        console.log('CartContext: Checking item:', item, 'against itemId:', itemId);
+        if (item.id === itemId || (typeof itemId === 'string' && item.name === itemId)) {
+          console.log('CartContext: Found matching item, updating quantity from', item.quantity, 'to', quantity);
+          return {
+            ...item,
+            quantity,
+            status: item.status
+          };
+        }
+        return item;
+      });
       console.log('CartContext: Updated quantity for item', itemId, 'to', quantity, 'for table', activeTableId, '. New cart:', updatedTableCart);
       return {
         ...prevTableCarts,
@@ -215,7 +243,10 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const clearCart = () => {
-    if (!activeTableId) return;
+    if (!activeTableId) {
+      console.warn('CartContext: clearCart called but activeTableId is null/undefined');
+      return;
+    }
     setTableCarts((prevTableCarts) => ({
       ...prevTableCarts,
       [activeTableId]: [],
@@ -231,7 +262,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: item.item_type || 'beverage',
+          item_type: item.item_type, // Remove default fallback - item_type must be set
           status: 'pending'
         }))
       };
@@ -247,8 +278,26 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     }
   };
 
+  const checkWaiterActions = async (orderId) => {
+    try {
+      const response = await axiosInstance.get(`/orders/waiter-actions/${orderId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to check waiter actions:', error);
+      return null;
+    }
+  };
+
   const updateOrder = async (orderId, updatedItems) => {
     try {
+      console.log('CartContext: updateOrder called with orderId:', orderId, 'updatedItems:', updatedItems);
+      
+      // Check waiter actions first
+      const actions = await checkWaiterActions(orderId);
+      if (actions && !actions.actions?.edit?.enabled) {
+        throw new Error(actions.actions.edit.reason || 'Edit not allowed for this order');
+      }
+      
       // Build payload with all items and their current status
       const payload = {
         items: updatedItems.map(item => ({
@@ -256,18 +305,45 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
           status: item.status || 'pending', // Default to pending if not set
         })),
       };
+      
+      console.log('CartContext: updateOrder payload being sent:', payload);
       const response = await axiosInstance.patch(`/orders/order-list/${orderId}/`, payload);
       const updatedOrder = response.data;
+      
+      console.log('CartContext: updateOrder response from backend:', updatedOrder);
 
+      // Update the orders state in CartContext
       setOrders(prevOrders =>
         prevOrders.map(order =>
           order.id === orderId ? updatedOrder : order
         )
       );
       console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
-      clearCart();
+      
+      // Dispatch a custom event to notify other components about the order update
+      const event = new CustomEvent('orderUpdated', { 
+        detail: { 
+          orderId: orderId,
+          updatedOrder: updatedOrder,
+          source: 'CartContext'
+        } 
+      });
+      window.dispatchEvent(event);
+      console.log('CartContext: Dispatched orderUpdated event');
+      
+      // Also try to manually refresh the order list
+      if (window.refreshOrderList) {
+        console.log('CartContext: Calling window.refreshOrderList');
+        window.refreshOrderList();
+      }
+      
+      // Don't clear cart here - let the calling component handle it
+      // clearCart();
+      
+      return updatedOrder;
     } catch (error) {
       console.error('Failed to update order:', error);
+      throw error; // Re-throw the error so calling code can handle it
     }
   };
 
@@ -277,11 +353,12 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const loadCartForEditing = (tableId, items) => {
+    console.log('CartContext: loadCartForEditing called with tableId:', tableId, 'items:', items);
     setActiveTableId(tableId);
 
     setTableCarts(prev => ({
       ...prev,
-      [tableId]: mergeCartItems(items)
+      [tableId]: items // Don't merge items when loading for editing - keep them as they are
     }));
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
   };

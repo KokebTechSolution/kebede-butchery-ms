@@ -24,7 +24,7 @@ import {
 import TablesPage from './tables/TablesPage';
 import MenuPage from './menu/MenuPage';
 import Cart from '../../components/Cart/Cart';
-import OrderDetails from './order/OrderDetails';
+
 import OrderList from './order/OrderList';
 import WaiterProfile from './WaiterProfile';
 
@@ -81,7 +81,6 @@ const WaiterDashboard = () => {
   const [currentPage, setCurrentPage] = useState(startPage);
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
@@ -147,7 +146,6 @@ const WaiterDashboard = () => {
         
       case 'tables':
       case 'menu':
-        setSelectedOrderId(null);
         setEditingOrderId(null);
         setCurrentPage(page);
         setActiveNav(page);
@@ -254,41 +252,95 @@ const WaiterDashboard = () => {
     }
 
     setIsPlacingOrder(true);
-    setMessage('📝 Placing your order... Please wait!');
+    
+    // Check if this is an edit operation
+    if (editingOrderId) {
+      setMessage('📝 Updating your order... Please wait!');
+      
+      try {
+        console.log('WaiterDashboard: About to update order with cartItems:', cartItems);
+        
+        // Use updateOrder to replace the entire order with current cart items
+        const result = await updateOrder(editingOrderId, cartItems);
+        console.log('WaiterDashboard: Order update result:', result);
+        
+        setMessage(`✅ Order updated successfully! Order #${editingOrderId} has been updated.`);
+        
+        // Clear edit mode
+        setEditingOrderId(null);
+        
+        // Clear the cart after successful update
+        if (selectedTable && selectedTable.id) {
+          setActiveTable(selectedTable.id);
+          clearCart();
+        }
+        
+        // Force a refresh of the order list to show updated data
+        // This will trigger the OrderList to refetch and show the updated quantities
+        console.log('WaiterDashboard: Dispatching orderUpdated event for order:', editingOrderId);
+        const event = new CustomEvent('orderUpdated', { detail: { orderId: editingOrderId } });
+        window.dispatchEvent(event);
+        
+        // Also try to manually refresh the order list by calling the parent's refresh function
+        if (window.refreshOrderList) {
+          console.log('WaiterDashboard: Calling window.refreshOrderList');
+          window.refreshOrderList();
+        }
+        
+        // Give the event a moment to process, then navigate back to tables
+        setTimeout(() => {
+          setCurrentPage('tables');
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Order update error:', error);
+        setMessage(`❌ Failed to update order: ${error.message || 'Please try again.'}`);
+      } finally {
+        setIsPlacingOrder(false);
+        setTimeout(() => {
+          setMessage('');
+        }, 5000); // Show error message longer
+        setCurrentPage('tables');
+        setSelectedTable(null);
+      }
+    } else {
+      // This is a new order
+      setMessage('📝 Placing your order... Please wait!');
 
-    const orderData = {
-      table: selectedTable.id,
-      waiter_id: authUser?.id,
-      waiter_username: authUser?.username,
-      waiter_name: authUser?.first_name || authUser?.username,
-      items: cartItems.map(item => {
-        console.log('[DEBUG] Order item mapping:', item);
-        return {
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          item_type: item.item_type || 'beverage',
-          product: item.id || item.product_id || item.product || null // Include product ID from menu item
-        };
-      })
+      const orderData = {
+        table: selectedTable.id,
+        waiter_id: authUser?.id,
+        waiter_username: authUser?.username,
+        waiter_name: authUser?.first_name || authUser?.username,
+        items: cartItems.map(item => {
+          console.log('[DEBUG] Order item mapping:', item);
+          return {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            item_type: item.item_type, // Remove default fallback - item_type must be set
+            product: item.id || item.product_id || item.product || null
+          };
+        })
       };
 
-    try {
-      await placeOrder(orderData);
-      setMessage(`✅ Great! Order for Table ${selectedTable.number} has been placed successfully! The kitchen will start preparing it now.`);
-      clearCart();
-      
-      setTimeout(() => {
-        setMessage('');
-      }, 3000);
-      
-      setCurrentPage('tables');
-      setSelectedTable(null);
-    } catch (error) {
-      console.error('Order placement error:', error);
-      setMessage('❌ Oops! Something went wrong while placing the order. Please check your connection and try again.');
-    } finally {
-      setIsPlacingOrder(false);
+      try {
+        await placeOrder(orderData);
+        setMessage(`✅ Great! Order for Table ${selectedTable.number} has been placed successfully! The kitchen will start preparing it now.`);
+        clearCart();
+        
+        setTimeout(() => {
+          setMessage('');
+        }, 3000);
+        
+        setCurrentPage('tables');
+        setSelectedTable(null);
+      } catch (error) {
+        console.error('Order placement error:', error);
+        setMessage('❌ Oops! Something went wrong while placing the order. Please check your connection and try again.');
+      } finally {
+        setIsPlacingOrder(false);
+      }
     }
   };
 
@@ -306,28 +358,31 @@ const WaiterDashboard = () => {
     }
     
     setEditingOrderId(orderToEdit.id);
-    setSelectedOrderId(orderToEdit.id);
     
     // Fix: Pass tableId and items separately, with safety checks
     const tableId = orderToEdit.table || orderToEdit.table_number;
     const items = orderToEdit.items || [];
     
     console.log('[DEBUG] handleEditOrder - tableId:', tableId, 'items:', items);
+    
+    // Set the selected table for the order being edited
+    // Create a table object with the table ID and number
+    const table = {
+      id: tableId,
+      number: orderToEdit.table_number || tableId
+    };
+    setSelectedTable(table);
+    
+    // IMPORTANT: Set active table FIRST, then load cart for editing
+    setActiveTable(tableId);
+    
+    // Now load the cart for editing with the correct active table
     loadCartForEditing(tableId, items);
     
     setCurrentPage('menu');
   };
 
-  const handleSelectOrder = (orderId) => {
-    setSelectedOrderId(orderId);
-    setCurrentPage('orderDetails');
-  };
 
-  const handleOrderDeleted = () => {
-    setSelectedOrderId(null);
-    setEditingOrderId(null);
-    setCurrentPage('orderDetails');
-  };
 
   const handleBackFromMenu = () => {
     setCurrentPage('tables');
@@ -623,34 +678,25 @@ const WaiterDashboard = () => {
                       <p className="text-xs text-gray-600 mt-1 sm:hidden">Tap to view details</p>
                     </div>
                     <OrderList
-                      onSelectOrder={handleSelectOrder}
-                      selectedOrderId={selectedOrderId}
+                      onEditOrder={handleEditOrder}
                     />
                   </div>
                 </div>
                 <div className="lg:col-span-2">
-                  {selectedOrderId ? (
-                    <OrderDetails
-                      selectedOrderId={selectedOrderId}
-                      onEditOrder={handleEditOrder}
-                      onOrderDeleted={handleOrderDeleted}
-                    />
-                  ) : (
-                    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 lg:p-12 text-center">
-                      <div className="mb-4">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <ClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Select an Order</h3>
-                        <p className="text-sm sm:text-base text-gray-500 px-2">Choose an order from the list to view its details and manage it</p>
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 lg:p-12 text-center">
+                    <div className="mb-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                       </div>
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <p className="text-sm text-blue-700">
-                          💡 <strong>Tip:</strong> Click on any order in the left panel to see customer details, items ordered, and order status
-                        </p>
-                      </div>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Order Management</h3>
+                      <p className="text-sm sm:text-base text-gray-500 px-2">Click on any order in the list to view details, edit, print, or cancel orders</p>
                     </div>
-                  )}
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        💡 <strong>Tip:</strong> Use the filter buttons to view orders by status, and expand table sections to see individual orders
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

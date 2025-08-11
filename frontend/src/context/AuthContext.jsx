@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
+  const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
 
   // Fetch the current logged-in user from the backend session
@@ -32,31 +33,84 @@ export const AuthProvider = ({ children }) => {
       const response = await axiosInstance.get(meEndpoint);
       const data = response.data;
       console.log('[DEBUG] Session user data:', data);
-      setUser({ ...data, isAuthenticated: true });
-      localStorage.setItem('user', JSON.stringify({ ...data, isAuthenticated: true }));
+      
+      // Update user state and localStorage
+      const userData = { ...data, isAuthenticated: true };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Also store session key if provided
+      if (data.session_key) {
+        localStorage.setItem('session_key', data.session_key);
+      }
+      
+      return data;
     } catch (error) {
       console.error('Authentication error:', error);
-      setUser(null);
-      localStorage.removeItem('user');
+      
+      // Only clear user if it's a 401 (unauthorized) error
+      if (error.response && error.response.status === 401) {
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('session_key');
+      }
+      // For other errors, keep the existing user state
+      throw error;
     }
   };
 
   useEffect(() => {
-    fetchSessionUser();
-    // On mount, if no valid session, ensure user is null and localStorage is cleared
-    if (!localStorage.getItem('user')) {
-      setUser(null);
-      localStorage.removeItem('user');
+    // Try to restore user from localStorage first
+    const storedUser = localStorage.getItem('user');
+    const storedSessionKey = localStorage.getItem('session_key');
+    
+    if (storedUser && storedSessionKey) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        console.log('[DEBUG] User restored from localStorage:', userData.username);
+        
+        // Validate session with backend
+        fetchSessionUser().catch(error => {
+          console.log('[DEBUG] Session validation failed, will retry:', error.message);
+          // Don't clear user immediately, let the retry mechanism handle it
+        });
+      } catch (error) {
+        console.error('[DEBUG] Error parsing stored user:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('session_key');
+        setUser(null);
+      }
     }
+    
+    // Mark as initialized - don't automatically fetch user from backend
+    setIsInitialized(true);
   }, []);
 
   // Called after login to update user state
   const login = async (userData) => {
-    if (userData) {
-      setUser({ ...userData, isAuthenticated: true });
-      localStorage.setItem('user', JSON.stringify({ ...userData, isAuthenticated: true }));
-    } else {
-      await fetchSessionUser();
+    try {
+      if (userData && userData.username) {
+        // If we have user data from login response, use it temporarily
+        const tempUser = { ...userData, isAuthenticated: true };
+        setUser(tempUser);
+        localStorage.setItem('user', JSON.stringify(tempUser));
+        
+        // Then fetch fresh user data from /me endpoint to ensure we have complete user info
+        console.log('[DEBUG] Login successful, fetching fresh user data from /me...');
+        await fetchSessionUser();
+      } else {
+        // If no user data provided, fetch from backend
+        await fetchSessionUser();
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error during login:', error);
+      // If fetching from /me fails, keep the temporary user data
+      if (userData && userData.username) {
+        console.log('[DEBUG] Keeping temporary user data due to /me fetch failure');
+      } else {
+        throw error;
+      }
     }
   };
 
@@ -98,6 +152,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateUser,
         isAuthenticated: !!user?.isAuthenticated,
+        isInitialized,
       }}
     >
       {children}

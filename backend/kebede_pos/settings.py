@@ -72,15 +72,12 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be first
-    'core.middleware.CORSMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'core.middleware.SessionMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',  # Django's built-in session middleware
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Must come after SessionMiddleware
     'django.middleware.common.CommonMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'core.middleware.CSRFMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -196,28 +193,42 @@ CORS_EXPOSE_HEADERS = [
     'x-environment',
 ]
 
-# CSRF Settings
-if DEBUG:
-    CSRF_TRUSTED_ORIGINS.extend(EXTRA_CSRF_ORIGINS)
+# Session settings
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_SAMESITE = 'Lax'  # Works for both local and network access
+SESSION_COOKIE_SECURE = False  # Keep False for HTTP in development
+SESSION_COOKIE_HTTPONLY = False
+SESSION_COOKIE_DOMAIN = None  # Allow all domains
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_COOKIE_PATH = '/'
+SESSION_SAVE_EVERY_REQUEST = False  # Only save when session data changes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_NAME = 'sessionid'
 
+# Additional session settings for network access
+SESSION_COOKIE_ACCESSIBLE = True
+SESSION_COOKIE_USE_HTTPS = False
+
+# Ensure sessions work across different origins
+SESSION_COOKIE_SAMESITE_FORCE_ALL = False
+
+# Prevent anonymous sessions from being created
+SESSION_SAVE_EVERY_REQUEST = False
+
+# Only create sessions for authenticated users
+SESSION_CREATE_ANONYMOUS = False
+
+# CSRF Settings - Updated for both local and network
 CSRF_USE_REFERER = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'  # Match session cookie setting
 CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_DOMAIN = None  # Allow all domains
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
 
-# Session settings
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = False
-SESSION_COOKIE_DOMAIN = None
-SESSION_COOKIE_AGE = 86400
-SESSION_COOKIE_PATH = '/'
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_COOKIE_NAME = 'sessionid'
+# Add CSRF trusted origins for both local and network
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend(EXTRA_CSRF_ORIGINS)

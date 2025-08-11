@@ -2,9 +2,6 @@ from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, FoodOrderSerializer, BeverageOrderSerializer, OrderItemSerializer
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import Order, OrderItem
-from .serializers import OrderSerializer, FoodOrderSerializer, BeverageOrderSerializer, OrderItemSerializer
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework import status
@@ -14,13 +11,14 @@ from payments.models import Payment
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Q
 from rest_framework.decorators import action
 from rest_framework import viewsets
-from django.utils.dateparse import parse_date
-from payments.models import Payment
-from django.db.models import Sum, F, ExpressionWrapper, DecimalField, Q
-from rest_framework.decorators import action
-from rest_framework import viewsets
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .utils import get_waiter_actions
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderListView(generics.ListCreateAPIView):
@@ -29,7 +27,10 @@ class OrderListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        print(f"[DEBUG] OrderListView.get_queryset - User: {user.username if user.is_authenticated else 'Anonymous'}, Role: {getattr(user, 'role', 'None')}, ID: {user.id if user.is_authenticated else 'None'}")
+        
         if not user.is_authenticated:
+            print(f"[DEBUG] OrderListView.get_queryset - User not authenticated, returning empty queryset")
             return Order.objects.none()
         
         # Check user role and filter accordingly
@@ -48,7 +49,7 @@ class OrderListView(generics.ListCreateAPIView):
         else:
             # Waiters and other users can only see their own orders
             queryset = Order.objects.filter(created_by=user)
-            print(f"[DEBUG] Waiter {user.username} - showing only own orders")
+            print(f"[DEBUG] Waiter {user.username} - showing only own orders (created_by={user.id})")
         
         table_number = self.request.query_params.get('table_number')
         date = self.request.query_params.get('date')
@@ -59,11 +60,75 @@ class OrderListView(generics.ListCreateAPIView):
             parsed_date = parse_date(date)
             queryset = queryset.filter(created_at__date=parsed_date)
         
+        print(f"[DEBUG] OrderListView.get_queryset - Final queryset count: {queryset.count()}")
         return queryset
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
-        # Only allow users in the 'waiter' group to create orders
+        
+        # Check if this is an edit operation
+        is_edit = self.request.data.get('is_edit', False)
+        original_order_id = self.request.data.get('original_order_id')
+        
+        if is_edit and original_order_id:
+            # This is an edit - create a NEW order with same table but new order ID
+            try:
+                original_order = Order.objects.get(id=original_order_id)
+                items_data = self.request.data.get('items', [])
+                
+                # Generate new order number for the updated order
+                today = timezone.now().date()
+                today_str = today.strftime('%Y%m%d')
+                last_order_today = Order.objects.filter(created_at__date=today).order_by('created_at').last()
+                if last_order_today and last_order_today.order_number.startswith(today_str):
+                    last_seq = int(last_order_today.order_number.split('-')[-1])
+                    new_seq = last_seq + 1
+                else:
+                    new_seq = 1
+                new_order_number = f"{today_str}-{new_seq:02d}"
+                while Order.objects.filter(order_number=new_order_number).exists():
+                    new_seq += 1
+                    new_order_number = f"{today_str}-{new_seq:02d}"
+                
+                # Create NEW order with same table but new order number
+                updated_order = Order.objects.create(
+                    order_number=new_order_number,
+                    table=original_order.table,  # Keep the same table
+                    created_by=user,
+                    branch=original_order.branch,
+                    food_status='accepted',  # Auto-accept food items for updated orders
+                    beverage_status='accepted'  # Auto-accept beverage items for updated orders
+                )
+                
+                # Add all items to the new order
+                for item_data in items_data:
+                    OrderItem.objects.create(
+                        order=updated_order,
+                        name=item_data.get('name'),
+                        quantity=item_data.get('quantity', 1),
+                        price=item_data.get('price', 0),
+                        item_type=item_data.get('item_type'),  # Remove default fallback - item_type must be set
+                        product_id=item_data.get('product'),
+                        status='accepted'  # Auto-accept items for updated orders (no need for bartender approval)
+                    )
+                
+                # Calculate total for the new order
+                total = sum(item.price * item.quantity for item in updated_order.items.all())
+                updated_order.total_money = total
+                updated_order.save()
+                
+                print(f"[DEBUG] Edit Order - Created NEW order {updated_order.order_number} from original {original_order.order_number}")
+                print(f"[DEBUG] Edit Order - Same table: {updated_order.table.number}, New items: {len(items_data)}")
+                print(f"[DEBUG] Edit Order - New order ID: {updated_order.id}, Original order ID: {original_order.id}")
+                print(f"[DEBUG] Edit Order - Auto-accepted: food_status={updated_order.food_status}, beverage_status={updated_order.beverage_status}")
+                
+                # Return the NEW order (not the original)
+                return updated_order
+                
+            except Order.DoesNotExist:
+                raise ValidationError("Original order not found")
+        
+        # This is a new order
         today = timezone.now().date()
         today_str = today.strftime('%Y%m%d')
         last_order_today = Order.objects.filter(created_at__date=today).order_by('created_at').last()
@@ -136,13 +201,13 @@ class FoodOrderListView(generics.ListAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Filter by user's branch
+        # Filter by user's branch and ensure orders actually contain food items
         if hasattr(user, 'branch') and user.branch:
             queryset = Order.objects.filter(
                 branch=user.branch,
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
             ).distinct()
             print(f"[DEBUG] Filtering food orders for branch: {user.branch.name}")
         elif user.is_superuser:
@@ -150,7 +215,7 @@ class FoodOrderListView(generics.ListAPIView):
             queryset = Order.objects.filter(
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
             ).distinct()
             print(f"[DEBUG] Superuser - showing all food orders")
         else:
@@ -159,7 +224,7 @@ class FoodOrderListView(generics.ListAPIView):
                 created_by=user,
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
             ).distinct()
             print(f"[DEBUG] User without branch - showing only own food orders")
         
@@ -168,6 +233,7 @@ class FoodOrderListView(generics.ListAPIView):
             queryset = queryset.filter(created_at__date=date)
         
         return queryset
+
 class BeverageOrderListView(generics.ListAPIView):
     serializer_class = BeverageOrderSerializer
     permission_classes = [AllowAny]
@@ -177,13 +243,13 @@ class BeverageOrderListView(generics.ListAPIView):
         if not user.is_authenticated:
             return Order.objects.none()
         
-        # Filter by user's branch
+        # Filter by user's branch and ensure orders actually contain beverage items
         if hasattr(user, 'branch') and user.branch:
             queryset = Order.objects.filter(
                 branch=user.branch,
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type='beverage'  # Only orders with beverage items
             ).distinct()
             print(f"[DEBUG] Filtering beverage orders for branch: {user.branch.name}")
         elif user.is_superuser:
@@ -191,7 +257,7 @@ class BeverageOrderListView(generics.ListAPIView):
             queryset = Order.objects.filter(
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type='beverage'  # Only orders with beverage items
             ).distinct()
             print(f"[DEBUG] Superuser - showing all beverage orders")
         else:
@@ -200,7 +266,7 @@ class BeverageOrderListView(generics.ListAPIView):
                 created_by=user,
                 beverage_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__isnull=False
+                items__item_type='beverage'  # Only orders with beverage items
             ).distinct()
             print(f"[DEBUG] User without branch - showing only own beverage orders")
         
@@ -294,6 +360,43 @@ class UpdatePaymentOptionView(generics.UpdateAPIView):
         
         print(f"[ERROR] UpdatePaymentOptionView - Invalid payment option: {payment_option}")
         return Response({'error': 'Invalid payment option'}, status=400)
+
+class PrintOrderView(generics.UpdateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [AllowAny]
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        print(f"[DEBUG] PrintOrderView - Order ID: {instance.id}")
+        print(f"[DEBUG] PrintOrderView - Order Number: {instance.order_number}")
+        print(f"[DEBUG] PrintOrderView - Current cashier_status: {instance.cashier_status}")
+        print(f"[DEBUG] PrintOrderView - Request user: {request.user}")
+        
+        # Check if order can be printed
+        if instance.cashier_status == 'printed':
+            return Response({'error': 'Order has already been printed'}, status=400)
+        
+        # Check if payment option is selected
+        if not instance.payment_option:
+            return Response({'error': 'Payment method must be selected before printing'}, status=400)
+        
+        # Check if all items are accepted
+        if not instance.all_items_completed():
+            return Response({'error': 'All order items must be accepted before printing'}, status=400)
+        
+        # Update order status to printed
+        instance.cashier_status = 'printed'
+        instance.save()
+        
+        print(f"[DEBUG] PrintOrderView - Order printed successfully")
+        
+        serializer = self.get_serializer(instance)
+        return Response({
+            'message': 'Order printed successfully',
+            'order': serializer.data
+        })
 
 class AcceptbeverageOrderView(APIView):
     permission_classes = [AllowAny]
@@ -490,6 +593,17 @@ class OrderItemStatusUpdateView(APIView):
         accepted_items = order.items.filter(status='accepted')
         order.total_money = sum(i.price * i.quantity for i in accepted_items)
 
+        # Recalculate order status based on current item statuses
+        new_beverage_status = order.calculate_beverage_status()
+        if new_beverage_status != order.beverage_status:
+            print(f"[DEBUG] OrderItemStatusUpdateView - Updating beverage_status from '{order.beverage_status}' to '{new_beverage_status}'")
+            order.beverage_status = new_beverage_status
+        
+        new_food_status = order.calculate_food_status()
+        if new_food_status != order.food_status:
+            print(f"[DEBUG] OrderItemStatusUpdateView - Updating food_status from '{order.food_status}' to '{new_food_status}'")
+            order.food_status = new_food_status
+        
         # Update order cashier status
         all_statuses = list(order.items.values_list('status', flat=True))
         if all(s in ['accepted', 'rejected'] for s in all_statuses):
@@ -500,3 +614,71 @@ class OrderItemStatusUpdateView(APIView):
         order.save()
 
         return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def test_order_update(request, order_id):
+    """Test endpoint to verify order update functionality"""
+    try:
+        from .models import Order, OrderItem
+        
+        # Get the order
+        order = Order.objects.get(id=order_id)
+        
+        # Get current state
+        current_items = list(order.items.values())
+        current_total = order.total_money
+        
+        # Create a test item
+        test_item = OrderItem.objects.create(
+            order=order,
+            name="TEST_ITEM",
+            quantity=1,
+            price=10.00,
+            item_type="beverage",
+            status="pending"
+        )
+        
+        # Update order total
+        order.total_money = (current_total or 0) + 10.00
+        order.save()
+        
+        # Get updated state
+        order.refresh_from_db()
+        updated_items = list(order.items.values())
+        updated_total = order.total_money
+        
+        # Clean up test item
+        test_item.delete()
+        order.total_money = current_total
+        order.save()
+        
+        return Response({
+            'message': 'Database test successful',
+            'order_id': order_id,
+            'before': {
+                'items_count': len(current_items),
+                'total_money': current_total,
+                'items': current_items
+            },
+            'after': {
+                'items_count': len(updated_items),
+                'total_money': updated_total,
+                'items': updated_items
+            }
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_waiter_actions_view(request, order_id):
+    """Get available waiter actions for a specific order"""
+    try:
+        actions = get_waiter_actions(order_id)
+        return Response(actions)
+    except Exception as e:
+        return Response({
+            'error': f'Error getting waiter actions: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

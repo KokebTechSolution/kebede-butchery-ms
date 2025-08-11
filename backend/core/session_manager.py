@@ -33,6 +33,10 @@ class SessionManager:
             # Save session
             request.session.save()
             
+            # Also authenticate the user in the current request
+            from django.contrib.auth import login
+            login(request, user)
+            
             logger.info(f"Session created for user {user.username}: {request.session.session_key}")
             return request.session.session_key
             
@@ -46,29 +50,34 @@ class SessionManager:
         Validate if the current session is valid and return the user
         """
         try:
+            # First check if Django has already authenticated the user
+            if request.user and request.user.is_authenticated:
+                return request.user
+            
             session_key = request.session.session_key
             if not session_key:
-                return None
-            
-            # Check if session exists in database
-            session = Session.objects.get(
-                session_key=session_key,
-                expire_date__gt=timezone.now()
-            )
-            
-            # Get user ID from session
-            session_data = session.get_decoded()
-            user_id = session_data.get('_auth_user_id')
-            
-            if user_id:
-                user = User.objects.get(id=user_id)
-                return user
+                # Try to get session key from cookies if not in request
+                sessionid_cookie = request.COOKIES.get('sessionid')
+                if sessionid_cookie:
+                    # Don't modify request.session directly, just validate the cookie
+                    try:
+                        session = Session.objects.get(
+                            session_key=sessionid_cookie,
+                            expire_date__gt=timezone.now()
+                        )
+                        session_data = session.get_decoded()
+                        user_id = session_data.get('_auth_user_id')
+                        if user_id:
+                            user = User.objects.get(id=user_id)
+                            # Refresh session expiry
+                            session.set_expiry(timezone.now() + timedelta(hours=24))
+                            session.save()
+                            return user
+                    except (Session.DoesNotExist, User.DoesNotExist, KeyError):
+                        pass
             
             return None
             
-        except (Session.DoesNotExist, User.DoesNotExist, KeyError) as e:
-            logger.warning(f"Session validation failed: {e}")
-            return None
         except Exception as e:
             logger.error(f"Error validating session: {e}")
             return None

@@ -3,6 +3,7 @@ import TableCard from '../../../components/TableCard.jsx';
 import '../../../App.css';
 import axiosInstance from '../../../api/axiosInstance';
 import { getMyOrders } from '../../../api/cashier';
+import { useAuth } from '../../../context/AuthContext';
 import { 
   Plus, 
   RefreshCw, 
@@ -23,8 +24,24 @@ const getTableStatus = (table, orders) => {
   tableOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const latestOrder = tableOrders[0];
 
+
+
+  // Check if order is completed (paid)
   if (latestOrder.has_payment) return 'available';
+  
+  // Check if order is ready to pay (printed by cashier)
   if (latestOrder.cashier_status === 'printed') return 'ready_to_pay';
+  
+  // Check if order is accepted by bartender (ready for preparation)
+  if (latestOrder.bartender_status === 'accepted') return 'ready_to_pay';
+  
+  // Check if order is being prepared by bartender
+  if (latestOrder.bartender_status === 'preparing') return 'ordering';
+  
+  // Check if order is ready from bartender
+  if (latestOrder.bartender_status === 'ready') return 'ready_to_pay';
+  
+  // Default: order is being processed
   return 'ordering';
 };
 
@@ -55,12 +72,14 @@ const getStatusIcon = (status) => {
 };
 
 const TablesPage = ({ onSelectTable }) => {
+  const { user, isAuthenticated } = useAuth();
   const [tables, setTables] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [seats, setSeats] = useState(4); // Default seats for new table
   const [refreshing, setRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'available', 'ordering', 'ready_to_pay'
   const [stats, setStats] = useState({
     total: 0,
     available: 0,
@@ -71,10 +90,13 @@ const TablesPage = ({ onSelectTable }) => {
   // Fetch tables from API
   const fetchTables = async () => {
     try {
+
       const response = await axiosInstance.get('/branches/tables/');
+
       setTables(response.data);
     } catch (err) {
       console.error('Failed to fetch tables:', err);
+      console.error('Error details:', err.response?.data);
       setTables([]);
       setError('Failed to fetch tables.');
     }
@@ -84,6 +106,7 @@ const TablesPage = ({ onSelectTable }) => {
   const fetchOrders = async () => {
     try {
       const data = await getMyOrders();
+
       setOrders(data);
     } catch (err) {
       console.error('Failed to fetch orders:', err);
@@ -92,11 +115,13 @@ const TablesPage = ({ onSelectTable }) => {
     }
   };
 
-  // Fetch tables and orders on component mount
+  // Fetch tables and orders on component mount - ONLY when authenticated
   useEffect(() => {
-    fetchTables();
-    fetchOrders();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchTables();
+      fetchOrders();
+    }
+  }, [isAuthenticated, user]);
 
   // Update stats when tables or orders change
   useEffect(() => {
@@ -171,6 +196,15 @@ const TablesPage = ({ onSelectTable }) => {
     .slice()
     .sort((a, b) => a.number - b.number);
 
+  // Filter tables based on status
+  const filteredTables = sortedTables.filter(table => {
+    if (statusFilter === 'all') return true;
+    const status = getTableStatus(table, orders);
+    return status === statusFilter;
+  });
+
+
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -194,6 +228,7 @@ const TablesPage = ({ onSelectTable }) => {
 
   return (
     <div className="space-y-6">
+
       {/* Stats Cards */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -304,6 +339,57 @@ const TablesPage = ({ onSelectTable }) => {
         </div>
       </motion.div>
 
+      {/* Filter Buttons */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-xl shadow-sm p-4 border border-gray-200"
+      >
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Filter Tables</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              statusFilter === 'all'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All Tables ({stats.total})
+          </button>
+          <button
+            onClick={() => setStatusFilter('available')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              statusFilter === 'available'
+                ? 'bg-green-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Available ({stats.available})
+          </button>
+          <button
+            onClick={() => setStatusFilter('ordering')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              statusFilter === 'ordering'
+                ? 'bg-orange-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Ordering ({stats.occupied})
+          </button>
+          <button
+            onClick={() => setStatusFilter('ready_to_pay')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              statusFilter === 'ready_to_pay'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Ready to Pay ({stats.readyToPay})
+          </button>
+        </div>
+      </motion.div>
+
       {/* Tables Grid */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -323,7 +409,9 @@ const TablesPage = ({ onSelectTable }) => {
           </motion.div>
         )}
 
-        {sortedTables.length === 0 ? (
+
+        
+        {filteredTables.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -332,8 +420,15 @@ const TablesPage = ({ onSelectTable }) => {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Plus className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Tables Found</h3>
-            <p className="text-gray-500 mb-4">Get started by adding your first table</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {statusFilter === 'all' ? 'No Tables Found' : `No ${statusFilter.replace('_', ' ')} Tables`}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {statusFilter === 'all' 
+                ? 'Get started by adding your first table' 
+                : `No tables are currently ${statusFilter.replace('_', ' ')}`
+              }
+            </p>
             <button
               onClick={handleAddTable}
               disabled={loading}
@@ -350,42 +445,34 @@ const TablesPage = ({ onSelectTable }) => {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             <AnimatePresence>
-              {sortedTables.map((table) => {
+              {filteredTables.map((table, index) => {
                 const status = getTableStatus(table, orders);
                 return (
-                  <motion.div
+                  <div
                     key={table.id}
-                    variants={itemVariants}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    onClick={() => onSelectTable(table)}
+                    className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-green-300 hover:shadow-lg transition-all duration-200 cursor-pointer"
                   >
-                    <div
-                      onClick={() => onSelectTable(table)}
-                      className="group cursor-pointer"
-                    >
-                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-green-300 hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-lg font-semibold text-gray-900">Table {table.number}</h3>
-                          {getStatusIcon(status)}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">Seats:</span>
-                            <span className="text-sm font-medium">{table.seats}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">Status:</span>
-                            <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(status)}`}>
-                              {status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <span className="text-xs text-gray-500">Click to manage</span>
-                        </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">Table {table.number}</h3>
+                      {getStatusIcon(status)}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Seats:</span>
+                        <span className="text-sm font-medium">{table.seats}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Status:</span>
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(status)}`}>
+                          {status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </span>
                       </div>
                     </div>
-                  </motion.div>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <span className="text-xs text-gray-500">Click to manage</span>
+                    </div>
+                  </div>
                 );
               })}
             </AnimatePresence>

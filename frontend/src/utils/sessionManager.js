@@ -2,10 +2,10 @@ import axiosInstance from '../api/axiosInstance';
 
 export const initializeSession = async () => {
   try {
-    console.log('Initializing session...');
-
-    // Step 1: Force refresh CSRF token
-    console.log('Step 1: Refreshing CSRF token...');
+    console.log('Initializing session.');
+    
+    // Step 1: Get CSRF token
+    console.log('Step 1: Getting CSRF token...');
     try {
       // Get the API base URL dynamically
       const { API_BASE_URL } = await import('../api/config');
@@ -33,29 +33,14 @@ export const initializeSession = async () => {
       throw new Error('Failed to refresh CSRF token');
     }
 
-    // Step 2: Get user data with fresh CSRF token
-    console.log('Step 2: Getting user data...');
-    // Use unified endpoint for both local and network access
-    const userResponse = await axiosInstance.get('users/me/');
-    console.log('User response:', userResponse.data);
-
-         // Step 3: Verify the session is working by making a test request
-     console.log('Step 3: Verifying session...');
-     try {
-       // Make a simple test request to verify CSRF is working
-       const testResponse = await axiosInstance.get('users/me/');
-       console.log('Session verification successful');
-     } catch (testError) {
-       console.error('Session verification failed:', testError);
-       // Don't throw error here, just log it - session might not be established yet
-       console.log('Session verification failed, but continuing...');
-     }
-
-          return {
-       success: true,
-       user: userResponse.data,
-       message: 'Session initialized successfully'
-     };
+    // Step 2: Session is ready for login (no need to check /me yet)
+    console.log('Step 2: Session ready for login');
+    
+    return {
+      success: true,
+      user: null, // No user data yet, but session is ready
+      message: 'Session initialized successfully - ready for login'
+    };
   } catch (error) {
     console.error('Session initialization failed:', error);
     console.error('Error details:', {

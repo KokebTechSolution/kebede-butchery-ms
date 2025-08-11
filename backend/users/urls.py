@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, test_logout, DebugAuthView, TestSessionView, TestLoginView, CORSTestView, HealthCheckView, CSRFDebugView, CSRFValidationView, CSRFExemptTestView, AuthTestView, CSRFTestView
+from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, test_logout, DebugAuthView, TestSessionView, TestLoginView, CORSTestView, HealthCheckView, CSRFDebugView, CSRFValidationView, CSRFExemptTestView, AuthTestView, CSRFTestView, SessionDebugView
 from .views import WaiterUnsettledTablesView
 from .views import session_logout
 
@@ -25,6 +25,7 @@ urlpatterns = [
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path('debug-auth/', DebugAuthView.as_view(), name='debug-auth'),
     path('test-session/', TestSessionView.as_view(), name='test-session'),
+    path('session-debug/', SessionDebugView.as_view(), name='session-debug'),
     path("csrf/", get_csrf),
     path('test-logout/', test_logout),
     path('', include(router.urls)),

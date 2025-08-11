@@ -16,6 +16,7 @@ export const NotificationProvider = ({ children }) => {
   const { tokens } = useAuth();
   const [lastMessage, setLastMessage] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (!tokens) {
@@ -23,7 +24,8 @@ export const NotificationProvider = ({ children }) => {
       return;
     }
 
-    const wsUrl = `ws://localhost:8000/ws/notifications/`;
+    // Use network address for WebSocket connection
+    const wsUrl = `ws://192.168.1.8:8000/ws/notifications/`;
     const newSocket = new WebSocket(wsUrl);
 
     newSocket.onopen = () => console.log('✅ WebSocket connected');
@@ -35,6 +37,20 @@ export const NotificationProvider = ({ children }) => {
         const data = JSON.parse(event.data);
         console.log('📬 Notification received:', data);
         setLastMessage(data);
+        
+        // Add to notifications array
+        const newNotification = {
+          id: Date.now(),
+          message: data.message,
+          timestamp: new Date(),
+          type: 'info'
+        };
+        setNotifications(prev => [...prev, newNotification]);
+        
+        // Auto-remove notification after 5 seconds
+        setTimeout(() => {
+          setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
+        }, 5000);
       } catch (err) {
         console.error('Invalid message received:', err);
       }
@@ -45,8 +61,21 @@ export const NotificationProvider = ({ children }) => {
 
   }, [tokens]);
 
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
   return (
-    <NotificationContext.Provider value={{ lastMessage }}>
+    <NotificationContext.Provider value={{ 
+      lastMessage, 
+      notifications, 
+      clearNotifications, 
+      removeNotification 
+    }}>
       {children}
     </NotificationContext.Provider>
   );

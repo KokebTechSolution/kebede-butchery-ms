@@ -45,7 +45,10 @@ export const getMyOrders = async (date) => {
         url += `?date=${date}`;
     }
     try {
+        console.log('getMyOrders: Fetching orders from URL:', url);
         const response = await axiosInstance.get(url);
+        console.log('getMyOrders: Response status:', response.status);
+        console.log('getMyOrders: Response data:', response.data);
         return response.data;
     } catch (error) {
         console.error(`Failed to fetch orders:`, error);

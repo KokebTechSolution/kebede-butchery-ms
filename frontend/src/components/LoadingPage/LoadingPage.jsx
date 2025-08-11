@@ -78,36 +78,10 @@ const LoadingPage = ({ onComplete, onError }) => {
         // Step 5: Test CSRF token with a simple request
         setLoadingText('Testing security...');
         setProgress(90);
-        try {
-          // Get the API base URL dynamically
-          const { API_BASE_URL } = await import('../../api/config');
-          
-              // Use unified endpoint for both local and network access
-    const meEndpoint = 'users/me/';
-          
-          const testResponse = await fetch(`${API_BASE_URL}/api/${meEndpoint}`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          });
-          
-          if (!testResponse.ok) {
-            throw new Error(`Session test failed: ${testResponse.status}`);
-          }
-          
-          console.log('Session test successful');
-                          } catch (testError) {
-           console.error('Session test failed:', testError);
-           // Don't throw error here, just log it - session might not be established yet
-           console.log('Session test failed, but continuing...');
-         }
-
-         // Step 6: Complete loading
-         setLoadingText('Ready!');
-         setProgress(100);
-         await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Step 6: Complete loading
+        setProgress(100);
+        await new Promise(resolve => setTimeout(resolve, 300));
 
          // Call the completion callback
          if (onComplete) {

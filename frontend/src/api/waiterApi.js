@@ -87,4 +87,44 @@ export const fetchWaiterPrintedOrders = async (waiterId, limit = 10) => {
         console.error('Error fetching waiter printed orders:', error);
         throw error;
     }
+};
+
+export const deleteOrder = async (orderId) => {
+    try {
+        const response = await axiosInstance.delete(`orders/${orderId}/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        throw error;
+    }
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+    try {
+        const response = await axiosInstance.patch(`orders/${orderId}/update-cashier-status/`, { cashier_status: status });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+    }
+};
+
+export const updatePaymentOption = async (orderId, paymentOption) => {
+    try {
+        const response = await axiosInstance.patch(`orders/${orderId}/update-payment-option/`, { payment_option: paymentOption });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating payment option:', error);
+        throw error;
+    }
+}; 
+
+export const printOrder = async (orderId) => {
+    try {
+        const response = await axiosInstance.patch(`orders/${orderId}/print/`);
+        return response.data;
+    } catch (error) {
+        console.error('Error printing order:', error);
+        throw error;
+    }
 }; 

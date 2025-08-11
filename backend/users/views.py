@@ -106,31 +106,53 @@ class SessionLoginView(APIView):
             
             response = Response(response_data)
             
+            # Get origin to determine cookie settings
+            origin = request.headers.get('Origin', '')
+            print(f"[DEBUG] Origin header: {origin}")
+            
             # Set session cookie explicitly for network access
             if session_key:
+                # Determine cookie domain based on origin
+                cookie_domain = None
+                if origin and 'localhost' not in origin and '127.0.0.1' not in origin:
+                    # Network access - extract hostname for cookie domain
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(origin)
+                        cookie_domain = parsed.hostname
+                        print(f"[DEBUG] Setting cookie domain to: {cookie_domain}")
+                    except Exception as e:
+                        print(f"[DEBUG] Error parsing origin: {e}")
+                        cookie_domain = None
+                
+                # Set session cookie without domain restriction for better cross-origin support
                 response.set_cookie(
                     'sessionid',
                     session_key,
                     max_age=86400,  # 24 hours
                     secure=False,  # Allow HTTP for local development
-                    samesite='Lax',  # Changed to Lax for localhost compatibility
+                    samesite='Lax',  # Works for both local and network
                     httponly=False,
                     path='/',
-                    domain=None
+                    domain=None  # Don't restrict domain - let browser handle it
                 )
+                print(f"[DEBUG] Session cookie set without domain restriction")
             
             # Set CSRF cookie if not already set
             if 'csrftoken' not in request.COOKIES:
-                response.set_cookie(
-                    'csrftoken',
-                    request.META.get('CSRF_COOKIE', ''),
-                    max_age=31449600,  # 1 year
-                    secure=False,  # Allow HTTP for local development
-                    samesite='Lax',  # Changed to Lax for localhost compatibility
-                    httponly=False,
-                    path='/',
-                    domain=None
-                )
+                csrf_token = request.META.get('CSRF_COOKIE', '')
+                if csrf_token:
+                    response.set_cookie(
+                        'csrftoken',
+                        csrf_token,
+                        max_age=31449600,  # 1 year
+                        secure=False,  # Allow HTTP for local development
+                        samesite='Lax',  # Works for both local and network
+                        httponly=False,
+                        path='/',
+                        domain=None  # Don't restrict domain - let browser handle it
+                    )
+                    print(f"[DEBUG] CSRF cookie set without domain restriction")
             
             print(f"[DEBUG] Response cookies: {dict(response.cookies)}")
             return response
@@ -152,19 +174,36 @@ def get_csrf(request):
     
     response = JsonResponse({"message": "CSRF cookie set", "csrf_token": csrf_token})
     
+    # Get origin to determine cookie settings
+    origin = request.headers.get('Origin', '')
+    print(f"[DEBUG] Origin header: {origin}")
+    
     # Force CSRF cookie to be set
     if csrf_token:
+        # Determine cookie domain based on origin
+        cookie_domain = None
+        if origin and 'localhost' not in origin and '127.0.0.1' not in origin:
+            # Network access - extract hostname for cookie domain
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(origin)
+                cookie_domain = parsed.hostname
+                print(f"[DEBUG] Setting CSRF cookie domain to: {cookie_domain}")
+            except Exception as e:
+                print(f"[DEBUG] Error parsing origin: {e}")
+                cookie_domain = None
+        
         response.set_cookie(
             'csrftoken',
             csrf_token,
             max_age=31449600,  # 1 year
             secure=False,  # Allow HTTP for local development
-            samesite='Lax',  # Changed to Lax for localhost compatibility
+            samesite='Lax',  # Works for both local and network
             httponly=False,
             path='/',
-            domain=None
+            domain=None  # Don't restrict domain - let browser handle it
         )
-        print(f"[DEBUG] CSRF cookie explicitly set: {csrf_token[:10]}...")
+        print(f"[DEBUG] CSRF cookie explicitly set without domain restriction")
     else:
         print(f"[DEBUG] No CSRF token generated")
     
@@ -215,8 +254,23 @@ class TestSessionView(APIView):
             "cookies": dict(request.COOKIES),
             "is_authenticated": request.user.is_authenticated,
             "user": str(request.user),
+            "session_data": dict(request.session),
         })
 
+class SessionDebugView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Debug endpoint to check session state"""
+        return Response({
+            "session_key": request.session.session_key,
+            "session_data": dict(request.session),
+            "user": str(request.user),
+            "is_authenticated": request.user.is_authenticated,
+            "cookies": dict(request.COOKIES),
+            "headers": dict(request.headers),
+            "csrf_token": request.META.get('CSRF_COOKIE', ''),
+        })
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -329,27 +383,71 @@ class CurrentUserView(APIView):
         sessionid_cookie = request.COOKIES.get('sessionid')
         print(f"[DEBUG] Sessionid cookie: {sessionid_cookie}")
         
-        # Try to validate session using SessionManager
-        user = SessionManager.validate_session(request)
+        # Force Django to load the session if we have a cookie but no session key
+        if sessionid_cookie and not request.session.session_key:
+            print(f"[DEBUG] Forcing session load for cookie: {sessionid_cookie}")
+            try:
+                # Manually set the session key and force Django to load it
+                request.session.session_key = sessionid_cookie
+                request.session.load()
+                print(f"[DEBUG] Session loaded, key: {request.session.session_key}")
+                print(f"[DEBUG] Session data after load: {dict(request.session)}")
+            except Exception as e:
+                print(f"[DEBUG] Error loading session: {e}")
         
-        if user:
-            print(f"[DEBUG] User authenticated via session: {user.username}")
-            serializer = UserLoginSerializer(user)
-            return Response(serializer.data)
+        # If we have a session key, try to authenticate the user
+        if request.session.session_key:
+            print(f"[DEBUG] Session key exists: {request.session.session_key}")
+            # Check if user is already authenticated
+            if request.user and request.user.is_authenticated:
+                print(f"[DEBUG] User already authenticated: {request.user.username}")
+                serializer = UserLoginSerializer(request.user)
+                return Response(serializer.data)
+            
+            # Try to get user from session data
+            user_id = request.session.get('_auth_user_id')
+            if user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                    print(f"[DEBUG] User found in session: {user.username}")
+                    # Manually authenticate the user for this request
+                    from django.contrib.auth import get_user
+                    request.user = user
+                    serializer = UserLoginSerializer(user)
+                    return Response(serializer.data)
+                except User.DoesNotExist as e:
+                    print(f"[DEBUG] User not found in database: {e}")
+            else:
+                print(f"[DEBUG] No user_id in session data")
         
-        # Try to get user from request.user (for local access)
-        if request.user and request.user.is_authenticated:
-            print(f"[DEBUG] User authenticated via request.user: {request.user.username}")
-            serializer = UserLoginSerializer(request.user)
-            return Response(serializer.data)
+        # If no user found in session, try SessionManager as fallback
+        if sessionid_cookie:
+            user = SessionManager.validate_session(request)
+            if user:
+                print(f"[DEBUG] User authenticated via SessionManager: {user.username}")
+                serializer = UserLoginSerializer(user)
+                return Response(serializer.data)
         
-        # Check if user is anonymous
-        if request.user.is_anonymous:
-            print(f"[DEBUG] User is anonymous, returning 401")
-            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+        # If we still don't have a user, try to manually restore the session
+        if sessionid_cookie and not request.user.is_authenticated:
+            try:
+                from django.contrib.sessions.models import Session
+                session = Session.objects.get(
+                    session_key=sessionid_cookie,
+                    expire_date__gt=timezone.now()
+                )
+                session_data = session.get_decoded()
+                user_id = session_data.get('_auth_user_id')
+                if user_id:
+                    user = User.objects.get(id=user_id)
+                    print(f"[DEBUG] Session manually restored for user: {user.username}")
+                    serializer = UserLoginSerializer(user)
+                    return Response(serializer.data)
+            except (Session.DoesNotExist, User.DoesNotExist) as e:
+                print(f"[DEBUG] Failed to manually restore session: {e}")
         
-        print(f"[DEBUG] No valid session found")
-        return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        print(f"[DEBUG] No valid session found, user is anonymous")
+        return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class WaiterUnsettledTablesView(APIView):

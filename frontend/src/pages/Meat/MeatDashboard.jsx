@@ -13,6 +13,8 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
+import { useNotifications } from "../../context/NotificationContext";
+import NotificationToast from "../../components/NotificationToast";
 
 import { Pending } from "./screens/Pending/Pending";
 import { Inventory } from "./screens/Inventory/Inventory";
@@ -24,6 +26,7 @@ export default function MeatDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
   const mobileMenuButtonRef = useRef(null);
+  const { notifications, removeNotification } = useNotifications();
   
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -85,6 +88,12 @@ export default function MeatDashboard() {
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col md:flex-row relative">
+      {/* Notification Toast */}
+      <NotificationToast 
+        notifications={notifications} 
+        onRemove={removeNotification} 
+      />
+      
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between bg-white p-4 shadow sticky top-0 z-20">
         <div className="flex items-center gap-4">

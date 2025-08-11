@@ -42,7 +42,7 @@ class Order(models.Model):
 
     @property
     def food_items(self):
-        return self.items.filter(item_type='food')
+        return self.items.filter(item_type__in=['food', 'meat'])
 
     @property
     def beverage_items(self):
@@ -50,6 +50,50 @@ class Order(models.Model):
 
     def all_items_completed(self):
         return all(item.status == 'accepted' for item in self.items.all())
+    
+    def has_pending_beverage_items(self):
+        """Check if there are any pending beverage items that need approval"""
+        return self.beverage_items.filter(status='pending').exists()
+    
+    def has_pending_food_items(self):
+        """Check if there are any pending food items that need approval"""
+        return self.food_items.filter(status='pending').exists()
+    
+    def calculate_beverage_status(self):
+        """Calculate beverage status based on item statuses"""
+        beverage_items = self.beverage_items
+        if not beverage_items.exists():
+            return 'not_applicable'
+        
+        if beverage_items.filter(status='pending').exists():
+            return 'pending'
+        elif beverage_items.filter(status='rejected').exists():
+            return 'rejected'
+        elif beverage_items.filter(status='accepted').exists():
+            if beverage_items.filter(status='accepted').count() == beverage_items.count():
+                return 'completed'
+            else:
+                return 'pending'
+        else:
+            return 'pending'
+    
+    def calculate_food_status(self):
+        """Calculate food status based on item statuses"""
+        food_items = self.food_items
+        if not food_items.exists():
+            return 'not_applicable'
+        
+        if food_items.filter(status='pending').exists():
+            return 'pending'
+        elif food_items.filter(status='rejected').exists():
+            return 'rejected'
+        elif food_items.filter(status='accepted').exists():
+            if food_items.filter(status='accepted').count() == food_items.count():
+                return 'completed'
+            else:
+                return 'pending'
+        else:
+            return 'pending'
 
 class OrderItem(models.Model):
     ORDER_ITEM_TYPE = [

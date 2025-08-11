@@ -45,7 +45,7 @@ const Cart = ({ onOrder, onClearCart, editingOrderId, onUpdateOrder }) => {
           </div>
         ) : (
           cartItems.map((item) => (
-            <CartItem key={item.id} item={item} />
+            <CartItem key={item.id || `${item.name}-${item.price}`} item={item} />
           ))
         )}
       </div>
