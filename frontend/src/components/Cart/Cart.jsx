@@ -3,7 +3,7 @@ import { useCart } from '../../context/CartContext';
 import CartItem from './CartItem';
 import './Cart.css';
 
-const Cart = ({ onOrder, onClearCart, editingOrderId, onUpdateOrder }) => {
+const Cart = ({ onOrder, onClearCart, editingOrderId, onUpdateOrder, showPaymentSelection }) => {
   const { cartItems, clearCart, getTotalItems } = useCart();
 
   console.log('Cart: Rendering with:', {
@@ -69,7 +69,7 @@ const Cart = ({ onOrder, onClearCart, editingOrderId, onUpdateOrder }) => {
               className="order-btn"
               disabled={cartItems.length === 0}
             >
-              {editingOrderId ? 'Update Order' : 'Place Order'}
+              {editingOrderId ? 'Update Order' : (showPaymentSelection ? 'Select Payment & Order' : 'Place Order')}
             </button>
           </div>
         </div>

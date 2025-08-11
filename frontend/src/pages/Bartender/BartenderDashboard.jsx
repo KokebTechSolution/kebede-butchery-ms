@@ -237,7 +237,14 @@ export default function BartenderDashboard() {
             <input
               type="date"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                // Refresh orders when date filter changes
+                if (activeSection === 'Orders' || activeSection === 'Closed') {
+                  // Trigger refresh by calling refetch from useBeverages
+                  // This will be handled by the useBeverages hook
+                }
+              }}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>

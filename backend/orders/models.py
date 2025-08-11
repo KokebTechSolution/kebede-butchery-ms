@@ -42,7 +42,7 @@ class Order(models.Model):
 
     @property
     def food_items(self):
-        return self.items.filter(item_type__in=['food', 'meat'])
+        return self.items.filter(item_type='food')
 
     @property
     def beverage_items(self):

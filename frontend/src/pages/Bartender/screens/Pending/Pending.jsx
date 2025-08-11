@@ -48,26 +48,9 @@ export const Pending = ({ orders, filterDate, setFilterDate }) => {
     return bMostRecent - aMostRecent;
   });
 
-  // Polling for new orders
+  // Set initial order IDs on mount
   useEffect(() => {
-    // On mount, set initial order IDs
     prevOrderIdsRef.current = allOrders.map(order => order.id);
-    pollingRef.current = setInterval(() => {
-      const currentOrders = getActiveOrders();
-      const currentIds = currentOrders.map(order => order.id);
-      const prevIds = prevOrderIdsRef.current;
-      // Find new order IDs
-      const newOrderIds = currentIds.filter(id => !prevIds.includes(id));
-      if (newOrderIds.length > 0) {
-        // Find the newest order (assuming first in sorted list)
-        const newOrder = currentOrders.find(order => order.id === newOrderIds[0]);
-        setNotificationOrder(newOrder);
-        setShowNotification(true);
-      }
-      prevOrderIdsRef.current = currentIds;
-    }, 5000); // 5 seconds
-    return () => clearInterval(pollingRef.current);
-    // eslint-disable-next-line
   }, []);
 
   // Notification logic: show popup when a new order is displayed in the UI or when a new item is added to an existing order

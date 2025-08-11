@@ -24,6 +24,7 @@ import {
 import TablesPage from './tables/TablesPage';
 import MenuPage from './menu/MenuPage';
 import Cart from '../../components/Cart/Cart';
+import PaymentMethodModal from '../../components/PaymentMethodModal';
 
 import OrderList from './order/OrderList';
 import WaiterProfile from './WaiterProfile';
@@ -87,6 +88,8 @@ const WaiterDashboard = () => {
   const [occupiedTables, setOccupiedTables] = useState(0);
   const [totalTables, setTotalTables] = useState(15);
   const [activeNav, setActiveNav] = useState('dashboard');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
 
   // Navigation items
   const navItems = [
@@ -142,6 +145,8 @@ const WaiterDashboard = () => {
       case 'orders':
         setCurrentPage('orderDetails');
         setActiveNav('orders');
+        // Refresh orders when navigating to order details
+        fetchDashboardData();
         break;
         
       case 'tables':
@@ -162,6 +167,8 @@ const WaiterDashboard = () => {
       default:
         setCurrentPage('dashboard');
         setActiveNav('dashboard');
+        // Refresh dashboard data when returning to main dashboard
+        fetchDashboardData();
         break;
     }
   };
@@ -251,6 +258,13 @@ const WaiterDashboard = () => {
       return;
     }
 
+    // Show payment method selection modal
+    setShowPaymentModal(true);
+    return;
+  };
+
+  const handlePaymentMethodConfirm = async (paymentMethod) => {
+    setSelectedPaymentMethod(paymentMethod);
     setIsPlacingOrder(true);
     
     // Check if this is an edit operation
@@ -312,6 +326,7 @@ const WaiterDashboard = () => {
         waiter_id: authUser?.id,
         waiter_username: authUser?.username,
         waiter_name: authUser?.first_name || authUser?.username,
+        payment_option: paymentMethod, // Add payment method to order
         items: cartItems.map(item => {
           console.log('[DEBUG] Order item mapping:', item);
           return {
@@ -412,26 +427,25 @@ const WaiterDashboard = () => {
   };
 
   // Fetch active orders and table status
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // In a real app, you would fetch this from your API
-        // const response = await axiosInstance.get('/api/waiter/dashboard-stats');
-        // setActiveOrdersCount(response.data.activeOrders);
-        // setOccupiedTables(response.data.occupiedTables);
-        // setTotalTables(response.data.totalTables);
-        
-        // Mock data for now
-        setActiveOrdersCount(5);
-        setOccupiedTables(8);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      }
-    };
+  const fetchDashboardData = async () => {
+    try {
+      // In a real app, you would fetch this from your API
+      // const response = await axiosInstance.get('/api/waiter/dashboard-stats');
+      // setActiveOrdersCount(response.data.activeOrders);
+      // setOccupiedTables(response.data.occupiedTables);
+      // setTotalTables(response.data.totalTables);
+      
+      // Mock data for now
+      setActiveOrdersCount(5);
+      setOccupiedTables(8);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
+    // No automatic refresh - only manual refresh on page change or user action
   }, []);
 
   // Render the sidebar navigation
@@ -625,6 +639,7 @@ const WaiterDashboard = () => {
                       onClearCart={handleClearCart}
                       editingOrderId={editingOrderId}
                       onUpdateOrder={updateOrder}
+                      showPaymentSelection={true}
                     />
                   </div>
                 </div>
@@ -910,6 +925,14 @@ const WaiterDashboard = () => {
 
       {/* Add bottom padding to account for mobile nav */}
       <div className="h-16 md:hidden"></div>
+
+      {/* Payment Method Modal */}
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentMethodConfirm}
+        selectedTable={selectedTable}
+      />
     </div>
   );
 };

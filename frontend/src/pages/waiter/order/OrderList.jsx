@@ -153,24 +153,12 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey, onEditOrder }) 
     };
   }, [filterDate]);
 
-  // Polling for new orders
+  // Set initial order IDs on mount and when filter date changes
   useEffect(() => {
-    pollingRef.current = setInterval(async () => {
-      const data = await fetchOrders(filterDate);
-      const currentIds = data.map(order => order.id);
-      const prevIds = prevOrderIdsRef.current;
-      // Find new order IDs
-      const newOrderIds = currentIds.filter(id => !prevIds.includes(id));
-      if (newOrderIds.length > 0) {
-        // Find the newest order (assuming first in sorted list)
-        const newOrder = data.find(order => order.id === newOrderIds[0]);
-        setNotificationOrder(newOrder);
-        setShowNotification(true);
-      }
-      prevOrderIdsRef.current = currentIds;
-    }, 5000); // 5 seconds
-    return () => clearInterval(pollingRef.current);
-  }, [filterDate]);
+    if (orders.length > 0) {
+      prevOrderIdsRef.current = orders.map(order => order.id);
+    }
+  }, [filterDate, orders.length]);
 
   // Update stats when orders change
   useEffect(() => {
@@ -475,7 +463,11 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey, onEditOrder }) 
               <input
                 type="date"
                 value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
+                onChange={(e) => {
+                  setFilterDate(e.target.value);
+                  // Refresh orders when date filter changes
+                  handleRefresh();
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -487,7 +479,11 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey, onEditOrder }) 
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  // Refresh orders when status filter changes
+                  handleRefresh();
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Orders</option>

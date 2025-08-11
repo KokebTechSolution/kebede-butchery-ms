@@ -207,7 +207,7 @@ class FoodOrderListView(generics.ListAPIView):
                 branch=user.branch,
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
+                items__item_type='food'  # Only orders with food items
             ).distinct()
             print(f"[DEBUG] Filtering food orders for branch: {user.branch.name}")
         elif user.is_superuser:
@@ -215,7 +215,7 @@ class FoodOrderListView(generics.ListAPIView):
             queryset = Order.objects.filter(
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
+                items__item_type='food'  # Only orders with food items
             ).distinct()
             print(f"[DEBUG] Superuser - showing all food orders")
         else:
@@ -224,7 +224,7 @@ class FoodOrderListView(generics.ListAPIView):
                 created_by=user,
                 food_status__in=['pending', 'preparing', 'completed'],
                 cashier_status__in=['pending', 'ready_for_payment', 'printed'],
-                items__item_type__in=['food', 'meat']  # Only orders with food or meat items
+                items__item_type='food'  # Only orders with food items
             ).distinct()
             print(f"[DEBUG] User without branch - showing only own food orders")
         

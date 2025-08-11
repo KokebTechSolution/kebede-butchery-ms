@@ -93,14 +93,8 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   // Fetch orders on mount and set up polling - ONLY when authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Initial fetch
+      // Initial fetch only - no automatic polling
       fetchAndFilterOrders();
-      
-      // Set up polling every 30 seconds
-      const intervalId = setInterval(fetchAndFilterOrders, 30000);
-      
-      // Clean up interval on unmount
-      return () => clearInterval(intervalId);
     }
   }, [isAuthenticated, user]);
 

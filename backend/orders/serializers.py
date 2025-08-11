@@ -71,14 +71,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 print(f"[DEBUG] OrderSerializer.create - Creating item with data: {item_data}")
                 print(f"[DEBUG] OrderSerializer.create - Product field: {item_data.get('product')}")
                 
-                # Map menu item types to order item types
-                mapped_item_data = item_data.copy()
-                if item_data.get('item_type') == 'food':
-                    mapped_item_data['item_type'] = 'meat'  # Map 'food' to 'meat'
-                # 'beverage' stays as 'beverage'
-                
-                item = OrderItem.objects.create(order=order, **mapped_item_data)
-                print(f"[DEBUG] OrderSerializer.create - Item created: {item.id}, Product: {item.product}, Mapped item_type: {mapped_item_data['item_type']}")
+                # Create order item with original item_type (no mapping needed)
+                item = OrderItem.objects.create(order=order, **item_data)
+                print(f"[DEBUG] OrderSerializer.create - Item created: {item.id}, Product: {item.product}, item_type: {item_data.get('item_type')}")
                 
                 if item.status == 'accepted':
                     total += item.price * item.quantity
@@ -111,9 +106,9 @@ class OrderSerializer(serializers.ModelSerializer):
             beverage_message = f"New order #{order.order_number} (Table {order.table.number}) with {len(beverage_items)} beverage item(s)"
             send_notification_to_role('bartender', beverage_message)
         
-        if meat_items:
-            meat_message = f"New order #{order.order_number} (Table {order.table.number}) with {len(meat_items)} food item(s)"
-            send_notification_to_role('meat_area', meat_message)
+        if food_items:
+            food_message = f"New order #{order.order_number} (Table {order.table.number}) with {len(food_items)} food item(s)"
+            send_notification_to_role('meat_area', food_message)
         
         return order
 
@@ -143,15 +138,15 @@ class OrderSerializer(serializers.ModelSerializer):
                 
                 # Recalculate order statuses based on current items
                 beverage_items = instance.items.filter(item_type='beverage')
-                meat_items = instance.items.filter(item_type='meat')  # Food items are mapped to 'meat'
+                food_items = instance.items.filter(item_type='food')
                 
                 # Update food status
-                if meat_items.exists():
-                    if meat_items.filter(status='pending').exists():
+                if food_items.exists():
+                    if food_items.filter(status='pending').exists():
                         instance.food_status = 'pending'
-                    elif meat_items.filter(status='rejected').exists():
+                    elif food_items.filter(status='rejected').exists():
                         instance.food_status = 'rejected'
-                    elif meat_items.filter(status='accepted').count() == meat_items.count():
+                    elif food_items.filter(status='accepted').count() == food_items.count():
                         instance.food_status = 'completed'
                     else:
                         instance.food_status = 'pending'
@@ -175,15 +170,15 @@ class OrderSerializer(serializers.ModelSerializer):
                 
                 # Send notifications to respective roles
                 beverage_items_data = [item for item in items_data if item.get('item_type') == 'beverage']
-                meat_items_data = [item for item in items_data if item.get('item_type') == 'food']  # Map 'food' to 'meat'
+                food_items_data = [item for item in items_data if item.get('item_type') == 'food']
                 
                 if beverage_items_data:
                     beverage_message = f"Order #{instance.order_number} (Table {instance.table.number}) updated with {len(beverage_items_data)} beverage item(s)"
                     send_notification_to_role('bartender', beverage_message)
                 
-                if meat_items_data:
-                    meat_message = f"Order #{instance.order_number} (Table {instance.table.number}) updated with {len(meat_items_data)} food item(s)"
-                    send_notification_to_role('meat_area', meat_message)
+                if food_items_data:
+                    food_message = f"Order #{instance.order_number} (Table {instance.table.number}) updated with {len(food_items_data)} food item(s)"
+                    send_notification_to_role('meat_area', food_message)
                 
                 print(f'[DEBUG] OrderSerializer.update - Final order state:')
                 print(f'[DEBUG] OrderSerializer.update - Total money: {instance.total_money}')

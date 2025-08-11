@@ -292,18 +292,12 @@ def update_order_with_validation(order_id, updated_items, user):
                 
             else:
                 # Add new item
-                # Map menu item types to order item types
-                item_type = item_data.get('item_type')
-                if item_type == 'food':
-                    item_type = 'meat'  # Map 'food' to 'meat'
-                # 'beverage' stays as 'beverage'
-                
                 new_item = OrderItem.objects.create(
                     order=order,
                     name=item_name,
                     quantity=item_data.get('quantity', 1),
                     price=item_data.get('price', 0),
-                    item_type=item_type,
+                    item_type=item_data.get('item_type'),
                     product_id=item_data.get('product_id') or item_data.get('product'),
                     status='pending'
                 )
