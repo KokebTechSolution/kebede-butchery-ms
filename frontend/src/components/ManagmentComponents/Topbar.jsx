@@ -27,6 +27,8 @@ const Topbar = () => {
           <h1 className="text-lg md:text-2xl font-extrabold text-white drop-shadow truncate">Kebede Butchery</h1>
           <span className="text-xs md:text-base text-gray-200 tracking-wide font-semibold truncate">Management System</span>
         </div>
+        {/* Only show UserProfile if user is authenticated and not on login page */}
+        {user && user.isAuthenticated && window.location.pathname !== '/login' && <UserProfile first_name={first_name} role={role} />}
       </div>
       <div className="flex items-center gap-4 md:gap-8 text-white flex-wrap">
         <div className="flex items-center gap-1 md:gap-2">
@@ -41,8 +43,6 @@ const Topbar = () => {
             ))}
           </select>
         </div>
-        {/* Only show UserProfile if user is authenticated and not on login page */}
-        {user && user.isAuthenticated && window.location.pathname !== '/login' && <UserProfile first_name={first_name} role={role} />}
       </div>
     </header>
   );

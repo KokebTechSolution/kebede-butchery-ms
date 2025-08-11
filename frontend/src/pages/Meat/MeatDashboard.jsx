@@ -114,10 +114,14 @@ export default function MeatDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto">
-        {/* Quick Stats (moved to top) */}
+      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto pt-6 md:pt-8">
+        {/* Main Content Area (Orders section) now comes first */}
+        <div className="bg-white rounded-lg shadow">{renderContent()}</div>
+
+        {/* Quick Stats moved below orders */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
           {/* Pending Orders */}
+          
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center gap-3 mb-2">
               <FaClipboardList className="text-2xl text-blue-600" />
@@ -163,15 +167,13 @@ export default function MeatDashboard() {
             <p className="text-sm text-gray-500">Processing staff</p>
           </div>
         </div>
+
         {/* Debug message if no closed orders */}
         {closedOrdersCount === 0 && (
           <div className="text-center text-orange-600 font-semibold mt-4">
             No closed orders for the selected date.
           </div>
         )}
-
-        {/* Main Content Area (Orders section) */}
-        <div className="bg-white rounded-lg shadow">{renderContent()}</div>
 
         {/* Tip Banner */}
         <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg text-orange-700 text-sm">

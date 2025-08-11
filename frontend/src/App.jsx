@@ -23,7 +23,7 @@ import BranchManagerRoutes from './routes/BranchManagerRoutes';
 // Common Components
 import Topbar from './components/ManagmentComponents/Topbar';
 import Footer from './components/ManagmentComponents/Footer';
-// import SidebarNav from './components/ManagmentComponents/SidebarNav'; // Optional if needed
+// import BottomNav from './components/ManagmentComponents/BottomNav'; // Optional if needed
 
 // Layout Wrapper with dynamic Topbar/Sidebar
 const Layout = ({ children }) => {
@@ -46,14 +46,13 @@ function App() {
   return (
     <AuthProvider>
       <div className="min-h-screen flex flex-col bg-gray-100">
-      <Topbar />
-        <main className="flex-1">
+        <Topbar />
+        <main className="flex-1 mt-10">
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/logout" element={<Logout />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
-
             {/* Role-Based Dashboard on root path */}
             <Route
               path="/"
@@ -65,7 +64,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             {/* Branch Manager Routes */}
             <Route
               path="/branch-manager/*"
@@ -77,7 +75,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             {/* Waiter Dashboard Route */}
             <Route
               path="/waiter/dashboard"
@@ -89,7 +86,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             {/* TODO: Add routes for other roles like staff, waiter, etc.
             <Route
               path="/staff/*"
@@ -101,12 +97,12 @@ function App() {
                 </ProtectedRoute>
               }
             /> */}
-
             {/* Catch-all 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         <Footer />
+        {/* <BottomNav /> */}
       </div>
     </AuthProvider>
   );

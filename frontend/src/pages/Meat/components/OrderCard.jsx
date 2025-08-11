@@ -22,23 +22,37 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
     setShowRejectDialog(false);
   };
 
+  // Calculate accepted total as fallback if total_money not present
+  const acceptedTotal = order.items
+    .filter(i => i.status === 'accepted')
+    .reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const displayTotal = (order.total_money && Number(order.total_money) > 0)
+    ? Number(order.total_money)
+    : acceptedTotal;
+
   return (
     <>
-      <Card className="w-full rounded-xl border-0 mb-4 transition-all duration-300 ease-in-out">
-        <CardContent className="p-4">
-          <div className="flex justify-between w-full items-center">
-            <div className="flex flex-col gap-1">
-              <p className="font-['Work_Sans',Helvetica] text-sm text-[#6b7582]">
-                Order #{order.order_number} <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
-                <span className="ml-2 text-xs text-gray-400">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
+      <Card className="w-full rounded-xl border border-gray-200 shadow-sm mb-4 transition-all duration-300 ease-in-out bg-white">
+        <CardContent className="p-4 sm:p-5">
+          {/* Header */}
+          <div className="flex items-start justify-between w-full gap-3">
+            <div className="flex flex-col gap-1 min-w-0">
+              <p className="font-['Work_Sans',Helvetica] text-[12px] sm:text-sm text-[#6b7582] truncate">
+                Order #{order.order_number}
+                <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
+                <span className="ml-2 text-[11px] sm:text-xs text-gray-400">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
               </p>
-              <h3 className="font-['Work_Sans',Helvetica] font-bold text-base text-[#111416]">
+              <h3 className="font-['Work_Sans',Helvetica] font-semibold text-sm sm:text-base text-[#111416]">
                 {order.items.length} items
               </h3>
-              <span className="text-lg font-bold text-blue-700">${(order.total_money && Number(order.total_money) > 0 ? Number(order.total_money) : order.items.filter(i => i.status === 'accepted').reduce((sum, i) => sum + i.price * i.quantity, 0)).toFixed(2)}</span>
             </div>
-            {/* Removed order-level Accept/Reject buttons */}
+            <div className="text-right shrink-0">
+              <span className="text-lg sm:text-xl font-extrabold text-blue-700 leading-none block">
+                ${displayTotal.toFixed(2)}
+              </span>
+            </div>
           </div>
+
           {/* Item list below, visually separated */}
           <div className="mt-3">
             {/* --- MERGE ITEMS FOR DISPLAY --- */}
@@ -57,33 +71,37 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
               }
               const mergedItems = mergeDisplayItems(order.items);
               return mergedItems.map((item, index) => (
-                <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
-                  <span>{item.name} × {item.quantity}</span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
-                  <span className="ml-4">
+                <div key={index} className="w-full flex flex-wrap justify-between items-center gap-2 text-[13px] sm:text-sm py-2 border-t first:border-t-0">
+                  <span className="min-w-0 flex-1 break-words">{item.name} × {item.quantity}</span>
+                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="ml-1">
                     {item.status === 'pending' && (
                       <>
                         <Button
                           variant="secondary"
                           onClick={() => onAcceptItem(item.id)}
-                          className="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-0.5 text-xs rounded mr-1"
+                          className="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-0.5 text-[11px] rounded mr-1"
                         >
                           Accept
                         </Button>
                         <Button
                           variant="secondary"
                           onClick={() => onRejectItem(item.id, 'Rejected by staff')}
-                          className="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-0.5 text-xs rounded"
+                          className="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-0.5 text-[11px] rounded"
                         >
                           Reject
                         </Button>
                       </>
                     )}
                     {item.status === 'accepted' && (
-                      <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-[11px] font-medium">
+                        <FaLock className="inline" /> Accepted
+                      </span>
                     )}
                     {item.status === 'rejected' && (
-                      <span className="text-red-700">Rejected</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-[11px] font-medium">
+                        Rejected
+                      </span>
                     )}
                   </span>
                 </div>
