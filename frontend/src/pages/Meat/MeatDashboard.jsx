@@ -60,7 +60,7 @@ export default function MeatDashboard() {
   ];
 
   return (
-    <div className="bg-gray-100 min-h-screen flex flex-col md:flex-row">
+    <div className="bg-gray-100 min-h-screen flex flex-col md:flex-row overflow-x-hidden">
       {/* Mobile Header */}
       <header className="md:hidden flex items-center gap-4 bg-white p-4 shadow">
         <button
@@ -114,9 +114,9 @@ export default function MeatDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto pt-6 md:pt-8">
-        {/* Main Content Area (Orders section) now comes first */}
-        <div className="bg-white rounded-lg shadow">{renderContent()}</div>
+      <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 overflow-y-auto pt-6 md:pt-8 max-w-full">
+                 {/* Main Content Area (Orders section) now comes first */}
+         <div className="bg-white rounded-lg shadow overflow-x-hidden max-w-6xl">{renderContent()}</div>
 
         {/* Quick Stats moved below orders */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">

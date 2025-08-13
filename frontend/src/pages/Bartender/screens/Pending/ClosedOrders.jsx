@@ -49,7 +49,7 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
 
   return (
     <>
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
         <label htmlFor="closed-order-date-filter" className="font-medium">Filter by Date:</label>
         <input
           id="closed-order-date-filter"
@@ -66,7 +66,7 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
             <div className="space-y-6">
               {tableOrders.map(order => (
                 <div key={order.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 mb-4">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
                     <span className="font-semibold text-gray-900">
                       Order #{order.order_number} 
                       <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
@@ -75,13 +75,13 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
                   </div>
                   <div className="space-y-1 mb-2">
                     {order.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-sm">
-                        <span>{item.name} × {item.quantity}</span>
-                        <span className={item.status === 'accepted' ? 'text-green-700' : 'text-red-700'}>
+                      <div key={idx} className="flex flex-wrap justify-between items-center text-sm gap-2">
+                        <span className="flex-1 min-w-0">{item.name} × {item.quantity}</span>
+                        <span className={`${item.status === 'accepted' ? 'text-green-700' : 'text-red-700'} flex-shrink-0`}>
                           <FaLock className="inline mr-1" />
                           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                         </span>
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="flex-shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

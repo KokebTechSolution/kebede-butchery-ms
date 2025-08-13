@@ -103,17 +103,102 @@ export const SidebarSection = () => {
         <h2 className="font-bold text-[#161111] text-[22px] leading-7 [font-family:'Work_Sans',Helvetica]">
           Pending Orders
         </h2>
-        <label htmlFor="order-date-filter" className="mb-2 font-medium">Filter by Date:</label>
-        <input
-          id="order-date-filter"
-          type="date"
-          value={filterDate}
-          onChange={e => setFilterDate(e.target.value)}
-          className="mb-4 p-2 border rounded"
-        />
+        <div className="w-full mt-3">
+          <label htmlFor="order-date-filter" className="block text-sm font-medium text-gray-700 mb-2">
+            Filter by Date:
+          </label>
+          <input
+            id="order-date-filter"
+            type="date"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
       </div>
 
-      <div className="px-4 py-3 w-full">
+      {/* Mobile Card View (hidden on desktop) */}
+      <div className="block lg:hidden px-4 py-3 w-full space-y-4">
+        {sortedOrders.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <p>No pending orders for the selected date.</p>
+          </div>
+        ) : (
+          sortedOrders.map((order, index) => (
+            <Card key={order.id || `${order.waiterName}-${order.table_number}-${index}`}
+                  className="border border-gray-200 rounded-lg shadow-sm">
+              <CardContent className="p-4">
+                {/* Order Header */}
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-900">#{order.order_number}</h3>
+                    <p className="text-sm text-gray-600">Table {order.table_number}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600">${order.total_money}</p>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                      order.payment_option === 'online'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {formatPaymentOption(order.payment_option)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Order Details */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Waiter:</span>
+                    <span className="font-medium">{order.waiterName}</span>
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div className="border-t pt-3 mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Items:</h4>
+                  <div className="space-y-1">
+                    {order.items.filter(item => item.status === 'accepted').map((item, itemIndex) => (
+                      <div key={item.id || `${item.name}-${itemIndex}`}
+                           className="flex justify-between items-center text-sm">
+                        <span className="text-gray-900">
+                          <span className="font-medium">{item.quantity}x</span> {item.name}
+                        </span>
+                        <span className="text-gray-600">${item.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="border-t pt-3">
+                  {order.has_payment ? (
+                    <div className="w-full rounded-lg px-4 py-3 font-bold text-sm bg-green-100 text-green-700 text-center">
+                      ✓ Payment Processed
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`w-full rounded-lg px-4 py-3 font-bold text-sm transition-colors duration-200
+                        ${clickedIndex === index
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-500 text-white hover:bg-red-600'}
+                      `}
+                      onClick={() => handleProcessPayment(order, index)}
+                      disabled={clickedIndex === index}
+                    >
+                      {clickedIndex === index ? 'Processing...' : 'Process Payment'}
+                    </button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View (hidden on mobile) */}
+      <div className="hidden lg:block px-4 py-3 w-full">
         <Card className="border border-solid border-[#e2dddd] rounded-xl overflow-hidden">
           <CardContent className="p-0">
             <Table>
@@ -172,8 +257,8 @@ export const SidebarSection = () => {
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
                       <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                        order.payment_option === 'online' 
-                          ? 'bg-blue-100 text-blue-800' 
+                        order.payment_option === 'online'
+                          ? 'bg-blue-100 text-blue-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
                         {formatPaymentOption(order.payment_option)}
@@ -187,7 +272,7 @@ export const SidebarSection = () => {
                       ) : (
                         <button
                           type="button"
-                          className={`w-full rounded-lg px-4 py-2 font-bold text-sm transition-colors duration-200 [font-family:'Work_Sans',Helvetica] 
+                          className={`w-full rounded-lg px-4 py-2 font-bold text-sm transition-colors duration-200 [font-family:'Work_Sans',Helvetica]
                             ${clickedIndex === index
                               ? 'bg-red-600 text-white'
                               : 'bg-red-100 text-red-700 hover:bg-red-200'}

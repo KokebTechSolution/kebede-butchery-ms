@@ -18,8 +18,8 @@ const Topbar = () => {
   const role = user?.role || "No Role";
 
   return (
-    <header className="bg-gradient-to-r from-red-900 via-red-800 to-red-700 h-24 px-4 md:px-6 shadow-lg flex flex-wrap items-center justify-between rounded-b-2xl border-b border-red-900 gap-y-2">
-      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+    <header className="bg-gradient-to-r from-red-900 via-red-800 to-red-700 px-4 md:px-6 shadow-lg rounded-b-2xl border-b border-red-900">
+      <div className="flex items-center gap-2 md:gap-3 min-w-0 pt-4">
         <a href="/" className="transition-transform hover:scale-105 shrink-0">
           <img src="/Kebedelogo.png" alt="Kebede logo" className="h-12 w-12 md:h-14 md:w-14 object-contain rounded-full shadow-md" />
         </a>
@@ -28,7 +28,7 @@ const Topbar = () => {
           <span className="text-xs md:text-base text-gray-200 tracking-wide font-semibold truncate">Management System</span>
         </div>
       </div>
-      <div className="flex items-center gap-4 md:gap-8 text-white flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-2 pb-4">
         <div className="flex items-center gap-1 md:gap-2">
           <span className="hidden md:inline font-semibold">{t("choose_language") || "Language"}:</span>
           <select
