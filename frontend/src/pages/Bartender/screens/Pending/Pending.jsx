@@ -239,7 +239,7 @@ console.log('Current branchId:', branchId);
                   const waiter = order.waiterName || order.created_by_username || 'Unknown';
                   return (
                     <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-gray-900">
                           Order #{order.order_number} <span style={{ color: '#888', marginLeft: 8 }}>({waiter})</span>
                         </h3>
@@ -262,36 +262,36 @@ console.log('Current branchId:', branchId);
                       </div>
                       {/* Only item-level Accept/Reject below */}
                       <div className="space-y-2 mt-2">
-                        {order.items.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center text-sm py-1 border-t pt-2">
-                            <span>{item.name} × {item.quantity}</span>
-                            <span>${(item.price * item.quantity).toFixed(2)}</span>
-                            <span className="ml-4">
-                              {item.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => acceptOrderItemWithMsg(item.id, order)}
-                                    className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
-                                  >
-                                    Accept
-                                  </button>
-                                  <button
-                                    onClick={() => rejectOrderItem(item.id)}
-                                    className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {item.status === 'accepted' && (
-                                <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
-                              )}
-                              {item.status === 'rejected' && (
-                                <span className="text-red-700">Rejected</span>
-                              )}
-                            </span>
-                          </div>
-                        ))}
+                                                 {order.items.map((item, index) => (
+                           <div key={index} className="flex flex-wrap justify-between items-center text-sm py-1 border-t pt-2 gap-2">
+                             <span className="flex-1 min-w-0">{item.name} × {item.quantity}</span>
+                             <span className="flex-shrink-0">${(item.price * item.quantity).toFixed(2)}</span>
+                             <div className="flex-shrink-0">
+                               {item.status === 'pending' && (
+                                 <>
+                                   <button
+                                     onClick={() => acceptOrderItemWithMsg(item.id, order)}
+                                     className="px-2 py-0.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 mr-1"
+                                   >
+                                     Accept
+                                   </button>
+                                   <button
+                                     onClick={() => rejectOrderItem(item.id)}
+                                     className="px-2 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                                   >
+                                     Reject
+                                   </button>
+                                 </>
+                               )}
+                               {item.status === 'accepted' && (
+                                 <span className="text-green-700 flex items-center"><FaLock className="inline mr-1" />Accepted</span>
+                               )}
+                               {item.status === 'rejected' && (
+                                 <span className="text-red-700">Rejected</span>
+                               )}
+                             </div>
+                           </div>
+                         ))}
                       </div>
                     </div>
                   );

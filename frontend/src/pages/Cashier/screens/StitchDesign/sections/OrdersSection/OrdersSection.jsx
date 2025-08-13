@@ -86,36 +86,41 @@ export const OrdersSection = ({ activeSection, onSectionChange }) => {
       {/* Mobile Navigation - Visible only on mobile */}
       <div className="md:hidden w-full">
         <div className="bg-white p-4 shadow-sm border-b">
-          <h1 className="text-xl font-bold text-gray-800 mb-4">Cashier Dashboard</h1>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <DollarSignIcon className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">Cashier Dashboard</h1>
+          </div>
           
           {/* Mobile Dropdown Navigation */}
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-left hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between gap-3 px-4 py-4 bg-gray-50 border border-gray-200 rounded-lg text-left hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="text-lg text-gray-600">{getCurrentSectionIcon()}</span>
-                <span className="font-medium text-gray-700">{getCurrentSectionLabel()}</span>
+                <span className="text-xl text-gray-600">{getCurrentSectionIcon()}</span>
+                <span className="font-semibold text-gray-700 text-lg">{getCurrentSectionLabel()}</span>
               </div>
-              <MenuIcon className="text-gray-600" />
+              <MenuIcon className="text-gray-600 w-5 h-5" />
             </button>
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                 {menuItems.map((item, index) => (
                   <button
                     key={index}
                     onClick={() => handleSectionChange(item.key)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                    className={`w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 transition-colors ${
                       activeSection === item.key
                         ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
                         : 'text-gray-700'
                     }`}
                   >
-                    <span className="text-lg">{item.icon}</span>
-                    {item.label}
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="font-medium">{item.label}</span>
                   </button>
                 ))}
               </div>

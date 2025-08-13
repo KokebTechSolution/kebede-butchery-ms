@@ -199,61 +199,119 @@ const ProductListPage = () => {
         />
       </div>
 
-      <div className="mb-4 flex justify-end space-x-4">
-        <button onClick={() => setShowAddModal(true)} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+      <div className="mb-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
+        <button onClick={() => setShowAddModal(true)} className="bg-green-500 text-white px-3 md:px-4 py-2 rounded hover:bg-green-600 text-sm md:text-base">
           {t('add_product')}
         </button>
-        <button onClick={() => setShowNewProductModal(true)} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        <button onClick={() => setShowNewProductModal(true)} className="bg-blue-500 text-white px-3 md:px-4 py-2 rounded hover:bg-blue-600 text-sm md:text-base">
           {t('add_new_product')}
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border">
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-3">
+        {filteredStocksByBranch.length > 0 ? (
+          filteredStocksByBranch.map((stock) => (
+            <div key={stock.id} className="bg-white border rounded-lg p-4 shadow-sm">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">{stock.product?.name || 'N/A'}</h3>
+                  <p className="text-xs text-gray-600">{stock.product?.category?.category_name || 'N/A'}</p>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  stock.running_out ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                }`}>
+                  {stock.running_out ? t('running_out') : t('in_stock')}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                <div>
+                  <span className="text-gray-500">Quantity:</span>
+                  <p className="font-medium">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Price:</span>
+                  <p className="font-medium">{stock.product?.base_unit_price ? `ETB ${stock.product.base_unit_price}` : 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Branch:</span>
+                  <p className="font-medium">{stock.branch?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Threshold:</span>
+                  <p className="font-medium">{(stock.minimum_threshold_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(stock.product?.id)} className="flex-1 bg-yellow-500 text-white px-3 py-2 rounded text-xs hover:bg-yellow-600">
+                  {t('edit')}
+                </button>
+                <button onClick={() => handleRestockClick(stock)} className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-xs hover:bg-green-700">
+                  {t('restock')}
+                </button>
+                <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="flex-1 bg-red-500 text-white px-3 py-2 rounded text-xs hover:bg-red-600">
+                  {t('delete')}
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            {t('no_products_found')}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto border rounded-lg">
+        <table className="min-w-full border-collapse">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border px-4 py-2">{t('name')}</th>
-              <th className="border px-4 py-2">{t('description')}</th>
-              <th className="border px-4 py-2">{t('category')}</th>
-              <th className="border px-4 py-2">{t('item_type')}</th>
-              <th className="border px-4 py-2">{t('branch')}</th>
-              <th className="border px-4 py-2">{t('branch_location')}</th>
-              <th className="border px-4 py-2">{t('quantity_in_base_units')}</th>
-              <th className="border px-4 py-2">{t('original_quantity')}</th>
-              <th className="border px-4 py-2">{t('minimum_threshold_base_units')}</th>
-              <th className="border px-4 py-2">{t('base_unit_price')}</th>
-              <th className="border px-4 py-2">{t('running_out')}</th>
-              <th className="border px-4 py-2">{t('last_stock_update')}</th>
-              <th className="border px-4 py-2">{t('product_created_at')}</th>
-              <th className="border px-4 py-2">{t('product_updated_at')}</th>
-              <th className="border px-4 py-2">{t('actions')}</th>
+              <th className="border px-4 py-2 text-sm">{t('name')}</th>
+              <th className="border px-4 py-2 text-sm">{t('description')}</th>
+              <th className="border px-4 py-2 text-sm">{t('category')}</th>
+              <th className="border px-4 py-2 text-sm">{t('item_type')}</th>
+              <th className="border px-4 py-2 text-sm">{t('branch')}</th>
+              <th className="border px-4 py-2 text-sm">{t('branch_location')}</th>
+              <th className="border px-4 py-2 text-sm">{t('quantity_in_base_units')}</th>
+              <th className="border px-4 py-2 text-sm">{t('original_quantity')}</th>
+              <th className="border px-4 py-2 text-sm">{t('minimum_threshold_base_units')}</th>
+              <th className="border px-4 py-2 text-sm">{t('base_unit_price')}</th>
+              <th className="border px-4 py-2 text-sm">{t('running_out')}</th>
+              <th className="border px-4 py-2 text-sm">{t('last_stock_update')}</th>
+              <th className="border px-4 py-2 text-sm">{t('product_created_at')}</th>
+              <th className="border px-4 py-2 text-sm">{t('product_updated_at')}</th>
+              <th className="border px-4 py-2 text-sm">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
             {filteredStocksByBranch.length > 0 ? (
               filteredStocksByBranch.map((stock) => (
-                <tr key={stock.id} className="text-center">
-                  <td className="border px-4 py-2">{stock.product?.name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.description || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.category_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.branch?.name || 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.branch?.location || 'N/A'}</td>
-                  <td className="border px-4 py-2">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
-                  <td className="border px-4 py-2">
+                <tr key={stock.id} className="text-center hover:bg-gray-50">
+                  <td className="border px-4 py-2 text-sm">{stock.product?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.description || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.category?.category_name || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.category?.item_type?.type_name || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.branch?.name || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.branch?.location || 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{(stock.quantity_in_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2 text-sm">
                     {stock.original_quantity_display || 'N/A'}
                   </td>
-                  <td className="border px-4 py-2">{(stock.minimum_threshold_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
-                  <td className="border px-4 py-2">{stock.product?.base_unit_price ? `ETB ${stock.product.base_unit_price}` : 'N/A'}</td>
-                  <td className="border px-4 py-2">
+                  <td className="border px-4 py-2 text-sm">{(stock.minimum_threshold_base_units ?? 'N/A') + (stock.product?.base_unit?.unit_name ? ' ' + stock.product.base_unit.unit_name : '')}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.base_unit_price ? `ETB ${stock.product.base_unit_price}` : 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">
                     <span className={`font-semibold ${stock.running_out ? 'text-red-500' : 'text-green-500'}`}>
                       {stock.running_out ? t('running_out') : t('in_stock')}
                     </span>
                   </td>
-                  <td className="border px-4 py-2">{stock.last_stock_update ? new Date(stock.last_stock_update).toLocaleString() : 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.created_at ? new Date(stock.product.created_at).toLocaleString() : 'N/A'}</td>
-                  <td className="border px-4 py-2">{stock.product?.updated_at ? new Date(stock.product.updated_at).toLocaleString() : 'N/A'}</td>
-                  <td className="border px-4 py-2 space-x-2">
+                  <td className="border px-4 py-2 text-sm">{stock.last_stock_update ? new Date(stock.last_stock_update).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.created_at ? new Date(stock.product.created_at).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2 text-sm">{stock.product?.updated_at ? new Date(stock.product.updated_at).toLocaleString() : 'N/A'}</td>
+                  <td className="border px-4 py-2">
+                    <div className="flex gap-2 justify-center">
                     <button onClick={() => handleEdit(stock.product?.id)} className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600">
                       {t('edit')}
                     </button>
@@ -263,6 +321,7 @@ const ProductListPage = () => {
                     <button onClick={() => handleDelete(stock.product?.id, stock.id)} className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600">
                       {t('delete')}
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -276,8 +335,8 @@ const ProductListPage = () => {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="7" className="border px-4 py-2 font-bold text-right">{t('total_money_cartons')}:</td>
-              <td className="border px-4 py-2 font-bold">
+              <td colSpan="7" className="border px-4 py-2 font-bold text-right text-sm">{t('total_money_cartons')}:</td>
+              <td className="border px-4 py-2 font-bold text-sm">
                 ETB {stocks.reduce((sum, stock) => sum + (parseFloat(stock.total_carton_price) || 0), 0).toFixed(2)}
               </td>
               <td className="border px-4 py-2" colSpan="7"></td>

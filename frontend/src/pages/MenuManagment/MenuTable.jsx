@@ -111,22 +111,24 @@ const MenuTable = ({ refreshFlag }) => {
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">{t('menu_list')}</h1>
 
-            <div className="mb-4 flex space-x-2 items-center">
-                <input
-                    type="number"
-                    placeholder={t('discount_percent')}
-                    className="border p-2 rounded"
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(e.target.value)}
-                />
-                <button
-                    onClick={applyDiscount}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                    {t('apply_discount')}
-                </button>
+            <div className="mb-4 flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <input
+                        type="number"
+                        placeholder={t('discount_percent')}
+                        className="border p-2 rounded text-sm"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(e.target.value)}
+                    />
+                    <button
+                        onClick={applyDiscount}
+                        className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 text-sm"
+                    >
+                        {t('apply_discount')}
+                    </button>
+                </div>
                 <select
-                    className="border p-2 rounded ml-4"
+                    className="border p-2 rounded text-sm w-full sm:w-auto"
                     value={selectedCategory}
                     onChange={e => setSelectedCategory(e.target.value)}
                 >
@@ -137,49 +139,109 @@ const MenuTable = ({ refreshFlag }) => {
                 </select>
             </div>
 
-            <table className="min-w-full bg-white border border-gray-200 rounded-xl">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="p-2 border">{t('id')}</th>
-                        <th className="p-2 border">{t('name')}</th>
-                        <th className="p-2 border">{t('price')}</th>
-                        <th className="p-2 border">{t('available')}</th>
-                        <th className="p-2 border">{t('item_type')}</th>
-                        <th className="p-2 border">{t('created_at')}</th>
-                        <th className="p-2 border">{t('updated_at')}</th>
-                        <th className="p-2 border">{t('actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {menuItems
-                        .filter(item => selectedCategory === 'all' || String(item.category) === String(selectedCategory))
-                        .map((item) => (
-                            <tr key={item.id} className="hover:bg-gray-50">
-                                <td className="p-2 border text-center">{item.id}</td>
-                                <td className="p-2 border text-center">{item.name}</td>
-                                <td className="p-2 border text-center">{item.price}</td>
-                                <td className="p-2 border text-center">{item.is_available ? t('yes') : t('no')}</td>
-                                <td className="p-2 border text-center">{item.item_type}</td>
-                                <td className="p-2 border text-center">{renderDate(item.created_at)}</td>
-                                <td className="p-2 border text-center">{renderDate(item.updated_at)}</td>
-                                <td className="p-2 border text-center space-x-2">
-                                    <button
-                                        onClick={() => handleEdit(item)}
-                                        className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-                                    >
-                                        {t('edit')}
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(item)}
-                                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                                    >
-                                        {t('delete')}
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                </tbody>
-            </table>
+            {/* Mobile Card View */}
+            <div className="block md:hidden space-y-3">
+                {menuItems
+                    .filter(item => selectedCategory === 'all' || String(item.category) === String(selectedCategory))
+                    .map((item) => (
+                        <div key={item.id} className="bg-white border rounded-lg p-4 shadow-sm">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-gray-900 text-sm">{item.name}</h3>
+                                    <p className="text-xs text-gray-600">ID: {item.id}</p>
+                                </div>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    item.is_available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                    {item.is_available ? t('yes') : t('no')}
+                                </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                                <div>
+                                    <span className="text-gray-500">Price:</span>
+                                    <p className="font-medium">ETB {item.price}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Type:</span>
+                                    <p className="font-medium capitalize">{item.item_type}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Created:</span>
+                                    <p className="font-medium">{renderDate(item.created_at)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Updated:</span>
+                                    <p className="font-medium">{renderDate(item.updated_at)}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleEdit(item)}
+                                    className="flex-1 bg-yellow-500 text-white px-3 py-2 rounded text-xs hover:bg-yellow-600"
+                                >
+                                    {t('edit')}
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(item)}
+                                    className="flex-1 bg-red-500 text-white px-3 py-2 rounded text-xs hover:bg-red-600"
+                                >
+                                    {t('delete')}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto border rounded-lg">
+                <table className="min-w-full bg-white border-collapse">
+                    <thead>
+                        <tr className="bg-gray-100">
+                            <th className="p-2 border text-sm">{t('id')}</th>
+                            <th className="p-2 border text-sm">{t('name')}</th>
+                            <th className="p-2 border text-sm">{t('price')}</th>
+                            <th className="p-2 border text-sm">{t('available')}</th>
+                            <th className="p-2 border text-sm">{t('item_type')}</th>
+                            <th className="p-2 border text-sm">{t('created_at')}</th>
+                            <th className="p-2 border text-sm">{t('updated_at')}</th>
+                            <th className="p-2 border text-sm">{t('actions')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {menuItems
+                            .filter(item => selectedCategory === 'all' || String(item.category) === String(selectedCategory))
+                            .map((item) => (
+                                <tr key={item.id} className="hover:bg-gray-50">
+                                    <td className="p-2 border text-center text-sm">{item.id}</td>
+                                    <td className="p-2 border text-center text-sm">{item.name}</td>
+                                    <td className="p-2 border text-center text-sm">{item.price}</td>
+                                    <td className="p-2 border text-center text-sm">{item.is_available ? t('yes') : t('no')}</td>
+                                    <td className="p-2 border text-center text-sm">{item.item_type}</td>
+                                    <td className="p-2 border text-center text-sm">{renderDate(item.created_at)}</td>
+                                    <td className="p-2 border text-center text-sm">{renderDate(item.updated_at)}</td>
+                                    <td className="p-2 border text-center">
+                                        <div className="flex gap-2 justify-center">
+                                            <button
+                                                onClick={() => handleEdit(item)}
+                                                className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 text-sm"
+                                            >
+                                                {t('edit')}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(item)}
+                                                className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-sm"
+                                            >
+                                                {t('delete')}
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Edit Modal */}
             {isEditModalOpen && (

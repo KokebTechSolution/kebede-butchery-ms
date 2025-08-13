@@ -12,10 +12,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 
-export default function SidebarNav() {
+export default function SidebarNav({ isOpen, onToggle }) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const toggleSidebar = () => setIsOpen(!isOpen);
 
   const navItems = [
     { label: t("dashboard"), icon: <FaTachometerAlt />, path: "/branch-manager" },
@@ -29,23 +27,22 @@ export default function SidebarNav() {
 
   return (
     <>
-      <button
-        onClick={toggleSidebar}
-        aria-label="Toggle sidebar"
-        className="fixed top-4 left-4 z-50 p-2 bg-indigo-600 text-white rounded-md md:hidden focus:outline-none focus:ring-2 focus:ring-indigo-400"
-      >
-        {isOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
-      </button>
-
       <aside
         className={`fixed top-0 left-0 h-screen bg-white border-r shadow-lg w-64 p-6 flex flex-col
-        transform transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static
-        ${isOpen ? "translate-x-0" : "-translate-x-full"} z-40`}
+        transform transition-transform duration-300 ease-in-out z-50
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <h1 className="text-3xl font-bold text-indigo-600 mb-10 text-center select-none">
-          🏢 {t("branch_panel")}
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-indigo-600 select-none">
+            🏢 {t("branch_panel")}
+          </h1>
+          <button
+            onClick={onToggle}
+            className="p-2 text-gray-500 hover:text-gray-700 md:hidden"
+          >
+            <FaTimes size={20} />
+          </button>
+        </div>
 
         <nav className="flex flex-col space-y-2 flex-grow overflow-auto">
           {navItems.map(({ label, icon, path }) => (
@@ -60,7 +57,7 @@ export default function SidebarNav() {
                      : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
                  }`
               }
-              onClick={() => setIsOpen(false)}
+              onClick={() => onToggle && onToggle(false)}
             >
               <span className="text-lg">{icon}</span>
               {label}
@@ -77,10 +74,11 @@ export default function SidebarNav() {
         </button>
       </aside>
 
+      {/* Backdrop */}
       {isOpen && (
         <div
-          onClick={toggleSidebar}
-          className="fixed inset-0 bg-black bg-opacity-30 z-30 md:hidden"
+          onClick={() => onToggle && onToggle(false)}
+          className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
           aria-hidden="true"
         />
       )}

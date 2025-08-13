@@ -91,8 +91,8 @@ export default function BartenderDashboard() {
   };
 
   return (
-    <div className="bg-gray-100">
-      <main className="p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="bg-gray-100 min-h-screen overflow-x-hidden">
+      <main className="p-4 md:p-6 lg:p-8 space-y-6 max-w-full">
         {/* Welcome Banner */}
         <div className="bg-blue-100 text-blue-800 p-4 md:p-6 rounded shadow-sm">
           <h1 className="text-3xl font-bold">
@@ -103,82 +103,82 @@ export default function BartenderDashboard() {
           </p>
         </div>
 
-        {/* Bar Operations Navigation - Direct Buttons + Dropdown */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <FaBeer className="text-2xl text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
-          </div>
+                 {/* Bar Operations Navigation - Direct Buttons + Dropdown */}
+         <div className="bg-white rounded-lg shadow p-4 max-w-2xl mx-auto">
+           <div className="flex items-center gap-3 mb-4">
+             <FaBeer className="text-2xl text-blue-600" />
+             <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
+           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Direct Buttons for Orders and Closed */}
-            <button
-              onClick={() => handleNavClick('Orders')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
-                activeSection === 'Orders'
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <FaClipboardList className="text-lg" />
-              {t('orders')}
-            </button>
+           <div className="grid grid-cols-3 gap-3">
+             {/* Direct Buttons for Orders and Closed */}
+             <button
+               onClick={() => handleNavClick('Orders')}
+               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                 activeSection === 'Orders'
+                   ? 'bg-blue-600 text-white shadow'
+                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+               }`}
+             >
+               <FaClipboardList className="text-lg" />
+               {t('orders')}
+             </button>
 
-            <button
-              onClick={() => handleNavClick('Closed')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
-                activeSection === 'Closed'
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <FaLock className="text-lg" />
-              {t('closed')}
-            </button>
+             <button
+               onClick={() => handleNavClick('Closed')}
+               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                 activeSection === 'Closed'
+                   ? 'bg-blue-600 text-white shadow'
+                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+               }`}
+             >
+               <FaLock className="text-lg" />
+               {t('closed')}
+             </button>
 
-            {/* Dropdown for Inventory and Reports */}
-            <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-              >
-                <FaBars className="text-lg" />
-                More
-              </button>
+             {/* Dropdown for Inventory and Reports */}
+             <div className="relative">
+               <button
+                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors w-full"
+               >
+                 <FaBars className="text-lg" />
+                 More
+               </button>
 
-              {/* Dropdown Menu */}
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
-                  <button
-                    onClick={() => handleNavClick('Inventory')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      activeSection === 'Inventory'
-                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    <FaBoxes className="text-lg" />
-                    {t('inventory')}
-                  </button>
-                  <button
-                    onClick={() => handleNavClick('Reports')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      activeSection === 'Reports'
-                        ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    <FaChartBar className="text-lg" />
-                    {t('reports')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+               {/* Dropdown Menu */}
+               {isDropdownOpen && (
+                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-48">
+                   <button
+                     onClick={() => handleNavClick('Inventory')}
+                     className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                       activeSection === 'Inventory'
+                         ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                         : 'text-gray-700'
+                     }`}
+                   >
+                     <FaBoxes className="text-lg" />
+                     {t('inventory')}
+                   </button>
+                   <button
+                     onClick={() => handleNavClick('Reports')}
+                     className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                       activeSection === 'Reports'
+                         ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                         : 'text-gray-700'
+                     }`}
+                   >
+                     <FaChartBar className="text-lg" />
+                     {t('reports')}
+                   </button>
+                 </div>
+               )}
+             </div>
+           </div>
+         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow overflow-x-hidden">
           {renderContent()}
         </div>
       </main>

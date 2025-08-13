@@ -93,13 +93,13 @@ function StaffListPage() {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-blue-50 to-purple-100 min-h-screen">
+    <div className="p-4 md:p-6 bg-gradient-to-br from-blue-50 to-purple-100 min-h-screen">
       <div className="w-full mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">{t('branch_staff')}</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{t('branch_staff')}</h1>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 w-full sm:w-auto"
           >
             + {t('add_staff')}
           </button>
@@ -112,7 +112,69 @@ function StaffListPage() {
         ) : staffList.length === 0 ? (
           <p className="text-center text-gray-600 py-4">{t('no_staff_found')}</p>
         ) : (
-          <div className="bg-white shadow rounded-xl overflow-x-auto">
+          <>
+            {/* Mobile Card View */}
+            <div className="block md:hidden space-y-3">
+              {staffList.map((user) => (
+                <div key={user.id} className="bg-white border rounded-lg p-4 shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-sm">{user.first_name} {user.last_name}</h3>
+                      <p className="text-xs text-gray-600">@{user.username}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {user.is_active ? t('active') : t('inactive')}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                    <div>
+                      <span className="text-gray-500">Role:</span>
+                      <p className="font-medium capitalize">{t(`roles.${user.role}`)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Branch:</span>
+                      <p className="font-medium">{user.branch}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Phone:</span>
+                      <p className="font-medium">{user.phone_number || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Joined:</span>
+                      <p className="font-medium">{new Date(user.date_joined).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="bg-yellow-400 text-white px-2 py-1 rounded shadow hover:bg-yellow-500 text-xs"
+                    >
+                      {t('edit')}
+                    </button>
+                    <button
+                      onClick={() => setResetUser(user)}
+                      className="bg-indigo-500 text-white px-2 py-1 rounded shadow hover:bg-indigo-600 text-xs"
+                    >
+                      {t('reset_password')}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      className="bg-red-500 text-white px-2 py-1 rounded shadow hover:bg-red-600 text-xs"
+                    >
+                      {t('delete')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white shadow rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-blue-100 text-gray-700 font-semibold">
                 <tr>
@@ -148,31 +210,35 @@ function StaffListPage() {
                         {user.is_active ? t('active') : t('inactive')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 space-x-2">
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
                       <button
                         onClick={() => handleEdit(user)}
-                        className="bg-yellow-400 text-white px-3 py-1 rounded shadow hover:bg-yellow-500"
+                              className="bg-yellow-400 text-white px-3 py-1 rounded shadow hover:bg-yellow-500 text-sm"
                       >
                         {t('edit')}
                       </button>
                       <button
                         onClick={() => setResetUser(user)}
-                        className="bg-indigo-500 text-white px-3 py-1 rounded shadow hover:bg-indigo-600"
+                              className="bg-indigo-500 text-white px-3 py-1 rounded shadow hover:bg-indigo-600 text-sm"
                       >
                         {t('reset_password')}
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded shadow hover:bg-red-600"
+                              className="bg-red-500 text-white px-3 py-1 rounded shadow hover:bg-red-600 text-sm"
                       >
                         {t('delete')}
                       </button>
+                          </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+            </div>
+          </>
         )}
 
         {/* Edit Modal */}

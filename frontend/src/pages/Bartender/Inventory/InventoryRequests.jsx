@@ -181,17 +181,33 @@ const InventoryRequestList = () => {
     <div className="p-4">
       <BarmanStockStatus stocks={stocks} tab={tab} setTab={setTab} bartenderId={bartenderId} />
 
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">{t('inventory_requests')}</h1>
+      {/* Mobile Summary Cards */}
+      <div className="block md:hidden mb-6">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">{filteredRequests.length}</div>
+            <div className="text-xs text-gray-600">Total Requests</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-600">
+              {filteredRequests.filter(req => req.status === 'pending').length}
+            </div>
+            <div className="text-xs text-gray-600">Pending</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{t('inventory_requests')}</h1>
         {isBartender && (
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium w-full sm:w-auto"
             onClick={() => {
               setFormMessage('');
               setShowModal(true);
             }}
           >
-            {t('new_request')}
+            + {t('new_request')}
           </button>
         )}
       </div>
@@ -256,130 +272,270 @@ const InventoryRequestList = () => {
       />
 
       {loading ? (
-        <p>Loading requests...</p>
-      ) : filteredRequests.length === 0 ? (
-        <p className="text-gray-600 italic">{t('no_requests_found_for_branch')}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border text-sm">
-            <thead className="bg-gray-100">
-              <tr className="text-center">
-                <th className="border px-4 py-2">{t('product')}</th>
-                <th className="border px-4 py-2">{t('category')}</th>
-                <th className="border px-4 py-2">{t('item_type')}</th>
-                <th className="border px-4 py-2">{t('quantity')}</th>
-                <th className="border px-4 py-2">{t('quantity_basic_unit')}</th>
-                <th className="border px-4 py-2">{t('unit_type')}</th>
-                <th className="border px-4 py-2">{t('branch')}</th>
-                <th className="border px-4 py-2">{t('requested_at')}</th>
-                <th className="border px-4 py-2">{t('status')}</th>
-                <th className="border px-4 py-2">{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRequests.map(req => {
-                const reached = Boolean(req.reached_status);
-                const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
-                return (
-                  <tr
-                    key={`${req.id}-${reached ? 'r' : 'nr'}`}
-                    className="text-center hover:bg-gray-50 transition"
-                  >
-                    <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.quantity}</td>
-                    <td className="border px-4 py-2">{req.quantity_basic_unit ?? 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.request_unit?.unit_name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
-                    <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
-                    <td className="border px-4 py-2">
-                      <span
-                        className={`px-2 py-1 rounded text-sm font-medium ${
-                          req.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : req.status === 'accepted'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {req.status}
-                      </span>
-                    </td>
-                    <td className="border px-4 py-2 space-x-2">
-                      {/* Bartender: can edit or cancel only pending requests they made */}
-                      {canEditOrCancel && (
-                        <>
-                          <button
-                            onClick={() => {
-                              // Open edit modal or inline edit - implement as you want
-                              const updatedQty = prompt('Enter new quantity:', req.quantity);
-                              if (updatedQty && !isNaN(updatedQty) && Number(updatedQty) > 0) {
-                                handleEditRequest(req.id, { quantity: Number(updatedQty) });
-                              }
-                            }}
-                            disabled={processingId === req.id}
-                            className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:opacity-50"
-                          >
-                            {t('edit')}
-                          </button>
-                          <button
-                            onClick={() => handleCancelRequest(req.id)}
-                            disabled={processingId === req.id}
-                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"
-                          >
-                            {t('cancel')}
-                          </button>
-                        </>
-                      )}
-
-                      {/* Manager: Accept pending requests */}
-                      {isManager && req.status === 'pending' && (
-                        <button
-                          onClick={() => handleAccept(req.id)}
-                          disabled={processingId === req.id}
-                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
-                        >
-                          {t('accept')}
-                        </button>
-                      )}
-
-                      {/* Reach/Not Reach buttons - only if accepted */}
-                      {req.status === 'accepted' && isBartender && !reached && (
-                        <button
-                          onClick={() => handleReach(req.id)}
-                          disabled={processingId === req.id}
-                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                        >
-                          {t('mark_reached')}
-                        </button>
-                      )}
-                      {req.status === 'accepted' && isBartender && reached && (
-                        <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                          {t('reached')}
-                        </span>
-                      )}
-
-                      {/* No actions available */}
-                      {!canEditOrCancel &&
-                        !(isManager && req.status === 'pending') &&
-                        !(req.status === 'accepted' && isBartender) &&
-                        reached && (
-                          <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
-                        )}
-                      {!canEditOrCancel &&
-                        !(isManager && req.status === 'pending') &&
-                        !(req.status === 'accepted' && isBartender) &&
-                        !reached && (
-                          <span className="text-gray-500 italic">{t('no_action_available')}</span>
-                        )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading requests...</p>
         </div>
+      ) : filteredRequests.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="bg-gray-50 rounded-lg p-6">
+            <p className="text-gray-600 italic text-lg">{t('no_requests_found_for_branch')}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-4">
+            {filteredRequests.map(req => {
+              const reached = Boolean(req.reached_status);
+              const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
+              return (
+                <div key={`${req.id}-${reached ? 'r' : 'nr'}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  {/* Header with status */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900 text-lg">{req.product?.name || 'N/A'}</h3>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        req.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : req.status === 'accepted'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {req.status}
+                    </span>
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="space-y-2 mb-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500 text-xs">Category</p>
+                        <p className="font-medium text-gray-900">{req.product?.category?.category_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Type</p>
+                        <p className="font-medium text-gray-900">{req.product?.category?.item_type?.type_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Quantity</p>
+                        <p className="font-medium text-gray-900">{req.quantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Unit</p>
+                        <p className="font-medium text-gray-900">{req.request_unit?.unit_name || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded p-3">
+                      <p className="text-gray-500 text-xs mb-1">Basic Unit Quantity</p>
+                      <p className="font-semibold text-gray-900">{req.quantity_basic_unit ?? 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {/* Branch and Date */}
+                  <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+                    <span>Branch: {req.branch?.name || 'N/A'}</span>
+                    <span>{new Date(req.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2">
+                    {/* Bartender: can edit or cancel only pending requests they made */}
+                    {canEditOrCancel && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const updatedQty = prompt('Enter new quantity:', req.quantity);
+                            if (updatedQty && !isNaN(updatedQty) && Number(updatedQty) > 0) {
+                              handleEditRequest(req.id, { quantity: Number(updatedQty) });
+                            }
+                          }}
+                          disabled={processingId === req.id}
+                          className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium"
+                        >
+                          {t('edit')}
+                        </button>
+                        <button
+                          onClick={() => handleCancelRequest(req.id)}
+                          disabled={processingId === req.id}
+                          className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 text-sm font-medium"
+                        >
+                          {t('cancel')}
+                        </button>
+                      </>
+                    )}
+
+                    {/* Manager: Accept pending requests */}
+                    {isManager && req.status === 'pending' && (
+                      <button
+                        onClick={() => handleAccept(req.id)}
+                        disabled={processingId === req.id}
+                        className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
+                      >
+                        {t('accept')}
+                      </button>
+                    )}
+
+                    {/* Reach/Not Reach buttons - only if accepted */}
+                    {req.status === 'accepted' && isBartender && !reached && (
+                      <button
+                        onClick={() => handleReach(req.id)}
+                        disabled={processingId === req.id}
+                        className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 text-sm font-medium"
+                      >
+                        {t('mark_reached')}
+                      </button>
+                    )}
+                    {req.status === 'accepted' && isBartender && reached && (
+                      <span className="px-3 py-2 rounded-lg bg-green-200 text-green-900 font-semibold text-sm">
+                        {t('reached')}
+                      </span>
+                    )}
+
+                    {/* No actions available */}
+                    {!canEditOrCancel &&
+                      !(isManager && req.status === 'pending') &&
+                      !(req.status === 'accepted' && isBartender) &&
+                      reached && (
+                        <span className="px-3 py-2 rounded-lg bg-green-200 text-green-900 font-semibold text-sm">{t('reached')}</span>
+                      )}
+                    {!canEditOrCancel &&
+                      !(isManager && req.status === 'pending') &&
+                      !(req.status === 'accepted' && isBartender) &&
+                      !reached && (
+                        <span className="text-gray-500 italic text-sm px-3 py-2">{t('no_action_available')}</span>
+                      )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border text-sm">
+                <thead className="bg-gray-100">
+                  <tr className="text-center">
+                    <th className="border px-4 py-2">{t('product')}</th>
+                    <th className="border px-4 py-2">{t('category')}</th>
+                    <th className="border px-4 py-2">{t('item_type')}</th>
+                    <th className="border px-4 py-2">{t('quantity')}</th>
+                    <th className="border px-4 py-2">{t('quantity_basic_unit')}</th>
+                    <th className="border px-4 py-2">{t('unit_type')}</th>
+                    <th className="border px-4 py-2">{t('branch')}</th>
+                    <th className="border px-4 py-2">{t('requested_at')}</th>
+                    <th className="border px-4 py-2">{t('status')}</th>
+                    <th className="border px-4 py-2">{t('actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.map(req => {
+                    const reached = Boolean(req.reached_status);
+                    const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
+                    return (
+                      <tr
+                        key={`${req.id}-${reached ? 'r' : 'nr'}`}
+                        className="text-center hover:bg-gray-50 transition"
+                      >
+                        <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
+                        <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
+                        <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
+                        <td className="border px-4 py-2">{req.quantity}</td>
+                        <td className="border px-4 py-2">{req.quantity_basic_unit ?? 'N/A'}</td>
+                        <td className="border px-4 py-2">{req.request_unit?.unit_name || 'N/A'}</td>
+                        <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
+                        <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
+                        <td className="border px-4 py-2">
+                          <span
+                            className={`px-2 py-1 rounded text-sm font-medium ${
+                              req.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : req.status === 'accepted'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="border px-4 py-2 space-x-2">
+                          {/* Bartender: can edit or cancel only pending requests they made */}
+                          {canEditOrCancel && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const updatedQty = prompt('Enter new quantity:', req.quantity);
+                                  if (updatedQty && !isNaN(updatedQty) && Number(updatedQty) > 0) {
+                                    handleEditRequest(req.id, { quantity: Number(updatedQty) });
+                                  }
+                                }}
+                                disabled={processingId === req.id}
+                                className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:opacity-50"
+                              >
+                                {t('edit')}
+                              </button>
+                              <button
+                                onClick={() => handleCancelRequest(req.id)}
+                                disabled={processingId === req.id}
+                                className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"
+                              >
+                                {t('cancel')}
+                              </button>
+                            </>
+                          )}
+
+                          {/* Manager: Accept pending requests */}
+                          {isManager && req.status === 'pending' && (
+                            <button
+                              onClick={() => handleAccept(req.id)}
+                              disabled={processingId === req.id}
+                              className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
+                            >
+                              {t('accept')}
+                            </button>
+                          )}
+
+                          {/* Reach/Not Reach buttons - only if accepted */}
+                          {req.status === 'accepted' && isBartender && !reached && (
+                            <button
+                              onClick={() => handleReach(req.id)}
+                              disabled={processingId === req.id}
+                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
+                            >
+                              {t('mark_reached')}
+                            </button>
+                          )}
+                          {req.status === 'accepted' && isBartender && reached && (
+                            <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
+                              {t('reached')}
+                            </span>
+                          )}
+
+                          {/* No actions available */}
+                          {!canEditOrCancel &&
+                            !(isManager && req.status === 'pending') &&
+                            !(req.status === 'accepted' && isBartender) &&
+                            reached && (
+                              <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
+                            )}
+                          {!canEditOrCancel &&
+                            !(isManager && req.status === 'pending') &&
+                            !(req.status === 'accepted' && isBartender) &&
+                            !reached && (
+                              <span className="text-gray-500 italic">{t('no_action_available')}</span>
+                            )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

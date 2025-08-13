@@ -32,12 +32,12 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
 
   return (
     <>
-      <Card className="w-full rounded-xl border border-gray-200 shadow-sm mb-4 transition-all duration-300 ease-in-out bg-white">
-        <CardContent className="p-4 sm:p-5">
+      <Card className="w-full max-w-4xl rounded-xl border border-gray-200 shadow-sm mb-4 transition-all duration-300 ease-in-out bg-white">
+        <CardContent className="p-4 sm:p-6">
           {/* Header */}
-          <div className="flex items-start justify-between w-full gap-3">
-            <div className="flex flex-col gap-1 min-w-0">
-              <p className="font-['Work_Sans',Helvetica] text-[12px] sm:text-sm text-[#6b7582] truncate">
+          <div className="flex flex-wrap items-start justify-between w-full gap-4">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <p className="font-['Work_Sans',Helvetica] text-[12px] sm:text-sm text-[#6b7582] break-words">
                 Order #{order.order_number}
                 <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
                 <span className="ml-2 text-[11px] sm:text-xs text-gray-400">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
@@ -46,15 +46,15 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
                 {order.items.length} items
               </h3>
             </div>
-            <div className="text-right shrink-0">
-              <span className="text-lg sm:text-xl font-extrabold text-blue-700 leading-none block">
+            <div className="text-right flex-shrink-0">
+              <span className="text-xl sm:text-2xl font-extrabold text-blue-700 leading-none block">
                 ${displayTotal.toFixed(2)}
               </span>
             </div>
           </div>
 
           {/* Item list below, visually separated */}
-          <div className="mt-3">
+          <div className="mt-4">
             {/* --- MERGE ITEMS FOR DISPLAY --- */}
             {(() => {
               function mergeDisplayItems(items) {
@@ -71,10 +71,10 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
               }
               const mergedItems = mergeDisplayItems(order.items);
               return mergedItems.map((item, index) => (
-                <div key={index} className="w-full flex flex-wrap justify-between items-center gap-2 text-[13px] sm:text-sm py-2 border-t first:border-t-0">
-                  <span className="min-w-0 flex-1 break-words">{item.name} × {item.quantity}</span>
-                  <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                  <span className="ml-1">
+                <div key={index} className="w-full flex flex-wrap justify-between items-center gap-3 text-[13px] sm:text-sm py-3 border-t first:border-t-0">
+                  <span className="min-w-0 flex-1 break-words text-sm sm:text-base">{item.name} × {item.quantity}</span>
+                  <span className="font-medium flex-shrink-0 text-sm sm:text-base">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="flex-shrink-0">
                     {item.status === 'pending' && (
                       <>
                         <Button
