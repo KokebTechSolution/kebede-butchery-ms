@@ -1,15 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../../components/Navbar.jsx';
-import TablesPage from './tables/TablesPage.jsx';
-import MenuPage from './menu/MenuPage.jsx';
-import Cart from '../../components/Cart/Cart.jsx';
-import { CartProvider, useCart } from '../../context/CartContext.jsx';
-import OrderDetails from './order/OrderDetails.jsx';
-import OrderList from './order/OrderList.jsx';
-import WaiterProfile from './WaiterProfile.jsx';
-import '../../App.css';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Home, 
+  Coffee, 
+  ClipboardList, 
+  UserCircle, 
+  ShoppingCart,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Users,
+  Plus,
+  ArrowLeft,
+  Bell,
+  Utensils,
+  Menu as MenuIcon,
+  X,
+  LogOut
+} from 'lucide-react';
+
+// Components
+import TablesPage from './tables/TablesPage';
+import MenuPage from './menu/MenuPage';
+import Cart from '../../components/Cart/Cart';
+import PaymentMethodModal from '../../components/PaymentMethodModal';
+
+import OrderList from './order/OrderList';
+import WaiterProfile from './WaiterProfile';
+
+// Context
+import { CartProvider, useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+
+// API
 import axiosInstance from '../../api/axiosInstance';
 
 function mergeOrderItems(existingItems, cartItems) {
@@ -48,9 +72,11 @@ function mergeOrderItems(existingItems, cartItems) {
 }
 
 const WaiterDashboard = () => {
+  // Router hooks
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const startPage = params.get('start') || 'tables';
+  const startPage = params.get('start') || 'dashboard';
 
   const [currentPage, setCurrentPage] = useState(() => {
     // Check if there's a saved page state from reload
@@ -63,9 +89,44 @@ const WaiterDashboard = () => {
   }); // 'tables', 'menu', or 'orderDetails'
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [occupiedTables, setOccupiedTables] = useState(0);
+  const [totalTables, setTotalTables] = useState(15);
+  const [activeNav, setActiveNav] = useState('dashboard');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
 
+  // Navigation items
+  const navItems = [
+    { 
+      key: 'dashboard', 
+      label: 'Dashboard', 
+      icon: <Home className="w-5 h-5" />,
+      onClick: () => handleNavigate('dashboard')
+    },
+    { 
+      key: 'tables', 
+      label: 'Tables', 
+      icon: <Utensils className="w-5 h-5" />,
+      onClick: () => handleNavigate('tables')
+    },
+    { 
+      key: 'orders', 
+      label: 'Orders', 
+      icon: <ClipboardList className="w-5 h-5" />,
+      onClick: () => handleNavigate('orders')
+    },
+    { 
+      key: 'profile', 
+      label: 'Profile', 
+      icon: <UserCircle className="w-5 h-5" />,
+      onClick: () => handleNavigate('profile')
+    },
+  ];
+
+  // Context hooks
   const { 
     activeTableId, 
     setActiveTable, 
@@ -78,326 +139,896 @@ const WaiterDashboard = () => {
     user,
     orders
   } = useCart();
-  const { tokens } = useAuth();
+  
+  const { tokens, user: authUser } = useAuth();
 
   const handleNavigate = (page) => {
-    if (page === 'order') {
-      setCurrentPage('orderDetails');
-      return;
-    }
-    if (page === 'tables' || page === 'menu') {
-      setSelectedOrderId(null);
-      setEditingOrderId(null);
-    }
+    setIsMobileMenuOpen(false);
     
-    if (page === 'profile') {
-      setCurrentPage('profile');
-      setMessage('');
-      return;
+    // Handle navigation based on the page
+    switch(page) {
+      case 'order':
+      case 'orderDetails':
+      case 'orders':
+        setCurrentPage('orderDetails');
+        setActiveNav('orders');
+        // Refresh orders when navigating to order details
+        fetchDashboardData();
+        break;
+        
+      case 'tables':
+      case 'menu':
+        setEditingOrderId(null);
+        setCurrentPage(page);
+        setActiveNav(page);
+        if (page === 'tables') setSelectedTable(null);
+        break;
+        
+      case 'profile':
+        setCurrentPage('profile');
+        setActiveNav('profile');
+        setMessage('');
+        break;
+        
+      case 'dashboard':
+      default:
+        setCurrentPage('dashboard');
+        setActiveNav('dashboard');
+        // Refresh dashboard data when returning to main dashboard
+        fetchDashboardData();
+        break;
     }
-    
-    setCurrentPage(page);
-    if (page === 'tables') setSelectedTable(null);
+  };
+
+  // Render dashboard cards for the main dashboard view
+  const renderDashboardCards = () => {
+    const cards = [
+      {
+        key: 'tables',
+        title: 'Manage Tables',
+        description: 'View and manage all tables',
+        icon: <Utensils className="w-8 h-8" />,
+        bgColor: 'bg-blue-600',
+        hoverColor: 'hover:bg-blue-700',
+        onClick: () => handleNavigate('tables')
+      },
+      {
+        key: 'orders',
+        title: 'View Orders',
+        description: 'Track and manage all orders',
+        icon: <ClipboardList className="w-8 h-8" />,
+        bgColor: 'bg-green-600',
+        hoverColor: 'hover:bg-green-700',
+        onClick: () => handleNavigate('orderDetails')
+      },
+      {
+        key: 'new-order',
+        title: 'New Order',
+        description: 'Create a new order',
+        icon: <Plus className="w-8 h-8" />,
+        bgColor: 'bg-purple-600',
+        hoverColor: 'hover:bg-purple-700',
+        onClick: () => {
+          setSelectedTable(null);
+          setCurrentPage('tables');
+        }
+      }
+    ];
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((card) => (
+          <motion.div 
+            key={card.key}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={card.onClick}
+            className={`${card.bgColor} ${card.hoverColor} text-white rounded-xl p-6 shadow-lg cursor-pointer transition-all duration-200`}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
+                {card.icon}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">{card.title}</h3>
+                <p className="text-sm opacity-90">{card.description}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    );
   };
 
   const handleTableSelect = async (table) => {
     setSelectedTable(table);
     setActiveTable(table.id);
     setCurrentPage('menu');
-    setMessage('');
-    setSelectedOrderId(null);
-    setEditingOrderId(null);
-
-    // Always check for open order for this table (not printed)
-    const tableOrders = (orders || []).filter(
-      o => (o.table === table.id || o.table_number === table.number)
-    );
-    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
-    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
-    if (openOrder) {
-      // Fetch the latest order from backend before editing
-      try {
-        const response = await axiosInstance.get(`/orders/${openOrder.id}/`);
-        const latestOrder = response.data;
-        clearCart();
-        loadCartForEditing(table.id, latestOrder.items);
-        setEditingOrderId(openOrder.id);
-        console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
-      } catch (error) {
-        console.error('Failed to fetch latest order for editing:', error);
-        // Fallback to cached items if fetch fails
-        clearCart();
-        loadCartForEditing(table.id, openOrder.items);
-        setEditingOrderId(openOrder.id);
-      }
-    } else {
-      clearCart();
-      setEditingOrderId(null);
-      if (lastOrder && lastOrder.cashier_status === 'printed') {
-        setMessage('Last order is printed. Creating a new order.');
-        console.log('[DEBUG] Last order is printed. New order will be created.');
-      }
-    }
   };
 
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
   const handleOrder = async () => {
-    if (!editingOrderId && (!selectedTable || !selectedTable.id)) {
-      setMessage('You must select a table before placing an order.');
-      setCurrentPage('tables');
-      return;
-    }
-    if (!activeTableId) {
-      setMessage('Please select a table first.');
+    // Check if user is authenticated
+    if (!authUser || !authUser.isAuthenticated) {
+      setMessage('❌ Please log in to place orders!');
       return;
     }
 
     if (cartItems.length === 0) {
-      if (editingOrderId) {
-        try {
-          await axiosInstance.delete(`/orders/${editingOrderId}/`);
-          deleteOrder(editingOrderId);
-          setMessage('Order cancelled and deleted.');
-        } catch (error) {
-          console.error('Error deleting order:', error);
-          setMessage('Failed to delete order from server.');
-        }
-        setEditingOrderId(null);
-        setCurrentPage('tables');
-        return;
-      }
-      setMessage('Your cart is empty.');
+      setMessage('🛒 Your cart is empty! Please add some items first.');
       return;
     }
 
-    // Always check for open order before editing
-    const tableOrders = (orders || []).filter(
-      o => (o.table === selectedTable.id || o.table_number === selectedTable.number)
-    );
-    const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
-    const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
-    let editingOrder = null;
+    if (!selectedTable) {
+      setMessage('❌ Please select a table first!');
+      return;
+    }
+
+    // Show payment method selection modal
+    setShowPaymentModal(true);
+    return;
+  };
+
+  const handlePaymentMethodConfirm = async (paymentMethod) => {
+    setSelectedPaymentMethod(paymentMethod);
+    setIsPlacingOrder(true);
+    
+    // Check if this is an edit operation
     if (editingOrderId) {
-      editingOrder = orders.find(o => o.id === editingOrderId);
-      if (editingOrder && editingOrder.cashier_status === 'printed') {
-        setEditingOrderId(null);
-        clearCart();
-        setMessage('Last order is printed. Creating a new order.');
-        console.log('[DEBUG] Last order is printed. New order will be created.');
-      }
-    }
-
-    // --- MERGE CART ITEMS BEFORE SENDING TO BACKEND ---
-    function mergeCartItems(items) {
-      const merged = [];
-      items.forEach(item => {
-        const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-        if (found) {
-          found.quantity += item.quantity;
-        } else {
-          merged.push({ ...item });
-        }
-      });
-      return merged;
-    }
-    const mergedCartItems = mergeCartItems(cartItems);
-    // --------------------------------------------------
-
-    if (openOrder && editingOrderId && editingOrder && editingOrder.cashier_status !== 'printed') {
-      // --- MERGE CART ITEMS WITH EXISTING ORDER ITEMS ---
-      // 1. Start with all existing items (from editingOrder.items)
-      // 2. For each item in existing items:
-      //    - If it is accepted/rejected and not in cartItems, KEEP it
-      //    - If it is pending and not in cartItems, REMOVE it
-      //    - If it is in cartItems, use the cart version (updated quantity/status)
-      // 3. For each item in cartItems not in existing items, ADD it
-      const mergedItems = [];
-      const cartMap = new Map();
-      cartItems.forEach(item => {
-        cartMap.set(item.id, item);
-      });
-      // Add/merge existing items
-      editingOrder.items.forEach(existingItem => {
-        const cartItem = cartMap.get(existingItem.id);
-        if (cartItem) {
-          // Use cart version (updated quantity/status)
-          if (cartItem.quantity > 0) {
-            mergedItems.push({ ...cartItem });
-          }
-          cartMap.delete(existingItem.id);
-        } else {
-          // Not in cart
-          if (existingItem.status === 'accepted' || existingItem.status === 'rejected') {
-            // Always keep accepted/rejected items, even if cart is empty
-            mergedItems.push({ ...existingItem });
-          }
-          // If pending and not in cart, remove (do not add)
-        }
-      });
-      // If cart is empty, still keep accepted/rejected items
-      if (cartItems.length === 0) {
-        editingOrder.items.forEach(existingItem => {
-          if ((existingItem.status === 'accepted' || existingItem.status === 'rejected') && !mergedItems.find(i => i.id === existingItem.id)) {
-            mergedItems.push({ ...existingItem });
-          }
-        });
-      }
-      // Add new items from cart that weren't in existing items
-      cartMap.forEach(item => {
-        if (item.quantity > 0) {
-          mergedItems.push({ ...item });
-        }
-      });
-      const updatedOrderData = {
-        items: mergedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          item_type: item.item_type || 'food',
-          status: item.status // preserve status
-        }))
-      };
-      console.log('PATCH payload (merged):', updatedOrderData);
+      setMessage('📝 Updating your order... Please wait!');
+      
       try {
-        const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
-        const updatedOrder = response.data;
-        updateOrder(editingOrderId, updatedOrder.items);
-        setSelectedOrderId(editingOrderId);
-        setMessage('Order updated successfully!');
-        console.log('[DEBUG] Updated order:', editingOrderId);
+        console.log('WaiterDashboard: About to update order with cartItems:', cartItems);
+        
+        // Use updateOrder to replace the entire order with current cart items
+        const result = await updateOrder(editingOrderId, cartItems);
+        console.log('WaiterDashboard: Order update result:', result);
+        
+        setMessage(`✅ Order updated successfully! Order #${editingOrderId} has been updated.`);
+        
+        // Clear edit mode
+        setEditingOrderId(null);
+        
+        // Clear the cart after successful update
+        if (selectedTable && selectedTable.id) {
+          setActiveTable(selectedTable.id);
+          clearCart();
+        }
+        
+        // Force a refresh of the order list to show updated data
+        // This will trigger the OrderList to refetch and show the updated quantities
+        console.log('WaiterDashboard: Dispatching orderUpdated event for order:', editingOrderId);
+        const event = new CustomEvent('orderUpdated', { detail: { orderId: editingOrderId } });
+        window.dispatchEvent(event);
+        
+        // Also try to manually refresh the order list by calling the parent's refresh function
+        if (window.refreshOrderList) {
+          console.log('WaiterDashboard: Calling window.refreshOrderList');
+          window.refreshOrderList();
+        }
+        
+        // Give the event a moment to process, then navigate back to tables
+        setTimeout(() => {
+          setCurrentPage('tables');
+        }, 1000);
+        
       } catch (error) {
         console.error('Order update error:', error);
-        setMessage('There was an issue updating your order.');
+        setMessage(`❌ Failed to update order: ${error.message || 'Please try again.'}`);
+      } finally {
+        setIsPlacingOrder(false);
+        setTimeout(() => {
+          setMessage('');
+        }, 5000); // Show error message longer
+        setCurrentPage('tables');
+        setSelectedTable(null);
       }
     } else {
-      // Logic for CREATING a new order
-      const newOrderData = {
+      // This is a new order
+      setMessage('📝 Placing your order... Please wait!');
+
+      const orderData = {
         table: selectedTable.id,
-        items: mergedCartItems.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          item_type: item.item_type || 'food',
-          status: item.status // <-- preserve status!
-        })),
-        waiter_username: user?.username,
-        waiter_table_number: selectedTable?.number
+        waiter_id: authUser?.id,
+        waiter_username: authUser?.username,
+        waiter_name: authUser?.first_name || authUser?.username,
+        payment_option: paymentMethod, // Add payment method to order
+        items: cartItems.map(item => {
+          console.log('[DEBUG] Order item mapping:', item);
+          return {
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            item_type: item.item_type, // Remove default fallback - item_type must be set
+            product: item.id || item.product_id || item.product || null
+          };
+        })
       };
-      console.log('POST payload:', newOrderData); // <-- log payload
+
       try {
-        const newOrderId = await placeOrder(newOrderData);
-        if (!newOrderId) {
-          throw new Error('Failed to place order.');
-        }
-        setSelectedOrderId(newOrderId);
-        setMessage('Order placed successfully!');
-        console.log('[DEBUG] Placed new order:', newOrderId);
+        await placeOrder(orderData);
+        setMessage(`✅ Great! Order for Table ${selectedTable.number} has been placed successfully! The kitchen will start preparing it now.`);
+        clearCart();
+        
+        setTimeout(() => {
+          setMessage('');
+        }, 3000);
+        
+        setCurrentPage('tables');
+        setSelectedTable(null);
       } catch (error) {
-        console.error('Order submission error:', error);
-        setMessage(error.message || 'There was an issue placing your order.');
+        console.error('Order placement error:', error);
+        setMessage('❌ Oops! Something went wrong while placing the order. Please check your connection and try again.');
+      } finally {
+        setIsPlacingOrder(false);
       }
-    }
-    setEditingOrderId(null);
-    setCurrentPage('orderDetails');
-  };
-
-  const handleBackFromMenu = () => {
-    setCurrentPage('tables');
-    setSelectedTable(null);
-    setEditingOrderId(null);
-  };
-
-  const handleClearCart = () => {
-    if (editingOrderId) {
-      deleteOrder(editingOrderId);
-      setSelectedOrderId(null);
-      setEditingOrderId(null);
-      setMessage('Order removed due to cart clear during edit.');
-      setCurrentPage('tables');
-    } else {
-      clearCart();
-      setMessage('Cart cleared.');
     }
   };
 
   const handleEditOrder = (orderToEdit) => {
-    if (orderToEdit && orderToEdit.branch) {
-      const tableId = orderToEdit.branch;
+    // Check if user is authenticated
+    if (!authUser || !authUser.isAuthenticated) {
+      setMessage('❌ Please log in to edit orders!');
+      return;
+    }
+    
+    // Check if this order belongs to the current user
+    if (orderToEdit.waiter_id && authUser.id && orderToEdit.waiter_id !== authUser.id) {
+      setMessage('❌ You can only edit your own orders!');
+      return;
+    }
+    
+    setEditingOrderId(orderToEdit.id);
+    
+    // Fix: Pass tableId and items separately, with safety checks
+    const tableId = orderToEdit.table || orderToEdit.table_number;
+    const items = orderToEdit.items || [];
+    
+    console.log('[DEBUG] handleEditOrder - tableId:', tableId, 'items:', items);
+    
+    // Set the selected table for the order being edited
+    // Create a table object with the table ID and number
+    const table = {
+      id: tableId,
+      number: orderToEdit.table_number || tableId
+    };
+    setSelectedTable(table);
+    
+    // IMPORTANT: Set active table FIRST, then load cart for editing
+    setActiveTable(tableId);
+    
+    // Now load the cart for editing with the correct active table
+    loadCartForEditing(tableId, items);
+    
+    setCurrentPage('menu');
+  };
+
+
+
+  const handleBackFromMenu = () => {
+    setCurrentPage('tables');
+    clearCart();
+    setSelectedTable(null);
+  };
+
+  const handleClearCart = () => {
+    if (cartItems.length === 0) {
+      setMessage('🛒 Your cart is already empty!');
+      return;
+    }
+    
+    // Simple confirmation for non-technical users
+    const itemCount = cartItems.length;
+    const confirmMessage = `Are you sure you want to remove all ${itemCount} item${itemCount > 1 ? 's' : ''} from your cart?`;
+    
+    if (window.confirm(confirmMessage)) {
       clearCart();
-      loadCartForEditing(tableId, orderToEdit.items);
-      setSelectedTable(null);
-      setActiveTable(tableId);
-      setEditingOrderId(orderToEdit.id);
-      setSelectedOrderId(null);
-      setCurrentPage('menu');
-    } else {
-      console.error("Cannot edit order: order data is missing or has no branch.", orderToEdit);
-      setMessage("Could not edit the selected order.");
+      setMessage('🗑️ Cart cleared! All items have been removed.');
+      
+      // Auto-hide message after 2 seconds
+      setTimeout(() => {
+        setMessage('');
+      }, 2000);
     }
   };
 
-  const handleSelectOrder = (orderId) => {
-    setSelectedOrderId(orderId);
-    setEditingOrderId(null);
-    setCurrentPage('orderDetails');
+  // Fetch active orders and table status
+  const fetchDashboardData = async () => {
+    try {
+      // In a real app, you would fetch this from your API
+      // const response = await axiosInstance.get('/api/waiter/dashboard-stats');
+      // setActiveOrdersCount(response.data.activeOrders);
+      // setOccupiedTables(response.data.occupiedTables);
+      // setTotalTables(response.data.totalTables);
+      
+      // Mock data for now
+      setActiveOrdersCount(5);
+      setOccupiedTables(8);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
   };
 
-  const handleOrderDeleted = () => {
-    setCurrentPage('tables');
-    setSelectedTable(null);
-    setActiveTable(null);
-    setSelectedOrderId(null);
-    setEditingOrderId(null);
-    setMessage('Order deleted successfully.');
+  useEffect(() => {
+    fetchDashboardData();
+    // No automatic refresh - only manual refresh on page change or user action
+  }, []);
+
+  // Render the sidebar navigation
+  const renderSidebar = () => (
+    <div className="space-y-6">
+      {/* User Info */}
+      <div className="p-4 bg-white rounded-xl shadow-sm">
+        <p className="text-sm text-gray-600">
+          🔒 Your personal workspace - only your orders & tables
+        </p>
+        {authUser?.username && (
+          <p className="text-xs text-blue-600 mt-1">
+            Logged in as: {authUser.username}
+          </p>
+        )}
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="space-y-2">
+        <button
+          onClick={() => handleNavigate('tables')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'tables'
+              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'tables' ? 'bg-white bg-opacity-20' : 'bg-green-100'
+          }`}>
+            <Home className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">Tables</span>
+            <p className="text-xs opacity-75">View & select tables</p>
+          </div>
+        </button>
+        
+        <button
+          onClick={() => handleNavigate('orderDetails')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'orderDetails'
+              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-orange-50 hover:text-orange-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'orderDetails' ? 'bg-white bg-opacity-20' : 'bg-orange-100'
+          }`}>
+            <ClipboardList className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">Orders</span>
+            <p className="text-xs opacity-75">Manage all orders</p>
+          </div>
+          {orders?.length > 0 && (
+            <div className="ml-auto">
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {orders.length}
+              </span>
+            </div>
+          )}
+        </button>
+        
+        <button
+          onClick={() => handleNavigate('profile')}
+          className={`w-full flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            currentPage === 'profile'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-700 shadow-md border border-gray-200'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${
+            currentPage === 'profile' ? 'bg-white bg-opacity-20' : 'bg-purple-100'
+          }`}>
+            <UserCircle className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <span className="font-semibold text-base">My Profile</span>
+            <p className="text-xs opacity-75">View your info</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="p-4 bg-gray-50 rounded-xl border">
+        <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+          <Bell className="w-4 h-4 mr-2" />
+          Today's Summary
+        </h4>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Active Orders:</span>
+            <span className="font-semibold text-orange-600">{orders?.filter(o => o.status === 'pending').length || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Completed:</span>
+            <span className="font-semibold text-green-600">{orders?.filter(o => o.status === 'completed').length || 0}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'tables':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="bg-green-500 p-3 rounded-full mr-4">
+                    <Home className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Restaurant Tables</h1>
+                    <p className="text-gray-600 mt-1">Choose a table to start taking orders</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-green-100">
+                  <div className="flex items-center justify-center space-x-6 text-sm">
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Available</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Occupied</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
+                      <span className="text-gray-700">Needs Service</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <TablesPage onSelectTable={handleTableSelect} />
+              
+              {/* Table Status Legend - Enhanced version */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Table Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Available</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Ordering</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Ready to Pay</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-red-800">Occupied</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Click on any table to view details or start taking orders
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'menu':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 p-4 sm:p-6">
+            <div className="max-w-7xl mx-auto">
+              {/* Mobile-First Responsive Layout */}
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+                {/* Menu Section - Takes full width on mobile, 3 columns on desktop */}
+                <div className="xl:col-span-3 order-1">
+                  <MenuPage 
+                    table={selectedTable}
+                    onBack={handleBackFromMenu}
+                    editingOrderId={editingOrderId}
+                    onOrder={handleOrder}
+                  />
+                </div>
+                
+                {/* Cart Section - Hidden on mobile (shown in mobile order summary), 1 column on desktop */}
+                <div className="xl:col-span-1 order-2 xl:order-2 hidden xl:block">
+                  <div className="sticky top-4">
+                    <Cart 
+                      onOrder={handleOrder}
+                      onClearCart={handleClearCart}
+                      editingOrderId={editingOrderId}
+                      onUpdateOrder={updateOrder}
+                      showPaymentSelection={true}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'orderDetails':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-purple-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-purple-500 p-3 rounded-full">
+                      <ClipboardList className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
+                      <p className="text-gray-600">View and manage all customer orders</p>
+                    </div>
+                    <div className="ml-auto flex space-x-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {orders?.filter(o => o.status === 'pending').length || 0}
+                        </div>
+                        <div className="text-xs text-gray-600">Pending</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {orders?.filter(o => o.status === 'completed').length || 0}
+                        </div>
+                        <div className="text-xs text-gray-600">Completed</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Mobile-First Responsive Grid Layout */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+                <div className="xl:col-span-1 order-2 xl:order-1">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+                    <div className="p-3 sm:p-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-800 flex items-center text-sm sm:text-base">
+                        <ClipboardList className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">All Orders</span>
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1 hidden sm:block">Click on any order to view details</p>
+                      <p className="text-xs text-gray-600 mt-1 sm:hidden">Tap to view details</p>
+                    </div>
+                    <OrderList
+                      onEditOrder={handleEditOrder}
+                    />
+                  </div>
+                </div>
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 lg:p-12 text-center">
+                    <div className="mb-4">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Order Management</h3>
+                      <p className="text-sm sm:text-base text-gray-500 px-2">Click on any order in the list to view details, edit, print, or cancel orders</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        💡 <strong>Tip:</strong> Use the filter buttons to view orders by status, and expand table sections to see individual orders
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Table Status Legend for Order Management */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Order Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Pending</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Preparing</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Completed</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Monitor order progress and manage customer requests
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
+            <div className="max-w-4xl mx-auto">
+              {/* Header Section */}
+              <div className="mb-8">
+                <div className="bg-white rounded-xl p-6 shadow-lg border border-indigo-100">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-indigo-500 p-3 rounded-full">
+                      <UserCircle className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
+                      <p className="text-gray-600">View and update your personal information</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <WaiterProfile />
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Dashboard Header */}
+              <div className="mb-8 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="bg-blue-500 p-3 rounded-full mr-4">
+                    <Home className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Waiter Dashboard</h1>
+                    <p className="text-gray-600 mt-1">Welcome back! Manage your tables and orders</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Dashboard Cards */}
+              {renderDashboardCards()}
+              
+              {/* Table Status Legend */}
+              <div className="mt-8">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                    Table Status Legend
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-green-800">Available</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-4 h-4 bg-orange-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-orange-800">Ordering</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-blue-800">Ready to Pay</span>
+                    </div>
+                    <div className="flex items-center justify-center p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-4 h-4 bg-red-500 rounded-full mr-3"></div>
+                      <span className="text-sm font-medium text-red-800">Occupied</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-xs text-gray-500">
+                      Use the cards above to navigate to different sections
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+    }
   };
 
   return (
-    <div className="app-container">
-      <Navbar onNavigate={handleNavigate} />
-      <div className="main-content white-bg">
+    <div className="min-h-screen bg-gray-100">
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <span className="text-xl font-bold text-blue-600">Kebede Butchery</span>
+              </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                {navItems.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={item.onClick}
+                    className={`${activeNav === item.key
+                      ? 'border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                      }`}
+                  >
+                    <span className="mr-1">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:items-center">
+              <div className="ml-3 relative">
+                <div>
+                  <button
+                    type="button"
+                    className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    id="user-menu"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      {authUser?.first_name?.[0] || authUser?.username?.[0] || 'U'}
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="-mr-2 flex items-center sm:hidden">
+              <div className="sm:hidden">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                >
+                  {isMobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <MenuIcon className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="sm:hidden"
+          >
+            <div className="pt-2 pb-3 space-y-1">
+              {navItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => {
+                    item.onClick();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`${
+                    activeNav === item.key
+                      ? 'bg-blue-50 border-blue-500 text-blue-700'
+                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+                  } block pl-3 pr-4 py-2 border-l-4 text-base font-medium w-full text-left`}
+                >
+                  <div className="flex items-center">
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </div>
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  navigate('/logout');
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <div className="flex items-center">
+                  <LogOut className="w-5 h-5 mr-3" />
+                  Sign out
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Status Message */}
         {message && (
-          <div className="app-message" style={{ color: 'red', textAlign: 'center', padding: '10px' }}>
-            {message}
-          </div>
-        )}
-        {currentPage === 'tables' && (
-          <TablesPage onSelectTable={handleTableSelect} />
-        )}
-        {currentPage === 'menu' && (
-          <div className="menu-cart-container">
-            <div className="menu-section">
-              <MenuPage table={selectedTable} onBack={handleBackFromMenu} onOrder={handleOrder} />
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg shadow-md ${
+              message.includes('Error') ? 'bg-red-100 text-red-700' : 
+              message.includes('success') || message.includes('placed') ? 'bg-green-100 text-green-700' : 
+              'bg-blue-100 text-blue-700'
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <p className="flex items-center text-sm sm:text-base">
+                {message.includes('Error') ? (
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                ) : message.includes('success') || message.includes('placed') ? (
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                ) : (
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                )}
+                {message}
+              </p>
+              <button 
+                onClick={() => setMessage('')}
+                className="text-lg sm:text-xl font-semibold hover:opacity-75 transition-opacity p-1"
+                aria-label="Close message"
+              >
+                &times;
+              </button>
             </div>
-            <div className="cart-section">
-              <Cart onOrder={handleOrder} onClearCart={handleClearCart} />
-            </div>
-          </div>
+          </motion.div>
         )}
-        {currentPage === 'orderDetails' && (
-          <div className="order-details-layout">
-            <OrderList
-              onSelectOrder={handleSelectOrder}
-              selectedOrderId={selectedOrderId}
-            />
-            <OrderDetails
-              onEditOrder={handleEditOrder}
-              selectedOrderId={selectedOrderId}
-              onOrderDeleted={handleOrderDeleted}
-            />
-          </div>
-        )}
-        {currentPage === 'profile' && (
-          <WaiterProfile onBack={() => handleNavigate('tables')} />
-        )}
+
+        {/* Page Content */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden shadow-lg">
+        <div className="flex justify-around px-2 py-1">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => {
+                setActiveNav(item.key);
+                handleNavigate(item.key);
+              }}
+              className={`flex flex-col items-center justify-center w-full py-2 px-1 rounded-lg transition-all duration-200 ${
+                activeNav === item.key 
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="text-xl mb-1">
+                {React.cloneElement(item.icon, {
+                  className: `w-6 h-6 ${activeNav === item.key ? 'text-blue-600' : 'text-gray-500'}`
+                })}
+              </div>
+              <span className="text-xs font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Add bottom padding to account for mobile nav */}
+      <div className="h-20 md:hidden"></div>
+
+      {/* Payment Method Modal */}
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentMethodConfirm}
+        selectedTable={selectedTable}
+      />
     </div>
   );
 };
 
 const WaiterDashboardWrapper = () => (
-  
+  <CartProvider>
     <WaiterDashboard />
-  
+  </CartProvider>
 );
 
-export default WaiterDashboard;
+export default WaiterDashboardWrapper;

@@ -12,6 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.contrib import admin
 
+
 # --- Lookup Tables ---
 class ItemType(models.Model):
     type_name = models.CharField(max_length=50, unique=True)
@@ -235,7 +236,8 @@ class Stock(models.Model):
         is_addition: if False, quantities will be subtracted
         """
         
-        print(f"[DEBUG] Stock.adjust_quantity() called - quantity: {quantity}, is_addition: {is_addition}, original_quantity_delta: {original_quantity_delta}")
+        print(f"[DEBUG] Stock.adjust_quantity() called for {self.product.name} - quantity: {quantity}, is_addition: {is_addition}, original_quantity_delta: {original_quantity_delta}")
+        print(f"[DEBUG] Before adjustment - quantity_in_base_units: {self.quantity_in_base_units}, original_quantity: {self.original_quantity}")
 
         # Convert to Decimal and validate
         try:
@@ -306,15 +308,25 @@ class Stock(models.Model):
         if not self.original_unit or not self.product:
             return None
         try:
-            # Use original_quantity directly instead of recalculating from quantity_in_base_units
+            # Calculate the proper breakdown: larger units + remainder in base units
             if self.original_quantity > 0:
+                # Get the conversion factor from original unit to base unit
+                conversion_factor = self.product.get_conversion_factor(self.original_unit, self.product.base_unit)
+                
+                # Calculate how many full original units we have
+                full_original_units = int(self.original_quantity)
+                
+                # Calculate remainder in base units
+                remainder_in_base_units = (self.original_quantity - full_original_units) * conversion_factor
+                
                 return {
-                    'full_units': int(self.original_quantity),
+                    'full_units': full_original_units,
                     'original_unit': self.original_unit.unit_name,
-                    'remainder': 0,
+                    'remainder': int(remainder_in_base_units),
                     'base_unit': self.product.base_unit.unit_name
                 }
-        except Exception:
+        except Exception as e:
+            print(f"Error in original_quantity_display: {e}")
             pass
         return None
 
@@ -483,15 +495,25 @@ class BarmanStock(models.Model):
         if not self.original_unit or not self.stock or not self.stock.product:
             return None
         try:
-            # Use original_quantity directly instead of recalculating from quantity_in_base_units
+            # Calculate the proper breakdown: larger units + remainder in base units
             if self.original_quantity and self.original_quantity > 0:
+                # Get the conversion factor from original unit to base unit
+                conversion_factor = self.stock.product.get_conversion_factor(self.original_unit, self.stock.product.base_unit)
+                
+                # Calculate how many full original units we have
+                full_original_units = int(self.original_quantity)
+                
+                # Calculate remainder in base units
+                remainder_in_base_units = (self.original_quantity - full_original_units) * conversion_factor
+                
                 return {
-                    'full_units': int(self.original_quantity),
+                    'full_units': full_original_units,
                     'original_unit': self.original_unit.unit_name,
-                    'remainder': 0,
+                    'remainder': int(remainder_in_base_units),
                     'base_unit': self.stock.product.base_unit.unit_name
                 }
-        except Exception:
+        except Exception as e:
+            print(f"Error in BarmanStock original_quantity_display: {e}")
             pass
         return None
 
@@ -575,13 +597,16 @@ class InventoryTransaction(models.Model):
         print(f"[DEBUG] InventoryTransaction.save() - skip_stock_adjustment: {skip_stock_adjustment}, self.pk: {self.pk}")
         
         # Calculate quantity_in_base_units ONCE here with proper decimal quantization
-        # Only calculate if not skipping stock adjustment AND if this is a new transaction
-        if not skip_stock_adjustment and not self.pk:
+        # Only calculate if not skipping stock adjustment AND if this is a new transaction AND quantity_in_base_units is not already set
+        if not skip_stock_adjustment and not self.pk and self.quantity_in_base_units == 0:
             conversion_factor = self.product.get_conversion_factor(self.transaction_unit, self.product.base_unit)
             self.quantity_in_base_units = (self.quantity * conversion_factor).quantize(Decimal('0.01'))
             print(f"[DEBUG] Calculated quantity_in_base_units in save(): {self.quantity_in_base_units}")
         else:
-            print(f"[DEBUG] Skipping quantity_in_base_units calculation in save() - skip_stock_adjustment: {skip_stock_adjustment}, is_new: {not self.pk}")
+            print(f"[DEBUG] Skipping quantity_in_base_units calculation in save() - skip_stock_adjustment: {skip_stock_adjustment}, is_new: {not self.pk}, already_set: {self.quantity_in_base_units != 0}")
+            # If quantity_in_base_units is already set, make sure we don't recalculate it
+            if self.quantity_in_base_units != 0:
+                print(f"[DEBUG] quantity_in_base_units already set to: {self.quantity_in_base_units}")
         
         self.full_clean()
         super().save(*args, **kwargs)
@@ -589,27 +614,17 @@ class InventoryTransaction(models.Model):
         # Skip stock adjustments if this is a restock transaction that was already handled by the restock view
         if skip_stock_adjustment:
             print(f"[DEBUG] Skipping stock adjustments due to skip_stock_adjustment=True")
+            print(f"[DEBUG] Transaction saved without any stock adjustments")
+            print(f"[DEBUG] Final transaction values - quantity: {self.quantity}, quantity_in_base_units: {self.quantity_in_base_units}")
             return
             
         # Calculate abs_quantity_in_base_units for stock adjustments
         is_addition = self.quantity_in_base_units > 0
         abs_quantity_in_base_units = abs(self.quantity_in_base_units)
         base_unit_obj = self.product.base_unit
-        
-        # Calculate original_quantity_delta for restock transactions
-        original_quantity_delta = None
-        if self.transaction_type in ['restock', 'adjustment_in']:
-            # For restock, the original_quantity_delta is the quantity in the transaction unit
-            original_quantity_delta = self.quantity
-        
         if self.transaction_type in ['restock', 'adjustment_in']:
             if self.to_stock_main:
-                # Update the stock's original_unit to match the transaction unit for restock
-                if self.to_stock_main.original_unit != self.transaction_unit:
-                    self.to_stock_main.original_unit = self.transaction_unit
-                    self.to_stock_main.save(update_fields=['original_unit'])
-                
-                self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True, original_quantity_delta=original_quantity_delta)
+                self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
             elif self.to_stock_barman:
                 self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
         elif self.transaction_type in ['sale', 'wastage', 'adjustment_out']:
@@ -697,7 +712,7 @@ class InventoryRequest(models.Model):
                     barman_stock.branch = self.branch
                 
                 # Create InventoryTransaction to handle the transfer properly
-                transaction = InventoryTransaction.objects.create(
+                transaction = InventoryTransaction(
                     product=self.product,
                     transaction_type='store_to_barman',
                     quantity=self.quantity,
@@ -710,8 +725,11 @@ class InventoryRequest(models.Model):
                 )
                 # Set the quantity_in_base_units directly to avoid double calculation
                 transaction.quantity_in_base_units = quantity_in_base_units
-                transaction._skip_quantity_calculation = True
-                transaction.save(skip_stock_adjustment=False)  # Let it handle stock adjustments
+                transaction.save(skip_stock_adjustment=True)  # Skip stock adjustment since we handle it manually
+                
+                # Manually adjust the stock quantities
+                store_stock.adjust_quantity(quantity_in_base_units, self.product.base_unit, is_addition=False)
+                barman_stock.adjust_quantity(quantity_in_base_units, self.product.base_unit, is_addition=True)
                 
                 print(f"[DEBUG] InventoryTransaction created for request id={self.pk}")
                 self.responded_at = timezone.now()

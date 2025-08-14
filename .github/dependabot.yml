@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    # Ignore specific vulnerabilities that are in development dependencies
+    ignore:
+      - dependency-name: "nth-check"
+        reason: "Development dependency only, not used in production"
+      - dependency-name: "webpack-dev-server"
+        reason: "Development dependency only, not used in production"
+      - dependency-name: "postcss"
+        reason: "Development dependency only, not used in production" 

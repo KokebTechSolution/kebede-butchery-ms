@@ -37,16 +37,27 @@ const MenuForm = ({
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🔄 Loading menu form data...');
         await syncMenuCategoriesWithInventory();
+        console.log('✅ Synced categories with inventory');
+        
         const [categories, products, menuItems] = await Promise.all([
           fetchMenuCategories(),
           fetchAvailableProducts(),
           fetchMenuItems(),
         ]);
+        
+        console.log('📊 Categories loaded:', categories);
+        console.log('📊 Products loaded:', products);
+        console.log('📊 Products type:', typeof products);
+        console.log('📊 Products is array:', Array.isArray(products));
+        console.log('📊 Menu items loaded:', menuItems);
+        
         setCategories(categories);
-        setAvailableProducts(products);
+        setAvailableProducts(Array.isArray(products) ? products : []);
         setExistingMenuItems(menuItems);
       } catch (error) {
+        console.error('❌ Error loading data:', error);
         setError('Failed to load data.');
       }
     };
@@ -81,9 +92,9 @@ const MenuForm = ({
     const fetchProductPrice = async () => {
       if (formData.product && isBeverage) {
         try {
-          const selectedProduct = availableProducts.find(
+          const selectedProduct = Array.isArray(availableProducts) ? availableProducts.find(
             (p) => String(p.id) === String(formData.product)
-          );
+          ) : null;
           if (selectedProduct) {
             setSelectedProductPrice(selectedProduct.base_unit_price || 'N/A');
           } else {
@@ -122,15 +133,15 @@ const MenuForm = ({
       let productName = '';
       let productId = null;
       if (isBeverage) {
-        const selectedProduct = availableProducts.find(
+        const selectedProduct = Array.isArray(availableProducts) ? availableProducts.find(
           (p) => String(p.id) === String(formData.product)
-        );
+        ) : null;
         if (!selectedProduct) {
           setError('Please select a valid beverage product.');
           setLoading(false);
           return;
         }
-        productName = selectedProduct.name || selectedProduct.product_name;
+        productName = selectedProduct.name;
         productId = selectedProduct.id;
       } else {
         if (!formData.product) {
@@ -267,11 +278,13 @@ const MenuForm = ({
             className="w-full p-2 border rounded"
           >
             <option value="">-- Select Beverage Product --</option>
-            {availableProducts.map((product) => (
+            {Array.isArray(availableProducts) ? availableProducts.map((product) => (
               <option key={product.id} value={product.id}>
-                {product.product_name || product.name}
+                {product.name}
               </option>
-            ))}
+            )) : (
+              <option value="">Loading products...</option>
+            )}
           </select>
         ) : (
           <input

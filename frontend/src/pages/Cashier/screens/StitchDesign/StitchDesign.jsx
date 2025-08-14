@@ -8,6 +8,7 @@ import { ReportSection } from "./sections/ReportSection";
 
 export const StitchDesign = () => {
   const [activeSection, setActiveSection] = useState("orders");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const renderMainContent = () => {
     switch (activeSection) {
@@ -22,6 +23,12 @@ export const StitchDesign = () => {
       default:
         return <SidebarSection />;
     }
+  };
+
+  // Close mobile menu when section changes
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
   };
 
   return (

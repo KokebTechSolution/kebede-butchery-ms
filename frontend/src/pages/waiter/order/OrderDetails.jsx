@@ -1,45 +1,59 @@
-import React, { useEffect, useState } from 'react';
-import './OrderDetails.css'; // We will create this file next
-import { useCart } from '../../../context/CartContext';
-import { tables } from '../tables/TablesPage';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { updatePaymentOption, getOrderById } from '../../../api/cashier';
+import { API_BASE_URL } from '../../../api/config';
+import './OrderDetails.css';
 
-const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
-  const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
+const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted }) => {
   const [currentOrder, setCurrentOrder] = useState(null);
-  const [printedOrders, setPrintedOrders] = useState(() => {
-    const saved = localStorage.getItem('printedOrders');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Get current user from auth context
+  const { user } = useAuth();
+
+  console.log('OrderDetails - selectedOrderId:', selectedOrderId);
+  console.log('OrderDetails - currentOrder:', currentOrder);
 
   useEffect(() => {
-    localStorage.setItem('printedOrders', JSON.stringify(printedOrders));
-  }, [printedOrders]);
+    if (selectedOrderId) {
+      fetchOrderDetails();
+    }
+  }, [selectedOrderId]);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      if (selectedOrderId) {
-        try {
-          const order = await getOrderById(selectedOrderId);
-          setCurrentOrder(order);
-        } catch (error) {
-          setCurrentOrder(null);
-        }
-      } else if (activeTableId) {
-        // If no specific order is selected, show the current active cart as a 'pending' order
-        const currentPendingOrder = {
-          id: `pending-${activeTableId}`, // Use a unique ID for pending order
-          tableId: activeTableId,
-          items: cartItems, // Use cartItems directly from context
-          timestamp: new Date().toISOString(),
-        };
-        setCurrentOrder(currentPendingOrder);
+  const fetchOrderDetails = async () => {
+    try {
+      setLoading(true);
+      const orderData = await getOrderById(selectedOrderId);
+      setCurrentOrder(orderData);
+    } catch (err) {
+      setError('Failed to fetch order details');
+      console.error('Error fetching order details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateCashierStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${currentOrder.id}/update-cashier-status/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        // Refresh order details
+        await fetchOrderDetails();
       } else {
-        setCurrentOrder(null);
+        console.error('Failed to update cashier status');
       }
-    };
-    fetchOrder();
-  }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
+    } catch (error) {
+      console.error('Error updating cashier status:', error);
+    }
+  };
 
   const getTotalPrice = (items) => {
     return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -48,39 +62,118 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
 
   const handleDeleteOrder = () => {
     if (currentOrder && currentOrder.id && !String(currentOrder.id).startsWith('pending-')) {
-      deleteOrder(currentOrder.id);
-      if (onOrderDeleted) {
-        onOrderDeleted();
-      }
+      // This function is no longer directly available from useCart,
+      // so it will be removed or refactored if needed.
+      // For now, we'll just log a message.
+      console.log('Deleting order:', currentOrder.id);
+      // If onOrderDeleted is passed as a prop, call it.
+      // If not, this function will be removed or refactored.
     } else if (currentOrder && String(currentOrder.id).startsWith('pending-')) {
       // If it's a pending order, clear the cart and then navigate back to tables.
-      clearCart(); 
-      if (onOrderDeleted) {
-        onOrderDeleted();
+      // This function is no longer directly available from useCart,
+      // so it will be removed or refactored if needed.
+      // For now, we'll just log a message.
+      console.log('Clearing pending order cart:', currentOrder.id);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!currentOrder || !currentOrder.id) {
+      alert('No order to cancel');
+      return;
+    }
+
+    const reason = prompt('Please provide a reason for cancellation:');
+    if (!reason) {
+      alert('Cancellation cancelled - no reason provided');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${currentOrder.id}/cancel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ Order cancelled successfully!\nReason: ${reason}`);
+        // Refresh order details
+        await fetchOrderDetails();
+        // Notify parent component
+        if (onOrderDeleted) {
+          onOrderDeleted();
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`❌ Failed to cancel order: ${errorData.error || 'Unknown error'}`);
       }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('❌ Error cancelling order. Please try again.');
     }
   };
 
   const handlePaymentOptionChange = async (orderId, paymentOption) => {
     try {
+      console.log('[DEBUG] handlePaymentOptionChange - Order ID:', orderId);
+      console.log('[DEBUG] handlePaymentOptionChange - Payment Option:', paymentOption);
+      console.log('[DEBUG] handlePaymentOptionChange - Current Order:', currentOrder);
+      
       // We need to refetch or update the order in the parent component's state
       // For now, let's just update the local state for immediate feedback
       const updatedOrder = await updatePaymentOption(orderId, paymentOption);
+      
+      console.log('[DEBUG] handlePaymentOptionChange - Updated Order:', updatedOrder);
+      console.log('[DEBUG] handlePaymentOptionChange - Updated Payment Option:', updatedOrder.payment_option);
+      
       setCurrentOrder(updatedOrder);
+      
+      // Show success message
+      alert(`✅ Payment method updated to: ${paymentOption.charAt(0).toUpperCase() + paymentOption.slice(1)}`);
+      
     } catch (error) {
-      console.error('Failed to update payment option:', error);
+      console.error('[ERROR] Failed to update payment option:', error);
+      
+      let errorMessage = '❌ Failed to update payment method';
+      if (error.response) {
+        console.error('[ERROR] Response status:', error.response.status);
+        console.error('[ERROR] Response data:', error.response.data);
+        
+        if (error.response.status === 404) {
+          errorMessage += ': Order not found';
+        } else if (error.response.status === 400) {
+          errorMessage += ': Invalid payment method';
+        } else if (error.response.data && error.response.data.error) {
+          errorMessage += ': ' + error.response.data.error;
+        }
+      } else {
+        errorMessage += ': ' + error.message;
+      }
+      
+      alert(errorMessage);
     }
   };
 
-  const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
+  const isPrinted = currentOrder && currentOrder.printed_orders && currentOrder.printed_orders.includes(currentOrder.id);
   // Only allow print if all items are accepted or rejected
   const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected');
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
       <div className="order-details-container" style={{ textAlign: 'center', padding: '20px' }}>
-        <h2>No items in this order.</h2>
-        <p>Please add items to the cart from the menu page or select an existing order.</p>
+        <h2>No Order Selected</h2>
+        <p>Please select an existing order from the list on the left to view its details.</p>
+        <div className="mt-4 space-y-2">
+          <p>To create a new order:</p>
+          <p>1. Go to <strong>Tables</strong> to select a table</p>
+          <p>2. Add items to cart from the <strong>Menu</strong></p>
+          <p>3. Place an order to see it here</p>
+        </div>
       </div>
     );
   }
@@ -145,12 +238,13 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
           >
             🖨️
           </span>
+          <span className="icon" onClick={handleCancelOrder}>❌</span>
           <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
         </div>
       </div>
 
       <div className="order-summary">
-        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
+        <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.table_number})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
         <div className="payment-options">
           {currentOrder.payment_option ? (
             <p>

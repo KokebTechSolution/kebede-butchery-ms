@@ -1,6 +1,29 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getMyOrders } from '../../../api/cashier'; // adjust path as needed
+import { deleteOrder, updateOrderStatus, updatePaymentOption, printOrder } from '../../../api/waiterApi';
 import NotificationPopup from '../../../components/NotificationPopup.jsx';
+import EditOrderModal from './EditOrderModal';
+import CancelOrderModal from './CancelOrderModal';
+import { 
+  Calendar, 
+  Filter, 
+  Clock, 
+  AlertCircle, 
+  CheckCircle, 
+  Printer, 
+  RefreshCw,
+  TrendingUp,
+  DollarSign,
+  Users,
+  ClipboardList,
+  Table as TableIcon,
+  ChevronRight,
+  ChevronDown,
+  Edit,
+  Trash2,
+  X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './OrderList.css';
 
 const getTodayDateString = () => {
@@ -25,7 +48,33 @@ const getStatusLabel = (status) => {
   }
 };
 
-const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'ready_for_payment':
+      return <TrendingUp className="w-4 h-4 text-blue-600" />;
+    case 'printed':
+      return <Printer className="w-4 h-4 text-green-600" />;
+    case 'pending':
+      return <Clock className="w-4 h-4 text-orange-600" />;
+    default:
+      return <AlertCircle className="w-4 h-4 text-gray-600" />;
+  }
+};
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'ready_for_payment':
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'printed':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'pending':
+      return 'bg-orange-100 text-orange-800 border-orange-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey, onEditOrder }) => {
   const [orders, setOrders] = useState([]);
   const [filterDate, setFilterDate] = useState(() => {
     // Load saved date filter from localStorage
@@ -40,6 +89,20 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
   const [manualRefreshKey, setManualRefreshKey] = useState(0); // for manual refresh
   const [showNotification, setShowNotification] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [expandedTables, setExpandedTables] = useState(new Set()); // Track which tables are expanded
+  const [processingOrderId, setProcessingOrderId] = useState(null); // Track which order is being processed
+  const [message, setMessage] = useState(''); // For success/error messages
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    printed: 0,
+    totalAmount: 0
+  });
   const prevOrderIdsRef = useRef([]);
   const pollingRef = useRef(null);
 
@@ -49,6 +112,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
       setOrders(data);
       return data;
     } catch (error) {
+      console.error(`[DEBUG] OrderList: Error fetching orders:`, error);
       setOrders([]);
       return [];
     }
@@ -75,7 +139,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
     // eslint-disable-next-line
   }, [filterDate, statusFilter, refreshKey, manualRefreshKey]);
 
-  // Polling for new orders
+  // Listen for order update events
   useEffect(() => {
     pollingRef.current = setInterval(async () => {
       const status = statusFilter === 'all' ? null : statusFilter;
@@ -108,13 +172,25 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
 
   return (
     <div className="order-list-container">
+      {/* Message Display */}
+      {message && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg ${
+            message.includes('✅') ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+          }`}
+        >
+          {message}
+        </motion.div>
+      )}
+
+      {/* Notification Popup */}
       {showNotification && notificationOrder && (
         <NotificationPopup
-          message="New order received!"
-          orderNumber={notificationOrder.order_number}
-          tableName={notificationOrder.table_name || notificationOrder.table || 'N/A'}
-          soundSrc="/notification.mp3"
+          order={notificationOrder}
           onClose={() => setShowNotification(false)}
+          tableName={notificationOrder.table_number || 'N/A'}
         />
       )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>

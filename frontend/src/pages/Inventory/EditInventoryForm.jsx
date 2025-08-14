@@ -1,22 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let c of cookies) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
 
 const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -65,9 +50,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     setLoadingValidUnits(true);
     try {
       // Use the new valid_units endpoint
-      const res = await axios.get(`http://localhost:8000/api/inventory/products/${product.id}/valid_units/`, {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get(`inventory/products/${product.id}/valid_units/`);
       
       if (res.data.valid_units && res.data.valid_units.length > 0) {
         setValidRestockUnits(res.data.valid_units);
@@ -97,9 +80,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   useEffect(() => {
     const fetchStock = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/inventory/stocks/', {
-          withCredentials: true,
-        });
+        const res = await axiosInstance.get('inventory/stocks/');
         const branchStock = res.data.find(
           (stock) => stock.product.id === product.id && stock.branch.id === branchId
         );
@@ -237,15 +218,10 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       base_unit_id: formData.base_unit_id,
       category_id: formData.category,
     };
-    const csrfToken = getCookie('csrftoken');
     try {
-      await axios.put(
-        `http://localhost:8000/api/inventory/products/${product.id}/`,
-        updatedProduct,
-        {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': csrfToken },
-        }
+      await axiosInstance.put(
+        `inventory/products/${product.id}/`,
+        updatedProduct
       );
       alert(t('inventory_updated'));
       onSuccess();
@@ -268,12 +244,6 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       return;
     }
 
-    // Check if stockId exists
-    if (!stockId) {
-      setRestockError('❌ No stock found for this product and branch. Please contact admin to create initial stock.');
-      return;
-    }
-
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('quantity', restockData.restock_quantity);
@@ -286,7 +256,6 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
 
       // Debug logging - check each field individually
       console.log('=== RESTOCK DEBUG ===');
-      console.log('stockId:', stockId);
       console.log('restockData.restock_quantity:', restockData.restock_quantity, typeof restockData.restock_quantity);
       console.log('restockData.restock_type:', restockData.restock_type, typeof restockData.restock_type);
       console.log('restockData.price_per_unit:', restockData.price_per_unit, typeof restockData.price_per_unit);
@@ -299,13 +268,11 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         console.log(`${key}:`, value, typeof value);
       }
 
-      await axios.post(
-        `http://localhost:8000/api/inventory/stocks/${stockId}/restock/`,
+      await axiosInstance.post(
+        `inventory/stocks/${stockId}/restock/`,
         formDataToSend,
         {
-          withCredentials: true,
           headers: { 
-            'X-CSRFToken': getCookie('csrftoken'),
             'Content-Type': 'multipart/form-data'
           },
         }
@@ -340,15 +307,9 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     if (!window.confirm('Are you sure you want to delete this product and its stock?')) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${product.id}/`, {
-        withCredentials: true,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-      });
+      await axiosInstance.delete(`inventory/products/${product.id}/`);
       if (stockId) {
-        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': getCookie('csrftoken') },
-        });
+        await axiosInstance.delete(`inventory/stocks/${stockId}/`);
       }
       alert('Product and stock deleted.');
       onSuccess();
@@ -459,42 +420,21 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         />
       </div>
 
-      {/* Stock Status Message */}
-      {!stockId && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-yellow-800">
-                No stock record found for this product and branch.
-              </p>
-              <p className="text-xs text-yellow-700 mt-1">
-                Contact an administrator to create initial stock before restocking.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="flex justify-between mt-6">
         <div className="flex space-x-3">
-          <button 
-            onClick={openRestockModal} 
-            disabled={!stockId}
-            className={`px-4 py-2 rounded-lg transition-colors duration-200 flex items-center space-x-2 ${
-              stockId 
-                ? 'bg-green-600 text-white hover:bg-green-700' 
-                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>{stockId ? 'Restock' : 'No Stock'}</span>
-          </button>
+          {/* Restock button - only for managers */}
+          {user?.role === 'manager' && (
+            <button 
+              onClick={openRestockModal} 
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>Restock</span>
+            </button>
+          )}
           <button 
             onClick={handleSubmit} 
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -765,13 +705,11 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                     }
                     
                     try {
-                      await axios.post(
-                        `http://localhost:8000/api/inventory/stocks/${stockId}/restock/`,
+                      await axiosInstance.post(
+                        `inventory/stocks/${stockId}/restock/`,
                         testFormData,
                         {
-                          withCredentials: true,
                           headers: { 
-                            'X-CSRFToken': getCookie('csrftoken'),
                             'Content-Type': 'multipart/form-data'
                           },
                         }

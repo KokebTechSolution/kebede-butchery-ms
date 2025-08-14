@@ -12,6 +12,7 @@ class Order(models.Model):
         ('preparing', 'Preparing'),
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
         ('not_applicable', 'Not Applicable'),
     ]
     order_number = models.CharField(max_length=255, unique=True)
@@ -50,6 +51,50 @@ class Order(models.Model):
 
     def all_items_completed(self):
         return all(item.status == 'accepted' for item in self.items.all())
+    
+    def has_pending_beverage_items(self):
+        """Check if there are any pending beverage items that need approval"""
+        return self.beverage_items.filter(status='pending').exists()
+    
+    def has_pending_food_items(self):
+        """Check if there are any pending food items that need approval"""
+        return self.food_items.filter(status='pending').exists()
+    
+    def calculate_beverage_status(self):
+        """Calculate beverage status based on item statuses"""
+        beverage_items = self.beverage_items
+        if not beverage_items.exists():
+            return 'not_applicable'
+        
+        if beverage_items.filter(status='pending').exists():
+            return 'pending'
+        elif beverage_items.filter(status='rejected').exists():
+            return 'rejected'
+        elif beverage_items.filter(status='accepted').exists():
+            if beverage_items.filter(status='accepted').count() == beverage_items.count():
+                return 'completed'
+            else:
+                return 'pending'
+        else:
+            return 'pending'
+    
+    def calculate_food_status(self):
+        """Calculate food status based on item statuses"""
+        food_items = self.food_items
+        if not food_items.exists():
+            return 'not_applicable'
+        
+        if food_items.filter(status='pending').exists():
+            return 'pending'
+        elif food_items.filter(status='rejected').exists():
+            return 'rejected'
+        elif food_items.filter(status='accepted').exists():
+            if food_items.filter(status='accepted').count() == food_items.count():
+                return 'completed'
+            else:
+                return 'pending'
+        else:
+            return 'pending'
 
 class OrderItem(models.Model):
     ORDER_ITEM_TYPE = [
@@ -61,6 +106,7 @@ class OrderItem(models.Model):
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='items')
     name = models.CharField(max_length=100)

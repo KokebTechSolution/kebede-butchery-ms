@@ -35,6 +35,10 @@ class TableSerializer(serializers.ModelSerializer):
     def validate(self, data):
         user = self.context['request'].user
         number = data.get('number')
+        print(f"[DEBUG] TableSerializer validate - User: {user.username}, Number: {number}")
+        print(f"[DEBUG] Existing tables for user: {Table.objects.filter(created_by=user).count()}")
         if Table.objects.filter(number=number, created_by=user).exists():
+            print(f"[DEBUG] Validation error - table {number} already exists for user {user.username}")
             raise serializers.ValidationError("A table with this number already exists for this waiter.")
+        print(f"[DEBUG] Validation passed for table {number}")
         return data 

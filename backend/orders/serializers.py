@@ -1,34 +1,31 @@
 from rest_framework import serializers
 from .models import Order, OrderItem
-from django.db import transaction
 from branches.models import Table
+from django.db import transaction
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+import json
+from .utils import get_waiter_actions, validate_order_update, update_order_with_validation
+
+def send_notification_to_role(role, message):
+    """Send notification to users with specific role via WebSocket"""
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"{role}_notifications",
+            {
+                "type": "send_notification",
+                "message": message
+            }
+        )
+        print(f"📢 Notification sent to {role}: {message}")
+    except Exception as e:
+        print(f"❌ Failed to send notification to {role}: {e}")
 
 class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status', 'product']
-
-
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
-    waiterName = serializers.CharField(source='created_by.username', read_only=True)
-    has_payment = serializers.SerializerMethodField()
-    table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
-    table_number = serializers.IntegerField(source='table.number', read_only=True)
-    branch = serializers.PrimaryKeyRelatedField(read_only=True)
-
-    class Meta:
-        model = Order
-        fields = ['id', 'order_number','table', 'table_number', 'waiterName', 'assigned_to', 'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at', 'total_money', 'cashier_status', 'payment_option', 'has_payment']
-
-
-        read_only_fields = ['created_at', 'updated_at', 'order_number']
-
- 
-class OrderItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -48,6 +45,14 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Only override items if this is the base OrderSerializer
+        # Child serializers (FoodOrderSerializer, BeverageOrderSerializer) will handle their own items
+        if not hasattr(self, 'get_items'):
+            representation['items'] = OrderItemSerializer(instance.items.all(), many=True).data
+        return representation
+
     def create(self, validated_data):
         items_data = validated_data.pop('items', None)
         table = validated_data.get('table')
@@ -61,10 +66,18 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Order must include 'items'.")
 
         order = Order.objects.create(**validated_data)
+        print(f"[DEBUG] OrderSerializer.create - Order created: {order.id}")
+        
         total = 0
         for item_data in items_data:
             try:
+                print(f"[DEBUG] OrderSerializer.create - Creating item with data: {item_data}")
+                print(f"[DEBUG] OrderSerializer.create - Product field: {item_data.get('product')}")
+                
+                # Create order item with original item_type (no mapping needed)
                 item = OrderItem.objects.create(order=order, **item_data)
+                print(f"[DEBUG] OrderSerializer.create - Item created: {item.id}, Product: {item.product}, item_type: {item_data.get('item_type')}")
+                
                 if item.status == 'accepted':
                     total += item.price * item.quantity
             except Exception as e:
@@ -72,58 +85,131 @@ class OrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(f"Error creating order item: {str(e)}")
 
         order.total_money = total
-        if order.all_items_completed():
-            order.food_status = 'completed'
-            order.beverage_status = 'completed'
+        
+        # Set initial statuses based on actual items in the order
+        beverage_items = [item for item in items_data if item.get('item_type') == 'beverage']
+        food_items = [item for item in items_data if item.get('item_type') == 'food']
+        
+        # Set food status based on food items
+        if food_items:
+            order.food_status = 'pending'
+        else:
+            order.food_status = 'not_applicable'
+        
+        # Set beverage status based on beverage items
+        if beverage_items:
+            order.beverage_status = 'pending'
+        else:
+            order.beverage_status = 'not_applicable'
+        
         order.save()
+        
+        # Send notifications to respective roles for new orders
+        if beverage_items:
+            beverage_message = f"New order #{order.order_number} (Table {order.table.number}) with {len(beverage_items)} beverage item(s)"
+            send_notification_to_role('bartender', beverage_message)
+        
+        if food_items:
+            food_message = f"New order #{order.order_number} (Table {order.table.number}) with {len(food_items)} food item(s)"
+            send_notification_to_role('meat_area', food_message)
+        
         return order
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        # Update order fields as needed
-        instance.food_status = validated_data.get('food_status', instance.food_status)
-        new_beverage_status = validated_data.get('beverage_status', instance.beverage_status)
-        if instance.beverage_status != 'preparing':
-            instance.beverage_status = new_beverage_status
-        instance.assigned_to = validated_data.get('assigned_to', instance.assigned_to)
-        instance.save()
+        try:
+            print(f"[DEBUG] OrderSerializer.update - Starting update for order {instance.id}")
+            print(f"[DEBUG] OrderSerializer.update - Validated data: {validated_data}")
+            
+            # Get the user making the update
+            user = self.context.get('request').user if hasattr(self.context, 'get') and self.context.get('request') else None
+            
+            items_data = validated_data.get('items')
+            if items_data is not None:
+                print(f'[DEBUG] OrderSerializer.update - Processing items_data: {items_data}')
+                
+                # Use the new validation and update logic
+                update_result = update_order_with_validation(instance.id, items_data, user)
+                
+                if not update_result['success']:
+                    raise serializers.ValidationError(update_result['error'])
+                
+                print(f'[DEBUG] OrderSerializer.update - Update successful: {update_result["message"]}')
+                
+                # Refresh the instance to get updated data
+                instance.refresh_from_db()
+                
+                # Recalculate order statuses based on current items
+                beverage_items = instance.items.filter(item_type='beverage')
+                food_items = instance.items.filter(item_type='food')
+                
+                # Update food status
+                if food_items.exists():
+                    if food_items.filter(status='pending').exists():
+                        instance.food_status = 'pending'
+                    elif food_items.filter(status='rejected').exists():
+                        instance.food_status = 'rejected'
+                    elif food_items.filter(status='accepted').count() == food_items.count():
+                        instance.food_status = 'completed'
+                    else:
+                        instance.food_status = 'pending'
+                else:
+                    instance.food_status = 'not_applicable'
+                
+                # Update beverage status
+                if beverage_items.exists():
+                    if beverage_items.filter(status='pending').exists():
+                        instance.beverage_status = 'pending'
+                    elif beverage_items.filter(status='rejected').exists():
+                        instance.beverage_status = 'rejected'
+                    elif beverage_items.filter(status='accepted').count() == beverage_items.count():
+                        instance.beverage_status = 'completed'
+                    else:
+                        instance.beverage_status = 'pending'
+                else:
+                    instance.beverage_status = 'not_applicable'
+                
+                instance.save()
+                
+                # Send notifications to respective roles
+                beverage_items_data = [item for item in items_data if item.get('item_type') == 'beverage']
+                food_items_data = [item for item in items_data if item.get('item_type') == 'food']
+                
+                if beverage_items_data:
+                    beverage_message = f"Order #{instance.order_number} (Table {instance.table.number}) updated with {len(beverage_items_data)} beverage item(s)"
+                    send_notification_to_role('bartender', beverage_message)
+                
+                if food_items_data:
+                    food_message = f"Order #{instance.order_number} (Table {instance.table.number}) updated with {len(food_items_data)} food item(s)"
+                    send_notification_to_role('meat_area', food_message)
+                
+                print(f'[DEBUG] OrderSerializer.update - Final order state:')
+                print(f'[DEBUG] OrderSerializer.update - Total money: {instance.total_money}')
+                print(f'[DEBUG] OrderSerializer.update - Items after update: {list(instance.items.values())}')
+                
+            else:
+                # Update other fields if no items data
+                instance.food_status = validated_data.get('food_status', instance.food_status)
+                new_beverage_status = validated_data.get('beverage_status', instance.beverage_status)
+                if instance.beverage_status != 'preparing':
+                    instance.beverage_status = new_beverage_status
+                instance.assigned_to = validated_data.get('assigned_to', instance.assigned_to)
+                instance.save()
 
-        items_data = validated_data.get('items')
-        if items_data is not None:
-            print('DEBUG PATCH items_data:', items_data)  # <-- debug log
-            # Only delete and recreate items of the same type as the update (beverage or food)
-            item_types = set(item['item_type'] for item in items_data if 'item_type' in item)
-            if not item_types:
-                item_types = set(['beverage'])  # fallback for beverage serializer
-            instance.items.filter(item_type__in=item_types).delete()
-
-            new_total = 0
-            new_beverage_item_added = False
-            new_food_item_added = False
-
-            for item_data in items_data:
-                if 'status' not in item_data:
-                    item_data['status'] = 'pending'
-                item = OrderItem.objects.create(order=instance, **item_data)
-                if item.status == 'accepted':
-                    new_total += item.price * item.quantity
-                if item.item_type == 'beverage':
-                    new_beverage_item_added = True
-                if item.item_type == 'food':
-                    new_food_item_added = True
-
-            instance.total_money = new_total
-            if new_beverage_item_added and instance.beverage_status != 'preparing':
-                instance.beverage_status = 'pending'
-            if new_food_item_added and instance.food_status != 'preparing':
-                instance.food_status = 'pending'
-
-            if instance.all_items_completed():
-                instance.food_status = 'completed'
-                instance.beverage_status = 'completed'
-            instance.save()
-
-        return instance
+            print(f'[DEBUG] OrderSerializer.update - Update completed for order {instance.id}')
+            
+            # Verify the update was actually saved to database
+            instance.refresh_from_db()
+            print(f'[DEBUG] OrderSerializer.update - After refresh from DB:')
+            print(f'[DEBUG] OrderSerializer.update - Order {instance.id} total_money: {instance.total_money}')
+            print(f'[DEBUG] OrderSerializer.update - Order {instance.id} items count: {instance.items.count()}')
+            print(f'[DEBUG] OrderSerializer.update - Order {instance.id} items: {list(instance.items.values())}')
+            
+            return instance
+            
+        except Exception as e:
+            print(f'[ERROR] OrderSerializer.update - Error updating order {instance.id}: {str(e)}')
+            raise
 
     def get_has_payment(self, obj):
         from payments.models import Payment
@@ -135,11 +221,11 @@ class OrderSerializer(serializers.ModelSerializer):
 class FoodOrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
-        fields = ['id', 'name', 'quantity', 'price', 'status']
+        fields = ['id', 'name', 'quantity', 'price', 'item_type', 'status']
         
 
 class FoodOrderSerializer(OrderSerializer):
-    items = FoodOrderItemSerializer(many=True, source='food_items')
+    items = serializers.SerializerMethodField()
     status = serializers.CharField(source='food_status')
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)
@@ -150,6 +236,11 @@ class FoodOrderSerializer(OrderSerializer):
             'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
             'status', 'items', 'created_at', 'has_payment'
         ]
+    
+    def get_items(self, obj):
+        # Only return food items
+        food_items = obj.items.filter(item_type='food')
+        return FoodOrderItemSerializer(food_items, many=True).data
 
 
 class BeverageOrderItemSerializer(serializers.ModelSerializer):
@@ -159,7 +250,7 @@ class BeverageOrderItemSerializer(serializers.ModelSerializer):
 
 
 class BeverageOrderSerializer(OrderSerializer):
-    items = BeverageOrderItemSerializer(many=True, source='beverage_items')
+    items = serializers.SerializerMethodField()
     status = serializers.CharField(source='beverage_status')
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)
@@ -171,3 +262,8 @@ class BeverageOrderSerializer(OrderSerializer):
             'id', 'order_number', 'table', 'table_number', 'created_by', 'waiterName',
             'status', 'items', 'created_at', 'has_payment','branch_id'
         ]
+    
+    def get_items(self, obj):
+        # Only return beverage items
+        beverage_items = obj.items.filter(item_type='beverage')
+        return BeverageOrderItemSerializer(beverage_items, many=True).data

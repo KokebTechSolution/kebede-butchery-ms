@@ -53,21 +53,54 @@ export const SidebarSection = () => {
       if (typeof paymentMethod === "string" && paymentMethod.startsWith('"') && paymentMethod.endsWith('"')) {
         paymentMethod = paymentMethod.slice(1, -1);
       }
-      await axiosInstance.post('/payments/payments/', {
+      
+      const paymentData = {
         order: order.id,
         payment_method: paymentMethod,
         amount: order.total_money,
+      };
+      
+      console.log('[DEBUG] Processing payment with data:', paymentData);
+      console.log('[DEBUG] Order details:', {
+        id: order.id,
+        order_number: order.order_number,
+        total_money: order.total_money,
+        payment_option: order.payment_option,
+        has_payment: order.has_payment
       });
-      alert('Payment processed and saved!');
+      
+      const response = await axiosInstance.post('/payments/payments/', paymentData);
+      console.log('[DEBUG] Payment response:', response.data);
+      
+      alert('✅ Payment processed and saved successfully!');
       // Refetch orders from backend to get updated payment status
       fetchOrders(filterDate);
     } catch (error) {
-      let msg = 'Failed to process payment';
-      if (error.response && error.response.data) {
-        msg += ': ' + JSON.stringify(error.response.data);
+      console.error('[ERROR] Payment processing failed:', error);
+      
+      let msg = '❌ Failed to process payment';
+      if (error.response) {
+        console.error('[ERROR] Response status:', error.response.status);
+        console.error('[ERROR] Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          msg += ': Authentication required. Please log in again.';
+        } else if (error.response.status === 403) {
+          msg += ': Permission denied. You may not have access to process payments.';
+        } else if (error.response.status === 400) {
+          msg += ': Invalid payment data. Please check the order details.';
+        } else if (error.response.data) {
+          msg += ': ' + JSON.stringify(error.response.data);
+        }
+      } else if (error.request) {
+        msg += ': Network error. Please check your connection.';
+        console.error('[ERROR] No response received:', error.request);
+      } else {
+        msg += ': ' + error.message;
+        console.error('[ERROR] Request setup error:', error.message);
       }
+      
       alert(msg);
-      console.error(error);
     } finally {
       setClickedIndex(null);
     }
@@ -94,6 +127,7 @@ export const SidebarSection = () => {
     if (typeof opt === 'string' && opt.startsWith('"') && opt.endsWith('"')) {
       opt = opt.slice(1, -1);
     }
+    
     return opt.charAt(0).toUpperCase() + opt.slice(1);
   };
 

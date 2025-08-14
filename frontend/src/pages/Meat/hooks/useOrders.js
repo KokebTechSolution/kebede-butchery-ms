@@ -6,9 +6,9 @@ export const useOrders = (filterDate) => {
 
   const fetchOrders = async (date) => {
     try {
-      let url = 'http://localhost:8000/api/orders/food/';
+      let url = 'orders/food/';
       if (date) url += `?date=${date}`;
-      const response = await axios.get(url, { withCredentials: true });
+      const response = await axiosInstance.get(url);
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -89,6 +89,7 @@ export const useOrders = (filterDate) => {
 
   const acceptOrderItem = (itemId) => updateOrderItemStatus(itemId, 'accepted');
   const rejectOrderItem = (itemId) => updateOrderItemStatus(itemId, 'rejected');
+  const cancelOrderItem = (itemId) => updateOrderItemStatus(itemId, 'cancelled');
 
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
@@ -112,6 +113,7 @@ export const useOrders = (filterDate) => {
     getActiveOrders,
     acceptOrderItem,
     rejectOrderItem,
+    cancelOrderItem,
     setOrderPrinted // <-- export the new function
   };
 };

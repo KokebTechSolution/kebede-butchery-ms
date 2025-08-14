@@ -1,24 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api/users/users/';
-
-// Helper to get CSRF token from cookie
-function getCSRFToken() {
-  const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
-  return match ? match[2] : null;
-}
-
-// Create axios instance with session auth support
-const createAxiosInstance = () => {
-  return axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCSRFToken(),
-    },
-    withCredentials: true,  // Important for sending cookies
-  });
-};
+import axiosInstance from './axiosInstance';
 
 const getFriendlyErrorMessage = (error) => {
   if (error.response?.data) {
@@ -37,7 +17,7 @@ const getFriendlyErrorMessage = (error) => {
 
 export const fetchStaffList = async () => {
   try {
-    const response = await createAxiosInstance().get('/');
+    const response = await axiosInstance.get('users/users/');
     // Defensive: handle array or object
     if (Array.isArray(response.data)) {
       return response.data;
@@ -58,7 +38,7 @@ export const fetchStaffList = async () => {
 
 export const addUser = async (formData) => {
   try {
-    const response = await createAxiosInstance().post('/', formData);
+    const response = await axiosInstance.post('users/users/', formData);
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
@@ -68,7 +48,7 @@ export const addUser = async (formData) => {
 
 export const updateUser = async (id, formData) => {
   try {
-    const response = await createAxiosInstance().put(`${id}/`, formData);
+    const response = await axiosInstance.put(`users/users/${id}/`, formData);
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
@@ -78,7 +58,7 @@ export const updateUser = async (id, formData) => {
 
 export const deleteUser = async (id) => {
   try {
-    await createAxiosInstance().delete(`${id}/`);
+    await axiosInstance.delete(`users/users/${id}/`);
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
     throw new Error(message);
@@ -87,20 +67,20 @@ export const deleteUser = async (id) => {
 
 export const resetUserPassword = async (id, newPassword) => {
   try {
-    const response = await createAxiosInstance().post(`${id}/reset-password/`, { password: newPassword });
+    const response = await axiosInstance.post(`users/users/${id}/reset-password/`, { password: newPassword });
     return response.data;
   } catch (error) {
     const message = getFriendlyErrorMessage(error);
-    throw new Error(message);
+    throw new Error(error.response?.data?.error || 'Password reset failed');
   }
 };
 
 export const fetchBranches = async () => {
   try {
-    const response = await createAxiosInstance().get('branches/');
+    const response = await axiosInstance.get('branches/');
     return response.data;
   } catch (error) {
     console.warn('Failed to fetch branches:', error);
-    throw new Error('Unable to load branches. Please try again later.');
+    throw new Error('Unable to load branches. Please refresh or try again later.');
   }
 };

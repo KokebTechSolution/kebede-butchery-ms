@@ -14,7 +14,7 @@ const getTodayDateString = () => {
 };
 
 export const Pending = ({ filterDate, setFilterDate }) => {
-  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, setOrderPrinted } = useOrders(filterDate);
+  const { getActiveOrders, getClosedOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, cancelOrderItem, setOrderPrinted } = useOrders(filterDate);
   // Use only active orders (move this to the top)
   const allOrders = getActiveOrders().slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const [showNotification, setShowNotification] = useState(false);
@@ -178,6 +178,7 @@ export const Pending = ({ filterDate, setFilterDate }) => {
                       onRejectOrder={rejectOrder}
                       onAcceptItem={acceptOrderItem}
                       onRejectItem={rejectOrderItem}
+                      onCancelItem={cancelOrderItem}
                       onPrint={setOrderPrinted}
                       showActions={true}
                     >

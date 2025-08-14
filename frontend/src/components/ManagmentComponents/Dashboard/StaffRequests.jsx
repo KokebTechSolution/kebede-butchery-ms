@@ -12,10 +12,12 @@ export default function StaffRequests() {
   useEffect(() => {
     fetchRequests();
   }, []);
-
+  
   const fetchRequests = async () => {
     try {
       const response = await axiosInstance.get(API_URL);
+      console.log("Response content-type:", response.headers['content-type']);
+      console.log("Response data:", response.data);
       setRequests(response.data);
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -23,7 +25,8 @@ export default function StaffRequests() {
       setLoading(false);
     }
   };
-
+  
+  
   const handleApprove = async (id) => {
     try {
       await axiosInstance.post(`${API_URL}${id}/approve/`);
@@ -43,59 +46,75 @@ export default function StaffRequests() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 md:p-8 max-w-full sm:max-w-lg md:max-w-2xl mx-auto">
-      <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-700 mb-4">
-        📝 Pending Staff Requests
-      </h3>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-700">
+          📝 Pending Staff Requests
+        </h3>
+        <div className="text-sm text-gray-500">
+          {requests.length} pending
+        </div>
+      </div>
 
       {loading ? (
-        <p className="text-gray-500 italic text-sm md:text-base">Loading requests...</p>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          <span className="ml-2 text-gray-600">Loading requests...</span>
+        </div>
       ) : requests.length === 0 ? (
-        <p className="text-gray-500 italic text-sm md:text-base">
-          No pending requests at the moment.
-        </p>
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-sm sm:text-base">
+            No pending requests at the moment.
+          </div>
+        </div>
       ) : (
-        <ul className="space-y-4">
+        <div className="space-y-3 max-h-96 overflow-y-auto">
           {requests.map((req) => (
-            <li
+            <div
               key={req.id}
-              className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
+              className="bg-gray-50 rounded-lg p-4 sm:p-5 border border-gray-200 hover:shadow-mobile transition-shadow"
             >
-              <div className="flex flex-col gap-4">
+              <div className="space-y-3">
                 {/* Staff Info */}
-                <div className="text-sm sm:text-base text-gray-700">
-                  <div className="flex items-center gap-2 font-medium">
-                    <FaUserTie className="text-blue-500" />
-                    {req.staff_name} - {req.staff_role}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaUserTie className="text-blue-500 text-lg" />
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm sm:text-base">
+                        {req.staff_name} - {req.staff_role}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-gray-600 text-sm">
+                        <FaBoxes className="text-gray-500" />
+                        <span>
+                          Requested: <strong>{req.quantity}</strong> units of{" "}
+                          <span className="text-indigo-600 font-semibold italic">{req.item_name}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-gray-600">
-                    <FaBoxes className="text-gray-500" />
-                    Requested: <strong>{req.quantity}</strong> units of{" "}
-                    <span className="text-indigo-600 font-semibold italic">{req.item_name}</span>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(req.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                    >
+                      <MdOutlineCheckCircle size={16} />
+                      <span className="hidden sm:inline">Approve</span>
+                    </button>
+                    <button
+                      onClick={() => handleReject(req.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                    >
+                      <MdOutlineCancel size={16} />
+                      <span className="hidden sm:inline">Reject</span>
+                    </button>
                   </div>
-                </div>
-
-                {/* Buttons stacked vertically */}
-                <div className="flex flex-col gap-3 w-full">
-                  <button
-                    onClick={() => handleApprove(req.id)}
-                    className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 text-sm font-semibold rounded-md hover:bg-green-700 transition"
-                  >
-                    <MdOutlineCheckCircle size={18} />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(req.id)}
-                    className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 text-sm font-semibold rounded-md hover:bg-red-700 transition"
-                  >
-                    <MdOutlineCancel size={18} />
-                    Reject
-                  </button>
                 </div>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

@@ -246,7 +246,7 @@ const AddProductForm = () => {
         category_id: p.category_id || p.category,
         stock: {
           branch_id: branchId,
-          quantity_in_base_units: p.stock.quantity_in_base_units,
+          //quantity_in_base_units: p.stock.quantity_in_base_units,
           minimum_threshold_base_units: p.stock.minimum_threshold_base_units,
           original_quantity: p.input_quantity,
           original_unit_id: p.input_unit,
@@ -263,7 +263,7 @@ const AddProductForm = () => {
       productsPayload.forEach((p, idx) => {
         console.log(`  Product ${idx + 1}: ${p.name}`);
         console.log(`    - original_quantity: ${p.stock.original_quantity}`);
-        console.log(`    - quantity_in_base_units: ${p.stock.quantity_in_base_units}`);
+        //console.log(`    - quantity_in_base_units: ${p.stock.quantity_in_base_units}`);
         console.log(`    - conversion_amount: ${p.measurement.amount_per}`);
       });
       
@@ -460,15 +460,24 @@ const AddProductForm = () => {
           },
         }
       );
-      // Create Stock
+      // Create Stock with initial quantity if provided
+      const stockData = {
+        product_id: createdProduct.id,
+        branch_id: branchId,
+        minimum_threshold_base_units: formData.minimum_threshold_base_units,
+      };
+      
+      // Add initial stock if quantity is provided
+      if (formData.input_quantity && parseFloat(formData.input_quantity) > 0) {
+        stockData.original_quantity = formData.input_quantity;
+        stockData.original_unit_id = formData.input_unit;
+        // Also send the conversion factor so backend can calculate correctly
+        stockData.conversion_amount = formData.conversion_amount;
+      }
+      
       await axios.post(
         'http://localhost:8000/api/inventory/stocks/',
-        {
-          product_id: createdProduct.id,
-          branch_id: branchId,
-          quantity_in_base_units: calculatedBaseUnits,
-          minimum_threshold_base_units: formData.minimum_threshold_base_units,
-        },
+        stockData,
         {
           withCredentials: true,
           headers: {

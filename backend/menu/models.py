@@ -60,7 +60,7 @@ class MenuItem(models.Model):
         """
         if not self.product:
             return None
-        return self.product.stock_set.filter(branch_id=branch_id).first()
+        return self.product.store_stocks.filter(branch_id=branch_id).first()
 
     def is_running_out(self, branch_id):
         """
@@ -71,13 +71,14 @@ class MenuItem(models.Model):
 
     def available_quantity_summary(self, branch_id):
         """
-        Returns a dict with available quantities (cartons, bottles, units) for the given branch.
+        Returns a dict with available quantities for the given branch.
         """
         stock = self.get_stock_for_branch(branch_id)
         if stock:
             return {
-                "cartons": stock.carton_quantity,
-                "bottles": stock.bottle_quantity,
-                "units": stock.unit_quantity,
+                "quantity_in_base_units": stock.quantity_in_base_units,
+                "original_quantity": stock.original_quantity,
+                "original_unit": stock.original_unit.unit_name if stock.original_unit else None,
+                "running_out": stock.running_out,
             }
         return None

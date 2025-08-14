@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
+from branches.models import Branch
+from rest_framework.validators import UniqueValidator
 User = get_user_model()
 
 # ✅ Login Response Serializer (for session login)
@@ -13,19 +14,29 @@ class UserLoginSerializer(serializers.ModelSerializer):
         ]
 
 
-# ✅ User Create/Update Serializer (used by UserViewSet)
 class UserCreateUpdateSerializer(serializers.ModelSerializer):
+    branch = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.all(),
+        required=True,
+        error_messages={'does_not_exist': 'Selected branch does not exist.'}
+    )
+    username = serializers.CharField(
+        validators=[UniqueValidator(queryset=User.objects.all(), message="This username is already taken.")]
+    )
+    phone_number = serializers.CharField(
+        validators=[UniqueValidator(queryset=User.objects.all(), message="This phone number is already registered.")]
+    )
     password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'phone_number',
+            'username', 'first_name', 'last_name', 'phone_number',
             'role', 'branch', 'is_active', 'password'
         ]
-        read_only_fields = ['id']
 
     def create(self, validated_data):
+        validated_data.pop('id', None)
         password = validated_data.pop('password', None)
         user = User(**validated_data)
         if password:

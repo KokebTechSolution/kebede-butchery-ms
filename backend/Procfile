@@ -1,0 +1,1 @@
+web: python manage.py migrate && gunicorn --workers 3 --timeout 120 --bind 0.0.0.0:$PORT kebede_pos.wsgi --settings=kebede_pos.production_settings

@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   fetchRequests,
-  ReachRequest,
-  NotReachRequest,
   fetchProductMeasurements,
   cancelRequest,
   updateRequest,
+  ReachRequest,
 } from '../../../api/inventory';
 import api from '../../../api/axiosInstance';
 import NewRequest from './NewRequest';
 import BarmanStockStatus from './BarmanStockStatus';
 import { useAuth } from '../../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { FaBox, FaEdit, FaTimes, FaCheck, FaCheckCircle, FaClock, FaUser, FaPlus } from 'react-icons/fa';
 
 const InventoryRequestList = () => {
   const [requests, setRequests] = useState([]);
@@ -34,7 +34,7 @@ const InventoryRequestList = () => {
   const { user } = useAuth();
   const branchId = user?.branch;
   const bartenderId = user?.id;
-  const isManager = user?.role === 'manager'; // adjust role key as per your auth system
+  const isManager = user?.role === 'manager';
   const isBartender = user?.role === 'bartender';
 
   // Refresh stocks trigger
@@ -116,31 +116,7 @@ const InventoryRequestList = () => {
     }
   };
 
-  const handleReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await api.post(`/inventory/requests/${id}/reach/`);
-      await loadRequests();
-      setFormMessage('Marked as reached!');
-    } catch (err) {
-      setFormMessage('Failed to mark as reached.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
-  const handleNotReach = async (id) => {
-    setProcessingId(id);
-    try {
-      await api.post(`/inventory/requests/${id}/not-reach/`);
-      await loadRequests();
-      setFormMessage('Marked as not reached!');
-    } catch (err) {
-      setFormMessage('Failed to mark as not reached.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
   const handleCancelRequest = async (id) => {
     if (!window.confirm('Are you sure you want to cancel this request?')) return;
@@ -170,6 +146,19 @@ const InventoryRequestList = () => {
     }
   };
 
+  const handleReach = async (id) => {
+    setProcessingId(id);
+    try {
+      await ReachRequest(id);
+      await loadRequests();
+      setFormMessage('Request marked as reached!');
+    } catch (err) {
+      setFormMessage('Failed to mark request as reached.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   // Filter requests by branch
   const filteredRequests = requests.filter(
     req => String(req.branch_id || req.branch?.id) === String(branchId)
@@ -177,37 +166,41 @@ const InventoryRequestList = () => {
 
   const { t } = useTranslation();
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
       <BarmanStockStatus stocks={stocks} tab={tab} setTab={setTab} bartenderId={bartenderId} />
 
-      {/* Mobile Summary Cards */}
-      <div className="block md:hidden mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{filteredRequests.length}</div>
-            <div className="text-xs text-gray-600">Total Requests</div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+            <FaBox className="text-purple-600 text-lg" />
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">
-              {filteredRequests.filter(req => req.status === 'pending').length}
-            </div>
-            <div className="text-xs text-gray-600">Pending</div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{t('inventory_requests')}</h1>
+            <p className="text-sm text-gray-500">Manage inventory requests and stock</p>
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{t('inventory_requests')}</h1>
+        
         {isBartender && (
           <button
-            className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium w-full sm:w-auto"
+            className="bg-purple-600 text-white px-4 py-3 rounded-xl hover:bg-purple-700 transition-colors shadow-sm flex items-center space-x-2"
             onClick={() => {
               setFormMessage('');
               setShowModal(true);
             }}
           >
-            + {t('new_request')}
+            <FaPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('new_request')}</span>
           </button>
         )}
       </div>
@@ -234,14 +227,13 @@ const InventoryRequestList = () => {
             setFormMessage('No default sales unit defined for this product.');
             return;
           }
-          // Do NOT multiply by conversion factor. Send only the user-entered value and selected unit.
           try {
             await api.post('/inventory/requests/', {
               product_id: parseInt(formData.product),
-              quantity: formData.quantity, // user-entered value
+              quantity: formData.quantity,
               branch_id: parseInt(formData.branch),
               status: 'pending',
-              request_unit_id: unitId, // selected unit
+              request_unit_id: unitId,
             });
             setFormMessage('Request submitted successfully!');
             setFormData({
@@ -271,76 +263,77 @@ const InventoryRequestList = () => {
         defaultMeasurement={defaultMeasurement}
       />
 
+      {/* Loading State */}
       {loading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading requests...</p>
         </div>
       ) : filteredRequests.length === 0 ? (
-        <div className="text-center py-8">
-          <div className="bg-gray-50 rounded-lg p-6">
-            <p className="text-gray-600 italic text-lg">{t('no_requests_found_for_branch')}</p>
+        /* Empty State */
+        <div className="text-center py-16 px-4">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FaBox className="text-gray-400 text-3xl" />
           </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No requests found</h3>
+          <p className="text-gray-500">{t('no_requests_found_for_branch')}</p>
         </div>
       ) : (
-        <>
-          {/* Mobile Card View */}
-          <div className="block md:hidden space-y-4">
-            {filteredRequests.map(req => {
-              const reached = Boolean(req.reached_status);
-              const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
-              return (
-                <div key={`${req.id}-${reached ? 'r' : 'nr'}`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  {/* Header with status */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 text-lg">{req.product?.name || 'N/A'}</h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        req.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : req.status === 'accepted'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </div>
-
-                  {/* Product Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-gray-500 text-xs">Category</p>
-                        <p className="font-medium text-gray-900">{req.product?.category?.category_name || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-xs">Type</p>
-                        <p className="font-medium text-gray-900">{req.product?.category?.item_type?.type_name || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-xs">Quantity</p>
-                        <p className="font-medium text-gray-900">{req.quantity}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-xs">Unit</p>
-                        <p className="font-medium text-gray-900">{req.request_unit?.unit_name || 'N/A'}</p>
+        /* Mobile-Friendly Request Cards */
+        <div className="space-y-4">
+          {filteredRequests.map(req => {
+            const reached = Boolean(req.reached_status);
+            const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
+            
+            return (
+              <div key={`${req.id}-${reached ? 'r' : 'nr'}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Request Header */}
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900 text-lg mb-1">
+                        {req.product?.name || 'N/A'}
+                      </h3>
+                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <FaUser className="w-3 h-3" />
+                          <span>{req.branch?.name || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <FaClock className="w-3 h-3" />
+                          <span>{new Date(req.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="bg-gray-50 rounded p-3">
-                      <p className="text-gray-500 text-xs mb-1">Basic Unit Quantity</p>
-                      <p className="font-semibold text-gray-900">{req.quantity_basic_unit ?? 'N/A'}</p>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(req.status)}`}>
+                      {req.status}
+                    </span>
+                  </div>
+                  
+                  {/* Product Details */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500">Category</div>
+                      <div className="font-medium">{req.product?.category?.category_name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Type</div>
+                      <div className="font-medium">{req.product?.category?.item_type?.type_name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Quantity</div>
+                      <div className="font-medium">{req.quantity} {req.request_unit?.unit_name || ''}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Basic Unit</div>
+                      <div className="font-medium">{req.quantity_basic_unit ?? 'N/A'}</div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Branch and Date */}
-                  <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
-                    <span>Branch: {req.branch?.name || 'N/A'}</span>
-                    <span>{new Date(req.created_at).toLocaleDateString()}</span>
-                  </div>
-
-                  {/* Actions */}
+                {/* Actions */}
+                <div className="p-4 bg-gray-50">
                   <div className="flex flex-wrap gap-2">
                     {/* Bartender: can edit or cancel only pending requests they made */}
                     {canEditOrCancel && (
@@ -353,16 +346,18 @@ const InventoryRequestList = () => {
                             }
                           }}
                           disabled={processingId === req.id}
-                          className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 text-sm font-medium"
+                          className="flex items-center space-x-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 transition-colors"
                         >
-                          {t('edit')}
+                          <FaEdit className="w-4 h-4" />
+                          <span>{t('edit')}</span>
                         </button>
                         <button
                           onClick={() => handleCancelRequest(req.id)}
                           disabled={processingId === req.id}
-                          className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 text-sm font-medium"
+                          className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors"
                         >
-                          {t('cancel')}
+                          <FaTimes className="w-4 h-4" />
+                          <span>{t('cancel')}</span>
                         </button>
                       </>
                     )}
@@ -372,170 +367,59 @@ const InventoryRequestList = () => {
                       <button
                         onClick={() => handleAccept(req.id)}
                         disabled={processingId === req.id}
-                        className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
+                        className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
                       >
-                        {t('accept')}
+                        <FaCheck className="w-4 h-4" />
+                        <span>{t('accept')}</span>
                       </button>
                     )}
 
-                    {/* Reach/Not Reach buttons - only if accepted */}
-                    {req.status === 'accepted' && isBartender && !reached && (
+                    {/* Bartender: Mark accepted requests as reached */}
+                    {isBartender && req.status === 'accepted' && !req.reached_status && (
                       <button
                         onClick={() => handleReach(req.id)}
                         disabled={processingId === req.id}
-                        className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 disabled:opacity-50 text-sm font-medium"
+                        className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 transition-colors"
                       >
-                        {t('mark_reached')}
+                        <FaCheckCircle className="w-4 h-4" />
+                        <span>{t('reached') || 'Reached'}</span>
                       </button>
                     )}
-                    {req.status === 'accepted' && isBartender && reached && (
-                      <span className="px-3 py-2 rounded-lg bg-green-200 text-green-900 font-semibold text-sm">
-                        {t('reached')}
+
+                    {/* Status indicators for non-pending requests */}
+                    {req.status === 'fulfilled' && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
+                        <FaCheckCircle className="w-4 h-4" />
+                        <span>{t('fulfilled')}</span>
                       </span>
                     )}
-
-                    {/* No actions available */}
-                    {!canEditOrCancel &&
-                      !(isManager && req.status === 'pending') &&
-                      !(req.status === 'accepted' && isBartender) &&
-                      reached && (
-                        <span className="px-3 py-2 rounded-lg bg-green-200 text-green-900 font-semibold text-sm">{t('reached')}</span>
-                      )}
-                    {!canEditOrCancel &&
-                      !(isManager && req.status === 'pending') &&
-                      !(req.status === 'accepted' && isBartender) &&
-                      !reached && (
-                        <span className="text-gray-500 italic text-sm px-3 py-2">{t('no_action_available')}</span>
-                      )}
+                    
+                    {req.status === 'accepted' && !req.reached_status && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg font-medium">
+                        <FaClock className="w-4 h-4" />
+                        <span>{t('accepted')}</span>
+                      </span>
+                    )}
+                    
+                    {req.status === 'accepted' && req.reached_status && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
+                        <FaCheckCircle className="w-4 h-4" />
+                        <span>{t('reached') || 'Reached'}</span>
+                      </span>
+                    )}
+                    
+                    {req.status === 'rejected' && (
+                      <span className="flex items-center space-x-2 px-4 py-2 bg-red-100 text-red-800 rounded-lg font-medium">
+                        <FaTimes className="w-4 h-4" />
+                        <span>{t('rejected')}</span>
+                      </span>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="min-w-full border text-sm">
-                <thead className="bg-gray-100">
-                  <tr className="text-center">
-                    <th className="border px-4 py-2">{t('product')}</th>
-                    <th className="border px-4 py-2">{t('category')}</th>
-                    <th className="border px-4 py-2">{t('item_type')}</th>
-                    <th className="border px-4 py-2">{t('quantity')}</th>
-                    <th className="border px-4 py-2">{t('quantity_basic_unit')}</th>
-                    <th className="border px-4 py-2">{t('unit_type')}</th>
-                    <th className="border px-4 py-2">{t('branch')}</th>
-                    <th className="border px-4 py-2">{t('requested_at')}</th>
-                    <th className="border px-4 py-2">{t('status')}</th>
-                    <th className="border px-4 py-2">{t('actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.map(req => {
-                    const reached = Boolean(req.reached_status);
-                    const canEditOrCancel = isBartender && req.status === 'pending' && req.requested_by === bartenderId;
-                    return (
-                      <tr
-                        key={`${req.id}-${reached ? 'r' : 'nr'}`}
-                        className="text-center hover:bg-gray-50 transition"
-                      >
-                        <td className="border px-4 py-2">{req.product?.name || 'N/A'}</td>
-                        <td className="border px-4 py-2">{req.product?.category?.category_name || 'N/A'}</td>
-                        <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || 'N/A'}</td>
-                        <td className="border px-4 py-2">{req.quantity}</td>
-                        <td className="border px-4 py-2">{req.quantity_basic_unit ?? 'N/A'}</td>
-                        <td className="border px-4 py-2">{req.request_unit?.unit_name || 'N/A'}</td>
-                        <td className="border px-4 py-2">{req.branch?.name || 'N/A'}</td>
-                        <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
-                        <td className="border px-4 py-2">
-                          <span
-                            className={`px-2 py-1 rounded text-sm font-medium ${
-                              req.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : req.status === 'accepted'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {req.status}
-                          </span>
-                        </td>
-                        <td className="border px-4 py-2 space-x-2">
-                          {/* Bartender: can edit or cancel only pending requests they made */}
-                          {canEditOrCancel && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  const updatedQty = prompt('Enter new quantity:', req.quantity);
-                                  if (updatedQty && !isNaN(updatedQty) && Number(updatedQty) > 0) {
-                                    handleEditRequest(req.id, { quantity: Number(updatedQty) });
-                                  }
-                                }}
-                                disabled={processingId === req.id}
-                                className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 disabled:opacity-50"
-                              >
-                                {t('edit')}
-                              </button>
-                              <button
-                                onClick={() => handleCancelRequest(req.id)}
-                                disabled={processingId === req.id}
-                                className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"
-                              >
-                                {t('cancel')}
-                              </button>
-                            </>
-                          )}
-
-                          {/* Manager: Accept pending requests */}
-                          {isManager && req.status === 'pending' && (
-                            <button
-                              onClick={() => handleAccept(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
-                            >
-                              {t('accept')}
-                            </button>
-                          )}
-
-                          {/* Reach/Not Reach buttons - only if accepted */}
-                          {req.status === 'accepted' && isBartender && !reached && (
-                            <button
-                              onClick={() => handleReach(req.id)}
-                              disabled={processingId === req.id}
-                              className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:opacity-50"
-                            >
-                              {t('mark_reached')}
-                            </button>
-                          )}
-                          {req.status === 'accepted' && isBartender && reached && (
-                            <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">
-                              {t('reached')}
-                            </span>
-                          )}
-
-                          {/* No actions available */}
-                          {!canEditOrCancel &&
-                            !(isManager && req.status === 'pending') &&
-                            !(req.status === 'accepted' && isBartender) &&
-                            reached && (
-                              <span className="px-2 py-1 rounded bg-green-200 text-green-900 font-semibold">{t('reached')}</span>
-                            )}
-                          {!canEditOrCancel &&
-                            !(isManager && req.status === 'pending') &&
-                            !(req.status === 'accepted' && isBartender) &&
-                            !reached && (
-                              <span className="text-gray-500 italic">{t('no_action_available')}</span>
-                            )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

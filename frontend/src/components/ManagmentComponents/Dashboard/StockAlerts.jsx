@@ -32,33 +32,63 @@ function StockAlerts() {
   const lowStockItems = stockItems.filter((item) => item.stock_qty <= STOCK_THRESHOLD);
 
   return (
-    <div className="bg-white rounded-2xl shadow p-4">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-bold">Low Stock Alerts</h3>
+    <div className="bg-white rounded-xl shadow-mobile p-4 sm:p-6 transition-shadow hover:shadow-mobile-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <div>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1">Low Stock Alerts</h3>
+          <p className="text-sm text-gray-600">
+            Items with quantity below {STOCK_THRESHOLD} units
+          </p>
+        </div>
         <button
           onClick={fetchStockItems}
-          className="flex items-center gap-1 text-blue-600 text-sm hover:underline"
+          className="flex items-center gap-2 text-blue-600 text-sm hover:text-blue-700 transition-colors px-3 py-2 bg-blue-50 rounded-lg hover:bg-blue-100"
           disabled={loading}
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
       {loading ? (
-        <p className="text-gray-500">Loading stock data...</p>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          <span className="ml-2 text-gray-600">Loading stock data...</span>
+        </div>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <div className="text-center py-6">
+          <div className="text-red-500 text-sm sm:text-base">{error}</div>
+        </div>
       ) : lowStockItems.length === 0 ? (
-        <p className="text-green-600 font-semibold">All items are sufficiently stocked.</p>
+        <div className="text-center py-6">
+          <div className="text-green-600 font-semibold text-sm sm:text-base">
+            ✅ All items are sufficiently stocked.
+          </div>
+        </div>
       ) : (
-        <ul className="list-disc list-inside space-y-1 max-h-48 overflow-y-auto">
+        <div className="space-y-3 max-h-64 overflow-y-auto">
           {lowStockItems.map((item) => (
-            <li key={item.id} className="text-red-600">
-              {item.name} — Only {item.stock_qty} units left
-            </li>
+            <div
+              key={item.id}
+              className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <div>
+                  <div className="font-medium text-gray-900 text-sm sm:text-base">
+                    {item.name}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Current stock: {item.stock_qty} units
+                  </div>
+                </div>
+              </div>
+              <div className="text-red-600 font-semibold text-sm">
+                Low Stock
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

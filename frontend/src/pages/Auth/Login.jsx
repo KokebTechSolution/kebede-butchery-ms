@@ -2,30 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import LoadingPage from '../../components/LoadingPage/LoadingPage';
+import axiosInstance from '../../api/axiosInstance';
 
 const LoginPage = () => {
   const { login, user, logout } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [error, setError] = useState(null);
+  const [showLoading, setShowLoading] = useState(false);
 
   useEffect(() => {
     // Always clear user state and localStorage on login page load
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user');
+      localStorage.removeItem('session_key');
     }
-    // Optionally, if setUser is available:
-    // setUser && setUser(null);
-    // Fetch CSRF cookie
-    fetch('http://localhost:8000/api/users/csrf/', {
-      credentials: 'include',
+    
+    // Fetch CSRF cookie to ensure it's available
+    axiosInstance.get('users/csrf/').catch(err => {
+      console.log('CSRF fetch error (expected on first load):', err);
     });
   }, []);
-
-  const getCSRFToken = () => {
-    const match = document.cookie.match(/csrftoken=([\w-]+)/);
-    return match ? match[1] : null;
-  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -36,31 +34,35 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const csrfToken = getCSRFToken();
+    setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Login failed');
-      }
-
-      const userData = await res.json();
-      login(userData); // Call AuthContext login
-      navigate('/');
+      console.log('🔄 Attempting login...');
+      
+      // Use unified login endpoint for both local and network access
+      const response = await axiosInstance.post('users/login/', formData);
+      console.log('✅ Login response:', response.data);
+      
+      // Call AuthContext login with the user data
+      await login(response.data);
+      setShowLoading(true); // Show loading page instead of immediate navigation
     } catch (err) {
-      setError(err.message || 'Something went wrong');
+      console.error('❌ Login error:', err);
+      setError(err.response?.data?.error || err.message || 'Something went wrong');
     }
   };
+
+  // Show loading page if loading is active
+  if (showLoading) {
+    return (
+      <LoadingPage 
+        onComplete={() => {
+          setShowLoading(false);
+          navigate('/');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -98,7 +100,7 @@ const LoginPage = () => {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
         >
           Login
         </button>

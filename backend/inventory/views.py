@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
+from users.models import User
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -19,6 +20,21 @@ from .serializers import (
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+
+# Custom permission class for managers only
+class IsManager(BasePermission):
+    """
+    Custom permission to only allow managers to access certain actions.
+    """
+    def has_permission(self, request, view):
+        # Check if user is authenticated and is a manager
+        return bool(
+            request.user and 
+            request.user.is_authenticated and 
+            hasattr(request.user, 'role') and 
+            request.user.role == 'manager'
+        )
+
 # Branch
 class BranchViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Branch.objects.all()
@@ -52,45 +68,54 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+    # Accept: Only update status
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def accept(self, request, pk=None):
-        req = self.get_object();
+        req = self.get_object()
         if req.status != 'pending':
             return Response({'detail': 'Request is not pending.'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            stock = Stock.objects.get(product=req.product, branch=req.branch)
-            # Convert request quantity to base units
-            conversion_factor = req.product.get_conversion_factor(req.request_unit, req.product.base_unit)
-            quantity_in_base_units = (req.quantity * conversion_factor).quantize(Decimal('0.01'))
-            if stock.quantity_in_base_units < quantity_in_base_units:
-                return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            print(f"[DEBUG] Accepted request: Stock check passed - {quantity_in_base_units} base units available")
-            
-        except Stock.DoesNotExist:
-            return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(f"[ERROR] Error accepting request: {e}")
-            return Response({'detail': f'Error accepting request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-        
         req.status = 'accepted'
         req.responded_by = request.user
         req.save()
         return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
+    # Reach: Deduct stock and update status
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     @transaction.atomic
     def reach(self, request, pk=None):
         req = self.get_object()
         if req.status != 'accepted':
             return Response({'detail': 'Request is not accepted.'}, status=status.HTTP_400_BAD_REQUEST)
-        # Only update if not already fulfilled
-        if req.status != 'fulfilled':
-            req.status = 'fulfilled'
-            req.reached_status = True
-            req.responded_by = request.user
-            req.save()  # This triggers InventoryRequest.save(), which creates the transaction
+        try:
+            stock = Stock.objects.get(product=req.product, branch=req.branch)
+            conversion_factor = req.product.get_conversion_factor(req.request_unit, req.product.base_unit)
+            quantity_in_base_units = (req.quantity * conversion_factor).quantize(Decimal('0.01'))
+            if stock.quantity_in_base_units < quantity_in_base_units:
+                return Response({'detail': 'Not enough stock to fulfill request.'}, status=status.HTTP_400_BAD_REQUEST)
+            #stock.quantity_in_base_units = (stock.quantity_in_base_units - quantity_in_base_units).quantize(Decimal('0.01'))
+            # Update original_quantity and unit as before
+            if stock.original_unit and stock.original_unit != req.request_unit:
+                try:
+                    existing_conversion = req.product.get_conversion_factor(stock.original_unit, req.request_unit)
+                    converted_existing = stock.original_quantity * existing_conversion
+                    stock.original_quantity = (converted_existing - req.quantity).quantize(Decimal('0.01'))
+                except ValueError:
+                    stock.original_quantity = stock.original_quantity
+            else:
+                stock.original_quantity = (stock.original_quantity - req.quantity).quantize(Decimal('0.01'))
+            stock.original_unit = req.request_unit
+            stock.save()
+            print(f"[DEBUG] Stock updated after reach: original_quantity={stock.original_quantity}, original_unit={stock.original_unit.unit_name}")
+        except Stock.DoesNotExist:
+            return Response({'detail': 'No stock found for this product and branch.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"[ERROR] Error reaching request: {e}")
+            return Response({'detail': f'Error reaching request: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        req.status = 'fulfilled'
+        req.reached_status = True
+        req.responded_by = request.user
+        req.save()
         return Response({'reached_status': True}, status=status.HTTP_200_OK)
 
 
@@ -222,17 +247,19 @@ class ProductViewSet(viewsets.ModelViewSet):
                 )
                 print(f"Stock created successfully: {stock.id}")
                 
-                # Create inventory transaction for initial stock
-                InventoryTransaction.objects.create(
+                # Create inventory transaction for initial stock with skip_stock_adjustment=True
+                transaction = InventoryTransaction(
                     product=product,
                     transaction_type='restock',
                     quantity=Decimal(str(original_quantity)),
                     transaction_unit=original_unit,
+                    quantity_in_base_units=quantity_in_base_units,
                     to_stock_main=stock,
                     branch=branch,
                     price_at_transaction=product.base_unit_price or Decimal('0.00'),
                     notes=f"Initial stock: {original_quantity} {original_unit.unit_name}"
                 )
+                transaction.save(skip_stock_adjustment=True)
                 print(f"Inventory transaction created for initial stock")
                 
             except Exception as e:
@@ -512,8 +539,103 @@ class StockViewSet(viewsets.ModelViewSet):
     queryset = Stock.objects.select_related('product', 'branch').all()
     serializer_class = StockSerializer
     permission_classes = [AllowAny]
+    
+    def create(self, request, *args, **kwargs):
+        """Custom create to handle initial stock with proper conversion"""
+        with transaction.atomic():
+            # Extract initial stock data
+            original_quantity = request.data.get('original_quantity')
+            original_unit_id = request.data.get('original_unit_id')
+            
+            # Create the stock record
+            response = super().create(request, *args, **kwargs)
+            stock_id = response.data.get('id')
+            stock = Stock.objects.get(id=stock_id)
+            
+            # Handle initial stock if provided
+            if original_quantity and original_unit_id:
+                try:
+                    original_quantity = Decimal(str(original_quantity))
+                    original_unit = ProductUnit.objects.get(id=original_unit_id)
+                    
+                    # Use the conversion amount sent from frontend if available
+                    conversion_amount = request.data.get('conversion_amount')
+                    if conversion_amount:
+                        conversion_factor = Decimal(str(conversion_amount))
+                        print(f"[DEBUG] Using conversion factor from frontend: {conversion_factor}")
+                    else:
+                        # Fallback: try to get conversion from database
+                        try:
+                            conversion_factor = stock.product.get_conversion_factor(original_unit, stock.product.base_unit)
+                            print(f"[DEBUG] Using conversion factor from database: {conversion_factor}")
+                        except ValueError:
+                            # If conversion doesn't exist, try to find it in ProductMeasurement
+                            measurement = ProductMeasurement.objects.filter(
+                                product=stock.product,
+                                from_unit=original_unit,
+                                to_unit=stock.product.base_unit
+                            ).first()
+                            
+                            if measurement:
+                                conversion_factor = measurement.amount_per
+                                print(f"[DEBUG] Found conversion in ProductMeasurement: {conversion_factor}")
+                            else:
+                                # Fallback: assume 1:1 conversion
+                                conversion_factor = Decimal('1.0')
+                                print(f"[DEBUG] No conversion found, using 1:1 fallback")
+                    
+                    quantity_in_base_units = (original_quantity * conversion_factor).quantize(Decimal('0.01'))
+                    
+                    print(f"[DEBUG] Stock creation conversion:")
+                    print(f"  Original quantity: {original_quantity}")
+                    print(f"  Original unit: {original_unit.unit_name}")
+                    print(f"  Base unit: {stock.product.base_unit.unit_name}")
+                    print(f"  Conversion factor: {conversion_factor}")
+                    print(f"  Calculated quantity_in_base_units: {quantity_in_base_units}")
+                    print(f"  Expected: {original_quantity} × {conversion_factor} = {original_quantity * conversion_factor}")
+                    
+                    print(f"[DEBUG] About to update stock with quantities:")
+                    print(f"  - original_quantity: {original_quantity}")
+                    print(f"  - original_unit: {original_unit.unit_name}")
+                    print(f"  - quantity_in_base_units: {quantity_in_base_units}")
+                    
+                    # Update stock with initial quantities (directly, no double adjustment)
+                    stock.original_quantity = original_quantity
+                    stock.original_unit = original_unit
+                    stock.quantity_in_base_units = quantity_in_base_units
+                    stock.save()
+                    
+                    print(f"[DEBUG] Stock saved. Current values:")
+                    print(f"  - stock.original_quantity: {stock.original_quantity}")
+                    print(f"  - stock.quantity_in_base_units: {stock.quantity_in_base_units}")
+                    
+                    # Create initial inventory transaction, but skip stock adjustment
+                    transaction = InventoryTransaction(
+                        product=stock.product,
+                        transaction_type='restock',
+                        quantity=original_quantity,
+                        transaction_unit=original_unit,
+                        quantity_in_base_units=quantity_in_base_units,
+                        to_stock_main=stock,
+                        branch=stock.branch,
+                        initiated_by=request.user if request.user.is_authenticated else None,
+                        notes=f"Initial stock creation: {original_quantity} {original_unit.unit_name}",
+                    )
+                    transaction.save(skip_stock_adjustment=True)
+                    
+                    print(f"[DEBUG] Transaction created with skip_stock_adjustment=True")
+                    print(f"[DEBUG] Final stock values after transaction:")
+                    stock.refresh_from_db()
+                    print(f"  - stock.original_quantity: {stock.original_quantity}")
+                    print(f"  - stock.quantity_in_base_units: {stock.quantity_in_base_units}")
+                    
+                except (ProductUnit.DoesNotExist, ValueError) as e:
+                    print(f"Error setting initial stock: {e}")
+                    # Continue without initial stock
+            
+            return response
 
-    @action(detail=True, methods=['post'], url_path='restock')
+    @action(detail=True, methods=['post'], url_path='restock', permission_classes=[IsManager])
     @transaction.atomic
     def restock(self, request, pk=None):
         stock = self.get_object()
@@ -604,27 +726,26 @@ class StockViewSet(viewsets.ModelViewSet):
             # REMOVED: stock.quantity_in_base_units = (stock.quantity_in_base_units + quantity_in_base_units).quantize(Decimal('0.01'))
             # Let InventoryTransaction handle the stock adjustment
             
-            # REMOVED: Direct stock updates - let InventoryTransaction handle this
             # Update original_quantity - handle unit conversion properly
-            # if stock.original_unit and stock.original_unit != restock_unit:
-            #     # Convert existing original_quantity to the new restock unit
-            #     try:
-            #         existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
-            #         converted_existing = stock.original_quantity * existing_conversion
-            #         stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
-            #         print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
-            #     except ValueError:
-            #         # If conversion doesn't exist, just add the new quantity
-            #         stock.original_quantity = restock_quantity
-            #         print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
-            # else:
-            #     # Same unit or no existing original_unit, just add
-            #     stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
-            #     print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
+            if stock.original_unit and stock.original_unit != restock_unit:
+                # Convert existing original_quantity to the new restock unit
+                try:
+                    existing_conversion = product.get_conversion_factor(stock.original_unit, restock_unit)
+                    converted_existing = stock.original_quantity * existing_conversion
+                    stock.original_quantity = (converted_existing + restock_quantity).quantize(Decimal('0.01'))
+                    print(f"[DEBUG] Unit conversion - from {stock.original_unit.unit_name} to {restock_unit.unit_name}, factor: {existing_conversion}, converted: {converted_existing}")
+                except ValueError:
+                    # If conversion doesn't exist, just add the new quantity
+                    stock.original_quantity = restock_quantity
+                    print(f"[DEBUG] No conversion found, using new quantity as original: {restock_quantity}")
+            else:
+                # Same unit or no existing original_unit, just add
+                stock.original_quantity = (stock.original_quantity + restock_quantity).quantize(Decimal('0.01'))
+                print(f"[DEBUG] Same unit or no existing unit, adding: {stock.original_quantity}")
             
-            # stock.original_unit = restock_unit
-            # stock.last_stock_update = timezone.now()
-            # stock.save()
+            stock.original_unit = restock_unit
+            stock.last_stock_update = timezone.now()
+            stock.save()
             
             print(f"[DEBUG] After restock - quantity_in_base_units: {stock.quantity_in_base_units}, original_quantity: {stock.original_quantity}, original_unit: {stock.original_unit}")
             
@@ -636,13 +757,7 @@ class StockViewSet(viewsets.ModelViewSet):
             if receipt_file:
                 transaction_notes += f" - Receipt: {receipt_file.name}"
             
-            # REMOVED: Update the stock's original_unit to match the restock unit
-            # Let the InventoryTransaction handle all stock updates
-            # if stock.original_unit != restock_unit:
-            #     stock.original_unit = restock_unit
-            #     stock.save(update_fields=['original_unit'])
-            
-            # Use constructor instead of create() to avoid double save
+            # Create inventory transaction with skip_stock_adjustment=True to prevent double calculation
             transaction = InventoryTransaction(
                 product=product,
                 transaction_type='restock',
@@ -656,8 +771,10 @@ class StockViewSet(viewsets.ModelViewSet):
             )
             # Set the quantity_in_base_units directly to avoid double calculation
             transaction.quantity_in_base_units = quantity_in_base_units
-            transaction._skip_quantity_calculation = True
-            transaction.save(skip_stock_adjustment=False)  # Single save call
+            transaction.save(skip_stock_adjustment=True)  # Skip stock adjustment since we handle it manually
+            
+            # Manually adjust the stock quantity
+            stock.adjust_quantity(quantity_in_base_units, product.base_unit, is_addition=True)
             
             return Response({
                 'detail': 'Restocked successfully.',
@@ -708,7 +825,7 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(bartender=user)
 
-    @action(detail=True, methods=['post'], url_path='restock')
+    @action(detail=True, methods=['post'], url_path='restock', permission_classes=[IsManager])
     @transaction.atomic
     def restock(self, request, pk=None):
         barman_stock = self.get_object()
@@ -802,7 +919,7 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
             if receipt_file:
                 transaction_notes += f" - Receipt: {receipt_file.name}"
             
-            # Use constructor instead of create() to avoid double save
+            # Create inventory transaction with skip_stock_adjustment=True to prevent double calculation
             transaction = InventoryTransaction(
                 product=product,
                 transaction_type='restock',
@@ -816,8 +933,10 @@ class BarmanStockViewSet(viewsets.ModelViewSet):
             )
             # Set the quantity_in_base_units directly to avoid double calculation
             transaction.quantity_in_base_units = quantity_in_base_units
-            transaction._skip_quantity_calculation = True
-            transaction.save(skip_stock_adjustment=False)  # Single save call
+            transaction.save(skip_stock_adjustment=True)  # Skip stock adjustment since we handle it manually
+            
+            # Manually adjust the barman stock quantity
+            barman_stock.adjust_quantity(quantity_in_base_units, product.base_unit, is_addition=True)
             
             return Response({
                 'detail': 'Barman stock restocked successfully.',

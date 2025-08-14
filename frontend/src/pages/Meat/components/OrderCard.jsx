@@ -6,7 +6,7 @@ import { Card, CardContent } from './ui/card';
 import { RejectOrderDialog } from './RejectOrderDialog';
 import { FaLock } from 'react-icons/fa';
 
-export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, onRejectItem, onPrint, showActions = true }) => {
+export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, onRejectItem, onCancelItem, onPrint, showActions = true }) => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   const handleAccept = () => {
@@ -90,6 +90,13 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
                           className="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-0.5 text-[11px] rounded"
                         >
                           Reject
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => onCancelItem(item.id)}
+                          className="bg-orange-100 text-orange-800 hover:bg-orange-200 px-2 py-0.5 text-xs rounded"
+                        >
+                          Cancel
                         </Button>
                       </>
                     )}

@@ -1,0 +1,90 @@
+.aurarise-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.aurarise-logo {
+  width: 200px;
+  height: 60px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.aurarise-text {
+  font-family: 'Arial', sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  fill: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: textGlow 2s ease-in-out infinite;
+}
+
+.tech-solutions-text {
+  font-family: 'Arial', sans-serif;
+  font-size: 10px;
+  font-weight: normal;
+  fill: #764ba2;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.decorative-dot {
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+.decorative-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.decorative-dot:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.decorative-dot:nth-child(3) {
+  animation-delay: 1s;
+}
+
+.decorative-dot:nth-child(4) {
+  animation-delay: 1.5s;
+}
+
+/* Text glow animation */
+@keyframes textGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(102, 126, 234, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.6));
+  }
+}
+
+/* Dot pulse animation */
+@keyframes dotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .aurarise-logo {
+    width: 150px;
+    height: 45px;
+  }
+  
+  .aurarise-text {
+    font-size: 12px;
+  }
+  
+  .tech-solutions-text {
+    font-size: 8px;
+  }
+} 

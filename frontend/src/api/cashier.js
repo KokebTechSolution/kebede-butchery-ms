@@ -1,7 +1,7 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance from './axiosInstance';
 
 export const getPrintedOrders = async (date, start, end) => {
-    let url = '/orders/printed-orders/';
+    let url = 'orders/printed-orders/';
     const params = [];
     if (date) params.push(`date=${date}`);
     if (start && end) params.push(`start=${start}&end=${end}`);
@@ -18,7 +18,7 @@ export const getPrintedOrders = async (date, start, end) => {
 export const updatePaymentOption = async (orderId, paymentOption) => {
     try {
         const response = await axiosInstance.patch(
-            `/orders/${orderId}/update-payment-option/`,
+            `orders/${orderId}/update-payment-option/`,
             { payment_option: paymentOption }
         );
         return response.data;
@@ -30,10 +30,11 @@ export const updatePaymentOption = async (orderId, paymentOption) => {
 
 export const getOrderById = async (orderId) => {
     try {
-        const response = await axiosInstance.get(`/orders/${orderId}/`);
+        const url = `orders/${orderId}/`;
+        const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
-        console.error('Failed to fetch order by ID:', error);
+        console.error(`Failed to fetch order ${orderId}:`, error);
         throw error;
     }
 };
@@ -51,10 +52,13 @@ export const getMyOrders = async (date, cashierStatus = null) => {
         url += '?' + params.join('&');
     }
     try {
+        console.log('getMyOrders: Fetching orders from URL:', url);
         const response = await axiosInstance.get(url);
+        console.log('getMyOrders: Response status:', response.status);
+        console.log('getMyOrders: Response data:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Failed to fetch orders:', error);
+        console.error(`Failed to fetch orders:`, error);
         throw error;
     }
 };

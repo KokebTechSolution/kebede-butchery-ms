@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kebede Butchery Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .api-section {
+            margin-bottom: 20px;
+        }
+        .api-section h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .endpoint {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .endpoint strong {
+            color: #007bff;
+        }
+        .note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍖 Kebede Butchery Management System</h1>
+        
+        <div class="api-section">
+            <h2>API Endpoints</h2>
+            <div class="endpoint">
+                <strong>Authentication:</strong> /api/token/ (POST) - Get JWT token
+            </div>
+            <div class="endpoint">
+                <strong>Users:</strong> /api/users/ - User management
+            </div>
+            <div class="endpoint">
+                <strong>Orders:</strong> /api/orders/ - Order management
+            </div>
+            <div class="endpoint">
+                <strong>Inventory:</strong> /api/inventory/ - Inventory management
+            </div>
+            <div class="endpoint">
+                <strong>Products:</strong> /api/products/ - Product management
+            </div>
+            <div class="endpoint">
+                <strong>Payments:</strong> /api/payments/ - Payment processing
+            </div>
+            <div class="endpoint">
+                <strong>Menu:</strong> /api/menu/ - Menu management
+            </div>
+            <div class="endpoint">
+                <strong>Branches:</strong> /api/branches/ - Branch management
+            </div>
+            <div class="endpoint">
+                <strong>Reports:</strong> /api/reports/ - Reporting system
+            </div>
+            <div class="endpoint">
+                <strong>Owner:</strong> /api/owner/ - Owner-specific endpoints
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>Admin Interface</h2>
+            <div class="endpoint">
+                <strong>Django Admin:</strong> /admin/ - Administrative interface
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>Note:</strong> This is the API backend for the Kebede Butchery Management System. 
+            The frontend application is deployed separately and communicates with this API.
+        </div>
+    </div>
+</body>
+</html> 
