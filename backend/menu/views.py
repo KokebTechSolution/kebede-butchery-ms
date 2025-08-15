@@ -3,6 +3,7 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.db import models
 from .models import Menu, MenuItem, MenuSection, MenuCategory
 from .serializers import (
@@ -79,6 +80,7 @@ class MenuViewSet(viewsets.ModelViewSet):
 class MenuItemViewSet(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """
@@ -94,33 +96,38 @@ class MenuItemViewSet(viewsets.ModelViewSet):
         user_role = getattr(user, 'role', None)
         
         print(f"[DEBUG] MenuItemViewSet - User: {user.username}, Role: {user_role}")
+        print(f"[DEBUG] MenuItemViewSet - Initial queryset count: {queryset.count()}")
+        
+        # Check if we should bypass filtering for debugging
+        bypass_filtering = self.request.query_params.get('bypass_filtering', 'false').lower() == 'true'
+        if bypass_filtering:
+            print(f"[DEBUG] Bypassing all filtering for debugging - showing all menu items")
+            return queryset.filter(is_available=True)
+        
+        # TEMPORARY: Simplified filtering for debugging
+        # Just filter by availability and role, skip complex branch filtering for now
+        queryset = queryset.filter(is_available=True)
+        print(f"[DEBUG] After availability filter: {queryset.count()}")
         
         # Role-based filtering
         if user_role == 'bartender':
             # Bartenders can only see beverage items
             queryset = queryset.filter(item_type='beverage')
-            print(f"[DEBUG] Bartender - filtering to beverage items only")
+            print(f"[DEBUG] Bartender - filtering to beverage items only, count after role filter: {queryset.count()}")
             
         elif user_role == 'meat':
             # Meat staff can only see food items
             queryset = queryset.filter(item_type='food')
-            print(f"[DEBUG] Meat staff - filtering to food items only")
-            
-        # Branch-based filtering (for all roles)
-        if hasattr(user, 'branch') and user.branch:
-            # Filter menu items that have products with stock in the user's branch
-            # or items without products (food items)
-            queryset = queryset.filter(
-                models.Q(product__store_stocks__branch=user.branch) | 
-                models.Q(product__isnull=True)
-            ).distinct()
-            print(f"[DEBUG] Filtering menu items for branch: {user.branch.name}")
-        elif user.is_superuser:
-            # Superuser can see all menu items
-            print(f"[DEBUG] Superuser - showing all menu items")
+            print(f"[DEBUG] Meat staff - filtering to food items only, count after role filter: {queryset.count()}")
+        
+        # Skip complex branch filtering for now - just show all available items for the user's role
+        print(f"[DEBUG] Final queryset count: {queryset.count()}")
+        
+        # Additional debugging - show what items are available
+        if queryset.count() > 0:
+            print(f"[DEBUG] Available menu items: {list(queryset.values_list('name', 'item_type', 'is_available'))}")
         else:
-            # For users without branch, show all menu items
-            print(f"[DEBUG] User without branch - showing all menu items")
+            print(f"[DEBUG] No menu items available after all filtering")
         
         return queryset
 
@@ -140,6 +147,29 @@ class MenuItemViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+    @action(detail=False, methods=['get'], permission_classes=[], url_path='test')
+    def test_endpoint(self, request):
+        """
+        Temporary test endpoint that doesn't require authentication
+        """
+        from .models import MenuItem
+        items = MenuItem.objects.filter(is_available=True)
+        return Response({
+            'message': 'Test endpoint working',
+            'total_items': items.count(),
+            'items': [
+                {
+                    'id': item.id,
+                    'name': item.name,
+                    'item_type': item.item_type,
+                    'category': item.category.name if item.category else None,
+                    'price': str(item.price),
+                    'is_available': item.is_available
+                }
+                for item in items
+            ]
+        })
 
 
 class MenuSectionViewSet(viewsets.ModelViewSet):

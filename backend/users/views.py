@@ -365,88 +365,17 @@ class UserViewSet(ModelViewSet):
 
         return Response({"status": "Password reset successfully"})
 
-@method_decorator(csrf_exempt, name='dispatch')
 class CurrentUserView(APIView):
-    permission_classes = [AllowAny]  # Allow any request, we'll handle auth manually
+    permission_classes = [IsAuthenticated]  # Require authentication
 
     def get(self, request):
-        print(f"[DEBUG] CurrentUserView called")
-        print(f"[DEBUG] Session key: {request.session.session_key}")
-        print(f"[DEBUG] User: {request.user}")
-        print(f"[DEBUG] Is authenticated: {request.user.is_authenticated}")
-        print(f"[DEBUG] Cookies: {dict(request.COOKIES)}")
-        print(f"[DEBUG] Headers: {dict(request.headers)}")
-        print(f"[DEBUG] Session data: {dict(request.session)}")
-        print(f"[DEBUG] Authorization header: {request.headers.get('Authorization')}")
+        # Django's authentication middleware should have already authenticated the user
+        # if the session is valid
+        if request.user and request.user.is_authenticated:
+            serializer = UserLoginSerializer(request.user)
+            return Response(serializer.data)
         
-        # Check if sessionid cookie is present
-        sessionid_cookie = request.COOKIES.get('sessionid')
-        print(f"[DEBUG] Sessionid cookie: {sessionid_cookie}")
-        
-        # Force Django to load the session if we have a cookie but no session key
-        if sessionid_cookie and not request.session.session_key:
-            print(f"[DEBUG] Forcing session load for cookie: {sessionid_cookie}")
-            try:
-                # Manually set the session key and force Django to load it
-                request.session.session_key = sessionid_cookie
-                request.session.load()
-                print(f"[DEBUG] Session loaded, key: {request.session.session_key}")
-                print(f"[DEBUG] Session data after load: {dict(request.session)}")
-            except Exception as e:
-                print(f"[DEBUG] Error loading session: {e}")
-        
-        # If we have a session key, try to authenticate the user
-        if request.session.session_key:
-            print(f"[DEBUG] Session key exists: {request.session.session_key}")
-            # Check if user is already authenticated
-            if request.user and request.user.is_authenticated:
-                print(f"[DEBUG] User already authenticated: {request.user.username}")
-                serializer = UserLoginSerializer(request.user)
-                return Response(serializer.data)
-            
-            # Try to get user from session data
-            user_id = request.session.get('_auth_user_id')
-            if user_id:
-                try:
-                    user = User.objects.get(id=user_id)
-                    print(f"[DEBUG] User found in session: {user.username}")
-                    # Manually authenticate the user for this request
-                    from django.contrib.auth import get_user
-                    request.user = user
-                    serializer = UserLoginSerializer(user)
-                    return Response(serializer.data)
-                except User.DoesNotExist as e:
-                    print(f"[DEBUG] User not found in database: {e}")
-            else:
-                print(f"[DEBUG] No user_id in session data")
-        
-        # If no user found in session, try SessionManager as fallback
-        if sessionid_cookie:
-            user = SessionManager.validate_session(request)
-            if user:
-                print(f"[DEBUG] User authenticated via SessionManager: {user.username}")
-                serializer = UserLoginSerializer(user)
-                return Response(serializer.data)
-        
-        # If we still don't have a user, try to manually restore the session
-        if sessionid_cookie and not request.user.is_authenticated:
-            try:
-                from django.contrib.sessions.models import Session
-                session = Session.objects.get(
-                    session_key=sessionid_cookie,
-                    expire_date__gt=timezone.now()
-                )
-                session_data = session.get_decoded()
-                user_id = session_data.get('_auth_user_id')
-                if user_id:
-                    user = User.objects.get(id=user_id)
-                    print(f"[DEBUG] Session manually restored for user: {user.username}")
-                    serializer = UserLoginSerializer(user)
-                    return Response(serializer.data)
-            except (Session.DoesNotExist, User.DoesNotExist) as e:
-                print(f"[DEBUG] Failed to manually restore session: {e}")
-        
-        print(f"[DEBUG] No valid session found, user is anonymous")
+        # If we get here, the user is not authenticated
         return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
 
 

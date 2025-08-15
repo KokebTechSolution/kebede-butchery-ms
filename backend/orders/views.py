@@ -19,6 +19,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import get_waiter_actions
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Order, OrderUpdate
+from .serializers import OrderUpdateSerializer, OrderUpdateActionSerializer
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderListView(generics.ListCreateAPIView):
@@ -175,6 +182,19 @@ class OrderListView(generics.ListCreateAPIView):
             beverage_status=beverage_status
         )
 
+    def list(self, request, *args, **kwargs):
+        """
+        Custom list method to ensure proper JSON serialization
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -183,33 +203,60 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        print(f"[DEBUG] OrderDetailView.get_queryset - User: {user.username if user.is_authenticated else 'Anonymous'}")
+        print(f"[DEBUG] OrderDetailView.get_queryset - User authenticated: {user.is_authenticated}")
+        print(f"[DEBUG] OrderDetailView.get_queryset - User ID: {user.id if user.is_authenticated else 'None'}")
+        print(f"[DEBUG] OrderDetailView.get_queryset - User role: {getattr(user, 'role', 'None')}")
+        
         if not user.is_authenticated:
+            print(f"[DEBUG] OrderDetailView.get_queryset - User not authenticated, returning empty queryset")
             return Order.objects.none()
         
         # Check user role and filter accordingly
         if user.is_superuser:
             # Superuser can see all orders
             queryset = Order.objects.prefetch_related('items').all()
-            print(f"[DEBUG] Superuser - showing all order details")
+            print(f"[DEBUG] OrderDetailView.get_queryset - Superuser - showing all orders: {queryset.count()}")
         elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
             # Managers, owners, and cashiers can see all orders in their branch
             if hasattr(user, 'branch') and user.branch:
                 queryset = Order.objects.filter(branch=user.branch).prefetch_related('items')
-                print(f"[DEBUG] {user.role} - showing all order details for branch: {user.branch.name}")
+                print(f"[DEBUG] OrderDetailView.get_queryset - {user.role} - showing orders for branch {user.branch.name}: {queryset.count()}")
             else:
                 queryset = Order.objects.prefetch_related('items').all()
-                print(f"[DEBUG] {user.role} without branch - showing all order details")
+                print(f"[DEBUG] OrderDetailView.get_queryset - {user.role} without branch - showing all orders: {queryset.count()}")
         else:
             # Waiters and other users can only see their own orders
             queryset = Order.objects.filter(created_by=user).prefetch_related('items')
-            print(f"[DEBUG] Waiter {user.username} - showing only own order details")
+            print(f"[DEBUG] OrderDetailView.get_queryset - Waiter {user.username} - showing own orders: {queryset.count()}")
+            print(f"[DEBUG] OrderDetailView.get_queryset - Orders created by user {user.id}: {list(queryset.values_list('id', 'order_number'))}")
         
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        """
+        Custom retrieve method with better debugging and error handling
+        """
+        try:
+            print(f"[DEBUG] OrderDetailView.retrieve - User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
+            print(f"[DEBUG] OrderDetailView.retrieve - Order ID: {kwargs.get('pk')}")
+            print(f"[DEBUG] OrderDetailView.retrieve - User authenticated: {request.user.is_authenticated}")
+            print(f"[DEBUG] OrderDetailView.retrieve - User role: {getattr(request.user, 'role', 'None')}")
+            
+            instance = self.get_object()
+            print(f"[DEBUG] OrderDetailView.retrieve - Order found: {instance.id}, Order number: {instance.order_number}")
+            
+            serializer = self.get_serializer(instance)
+            response_data = serializer.data
+            print(f"[DEBUG] OrderDetailView.retrieve - Response data keys: {list(response_data.keys())}")
+            
+            return Response(response_data)
+        except Exception as e:
+            print(f"[ERROR] OrderDetailView.retrieve - Exception: {str(e)}")
+            return Response(
+                {"error": f"Failed to retrieve order: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class FoodOrderListView(generics.ListAPIView):
@@ -368,6 +415,23 @@ class UpdatePaymentOptionView(generics.UpdateAPIView):
         print(f"[DEBUG] UpdatePaymentOptionView - Current payment_option: {instance.payment_option}")
         print(f"[DEBUG] UpdatePaymentOptionView - New payment_option: {payment_option}")
         print(f"[DEBUG] UpdatePaymentOptionView - Request user: {request.user}")
+        
+        # Check if order has been processed (has a payment)
+        from payments.models import Payment
+        has_payment = Payment.objects.filter(order=instance).exists()
+        
+        if has_payment:
+            print(f"[DEBUG] UpdatePaymentOptionView - Order has been processed, payment option cannot be changed")
+            return Response({
+                'error': 'Payment option cannot be changed after order has been processed'
+            }, status=400)
+        
+        # Check if order has been printed
+        if instance.cashier_status == 'printed':
+            print(f"[DEBUG] UpdatePaymentOptionView - Order has been printed, payment option cannot be changed")
+            return Response({
+                'error': 'Payment option cannot be changed after order has been printed'
+            }, status=400)
         
         if payment_option in ['cash', 'online']:
             instance.payment_option = payment_option
@@ -592,7 +656,7 @@ class OrderItemStatusUpdateView(APIView):
 
     @transaction.atomic
     def patch(self, request, pk):
-        if not (request.user.is_authenticated and getattr(request.user, 'role', None) in ['meat', 'manager', 'owner', 'waiter', 'bartender']):
+        if not (request.user.is_authenticated and getattr(request.user, 'role', None) in ['meat', 'manager', 'owner', 'waiter', 'bartender', 'cashier']):
             return Response({'error': 'Forbidden'}, status=403)
         try:
             item = OrderItem.objects.select_related('order').get(pk=pk)
@@ -629,24 +693,24 @@ class OrderItemStatusUpdateView(APIView):
         #             status=status.HTTP_400_BAD_REQUEST
         #         )
 
-        #     product = barman_stock.stock.product
-        #     try:
-        #         # Assuming you have a method to get conversion factor from base unit to original unit
-        #         conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
-        #         original_quantity_delta = item.quantity / conversion_factor
-        #     except Exception:
-        #         # Fallback: treat original quantity same as base units if conversion unavailable
-        #         original_quantity_delta = item.quantity
+        # product = barman_stock.stock.product
+        # try:
+        #     # Assuming you have a method to get conversion factor from base unit to original unit
+        #     conversion_factor = product.get_conversion_factor(product.base_unit, barman_stock.original_unit)
+        #     original_quantity_delta = item.quantity / conversion_factor
+        # except Exception:
+        #     # Fallback: treat original quantity same as base units if conversion unavailable
+        #     original_quantity_delta = item.quantity
 
-        #     # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
-        #     try:
-        #         barman_stock.adjust_quantity(
-        #             quantity=item.quantity,
-        #             unit=product.base_unit,
-        #             is_addition=False
-        #         )
-        #     except Exception as e:
-        #         return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        # # Use your adjust_quantity method to deduct stock (make sure this method is in BarmanStock or Stock model)
+        # try:
+        #     barman_stock.adjust_quantity(
+        #         quantity=item.quantity,
+        #         unit=product.base_unit,
+        #         is_addition=False
+        #     )
+        # except Exception as e:
+        #     return Response({'error': f'Stock adjustment failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update item status
         item.status = status_value
@@ -686,17 +750,10 @@ class OrderItemStatusUpdateView(APIView):
                 order.beverage_status = 'preparing'
             else:
                 order.beverage_status = 'pending'
-
-        # Update order cashier status
-        all_statuses = list(order.items.values_list('status', flat=True))
-        if all(s in ['accepted', 'rejected'] for s in all_statuses):
-            order.cashier_status = 'ready_for_payment'
-        else:
-            order.cashier_status = 'pending'
-
+        
         order.save()
-
-        return Response(OrderItemSerializer(item).data, status=status.HTTP_200_OK)
+        
+        return Response({'message': 'Order item status updated successfully'})
 
 @api_view(['GET'])
 def test_order_update(request, order_id):
@@ -765,3 +822,309 @@ def get_waiter_actions_view(request, order_id):
         return Response({
             'error': f'Error getting waiter actions: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_order_update(request):
+    """Create a new order update (addition, modification, removal)"""
+    try:
+        serializer = OrderUpdateSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            order_update = serializer.save()
+            
+            # Return success response
+            return Response({
+                'message': 'Order update created successfully',
+                'order_update': OrderUpdateSerializer(order_update).data
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to create order update',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_order_updates(request, order_id):
+    """Get all updates for a specific order"""
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        updates = OrderUpdate.objects.filter(original_order=order).order_by('-created_at')
+        
+        serializer = OrderUpdateSerializer(updates, many=True)
+        return Response({
+            'order_id': order_id,
+            'updates': serializer.data
+        })
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to fetch order updates',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def process_order_update(request, update_id):
+    """Accept or reject an order update"""
+    try:
+        order_update = get_object_or_404(OrderUpdate, id=update_id)
+        
+        # Check if update can be processed
+        if not order_update.can_be_processed():
+            return Response({
+                'error': 'Order update cannot be processed',
+                'details': f'Update status is {order_update.status}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = OrderUpdateActionSerializer(data=request.data)
+        if serializer.is_valid():
+            action = serializer.validated_data['action']
+            
+            if action == 'accept':
+                notes = serializer.validated_data.get('notes', '')
+                order_update.mark_accepted(request.user, notes)
+                message = 'Order update accepted successfully'
+            else:  # reject
+                reason = serializer.validated_data.get('rejection_reason', '')
+                order_update.mark_rejected(request.user, reason)
+                message = 'Order update rejected successfully'
+            
+            return Response({
+                'message': message,
+                'order_update': OrderUpdateSerializer(order_update).data
+            })
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to process order update',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_updates(request):
+    """Get all pending order updates for kitchen/bar staff"""
+    try:
+        pending_updates = OrderUpdate.objects.filter(status='pending').order_by('created_at')
+        
+        serializer = OrderUpdateSerializer(pending_updates, many=True)
+        return Response({
+            'pending_updates': serializer.data,
+            'count': pending_updates.count()
+        })
+    
+    except Exception as e:
+        return Response({
+            'error': 'Failed to fetch pending updates',
+            'details': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def edit_order_view(request, order_id):
+    """
+    Edit an existing order by adding new items while preserving accepted items.
+    
+    This endpoint uses the edit_order function which:
+    - Preserves accepted items
+    - Removes pending items
+    - Adds new items with 'pending' status
+    - Logs all changes in OrderUpdate table
+    - Maintains transaction safety
+    """
+    try:
+        from .utils import edit_order
+        
+        # Get the new items from request data
+        new_items = request.data.get('items', [])
+        
+        if not new_items:
+            return Response({
+                'error': 'No items provided for order update'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate new items structure
+        for item in new_items:
+            if not all(key in item for key in ['name', 'quantity', 'price']):
+                return Response({
+                    'error': 'Each item must have name, quantity, and price'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Call the edit_order function
+        result = edit_order(
+            order_id=order_id,
+            new_items=new_items,
+            user=request.user
+        )
+        
+        if result['success']:
+            return Response({
+                'message': result['message'],
+                'order_id': result['order_id'],
+                'order_update_id': result['order_update_id'],
+                'update_type': result['update_type'],
+                'accepted_items_preserved': result['accepted_items_preserved'],
+                'pending_items_removed': result['pending_items_removed'],
+                'new_items_added': result['new_items_added'],
+                'total_addition_cost': result['total_addition_cost'],
+                'new_total_money': result['new_total_money'],
+                'order_update_status': result['order_update_status']
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': result['error']
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response({
+            'error': f'Failed to edit order: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_order_display_view(request, order_id):
+    """
+    Get comprehensive order display information including:
+    - All items (accepted and pending)
+    - Order updates history
+    - Order metadata
+    """
+    try:
+        from .utils import get_order_display_items
+        
+        result = get_order_display_items(order_id)
+        
+        if 'error' in result:
+            return Response({
+                'error': result['error']
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response(result, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'Failed to get order display: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_order_update_completion_view(request, order_update_id):
+    """
+    Check if an order update is complete (all items accepted).
+    If complete, mark the update as 'accepted'.
+    """
+    try:
+        from .utils import check_order_update_completion
+        
+        result = check_order_update_completion(order_update_id)
+        
+        return Response({
+            'order_update_id': order_update_id,
+            'was_completed': result,
+            'message': 'Order update marked as accepted' if result else 'Order update still has pending items'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'Failed to check order update completion: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def add_items_to_order(request, order_id):
+    """
+    Simple endpoint to add items to an existing order.
+    This bypasses the complex validation system for basic item addition.
+    """
+    try:
+        from .models import Order, OrderItem
+        
+        # Get the order
+        order = Order.objects.get(id=order_id)
+        
+        # Get items data from request
+        items_data = request.data.get('items', [])
+        
+        if not items_data:
+            return Response({'error': 'No items provided'}, status=400)
+        
+        # Add new items
+        new_items = []
+        for item_data in items_data:
+            try:
+                new_item = OrderItem.objects.create(
+                    order=order,
+                    name=item_data.get('name'),
+                    quantity=item_data.get('quantity', 1),
+                    price=item_data.get('price', 0),
+                    item_type=item_data.get('item_type', 'food'),
+                    product_id=item_data.get('product_id') or item_data.get('product'),
+                    status='pending'
+                )
+                new_items.append(new_item)
+                print(f"[DEBUG] add_items_to_order - Created item: {new_item.name} ({new_item.item_type})")
+            except Exception as e:
+                print(f"[ERROR] add_items_to_order - Failed to create item {item_data.get('name')}: {str(e)}")
+                return Response({'error': f'Failed to create item: {str(e)}'}, status=400)
+        
+        # Recalculate order total
+        total = sum(item.price * item.quantity for item in order.items.all())
+        order.total_money = total
+        
+        # Update order statuses based on new items
+        if new_items:
+            # Check if we have food or beverage items
+            has_food = order.items.filter(item_type='food').exists()
+            has_beverage = order.items.filter(item_type='beverage').exists()
+            
+            if has_food and order.food_status == 'not_applicable':
+                order.food_status = 'pending'
+            
+            if has_beverage and order.beverage_status == 'not_applicable':
+                order.beverage_status = 'pending'
+        
+        order.save()
+        
+        print(f"[DEBUG] add_items_to_order - Successfully added {len(new_items)} items to order {order.id}")
+        
+        # Send notifications to appropriate staff based on item types
+        try:
+            from .serializers import send_notification_to_role
+            
+            # Group new items by type
+            beverage_items = [item for item in new_items if item.item_type == 'beverage']
+            food_items = [item for item in new_items if item.item_type == 'food']
+            
+            if beverage_items:
+                beverage_message = f"Order #{order.order_number} (Table {order.table.number if order.table else 'Unknown'}) updated with {len(beverage_items)} beverage item(s)"
+                send_notification_to_role('bartender', beverage_message)
+                print(f"[DEBUG] add_items_to_order - Notification sent to bartender: {beverage_message}")
+            
+            if food_items:
+                food_message = f"Order #{order.order_number} (Table {order.table.number if order.table else 'Unknown'}) updated with {len(food_items)} food item(s)"
+                send_notification_to_role('meat_area', food_message)
+                print(f"[DEBUG] add_items_to_order - Notification sent to meat area: {food_message}")
+                
+        except Exception as e:
+            print(f"[WARNING] add_items_to_order - Failed to send notifications: {str(e)}")
+        
+        return Response({
+            'success': True,
+            'message': f'Successfully added {len(new_items)} items to order',
+            'order_id': order.id,
+            'new_items': [{'name': item.name, 'quantity': item.quantity, 'price': item.price, 'item_type': item.item_type} for item in new_items],
+            'total_money': float(total)
+        })
+        
+    except Order.DoesNotExist:
+        return Response({'error': 'Order not found'}, status=404)
+    except Exception as e:
+        print(f"[ERROR] add_items_to_order - Unexpected error: {str(e)}")
+        return Response({'error': f'Unexpected error: {str(e)}'}, status=500)

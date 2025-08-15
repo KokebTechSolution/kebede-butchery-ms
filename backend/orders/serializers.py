@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Order, OrderItem
+from .models import Order, OrderItem, OrderUpdate
+from users.serializers import UserListSerializer as UserSerializer
 from branches.models import Table
 from django.db import transaction
 from channels.layers import get_channel_layer
@@ -267,3 +268,113 @@ class BeverageOrderSerializer(OrderSerializer):
         # Only return beverage items
         beverage_items = obj.items.filter(item_type='beverage')
         return BeverageOrderItemSerializer(beverage_items, many=True).data
+
+
+class OrderUpdateSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(read_only=True)
+    processed_by = UserSerializer(read_only=True)
+    original_order_id = serializers.IntegerField(write_only=True)
+    
+    class Meta:
+        model = OrderUpdate
+        fields = [
+            'id', 'original_order', 'original_order_id', 'update_type', 'status',
+            'items_changes', 'created_by', 'processed_by', 'created_at', 'processed_at',
+            'notes', 'rejection_reason', 'total_addition_cost'
+        ]
+        read_only_fields = ['id', 'original_order', 'created_at', 'processed_at', 'total_addition_cost']
+    
+    def create(self, validated_data):
+        # Extract the original_order_id and remove it from validated_data
+        original_order_id = validated_data.pop('original_order_id')
+        
+        # Get the current user
+        user = self.context['request'].user
+        
+        # Create the order update
+        order_update = OrderUpdate.objects.create(
+            original_order_id=original_order_id,
+            created_by=user,
+            **validated_data
+        )
+        
+        # Recalculate the total cost
+        order_update.recalculate_total()
+        
+        return order_update
+    
+    def validate_items_changes(self, value):
+        """Validate the items_changes JSON structure"""
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("items_changes must be a dictionary")
+        
+        update_type = self.initial_data.get('update_type')
+        
+        if update_type == 'addition':
+            if 'items' not in value:
+                raise serializers.ValidationError("addition updates must include 'items' array")
+            
+            items = value['items']
+            if not isinstance(items, list) or len(items) == 0:
+                raise serializers.ValidationError("items must be a non-empty array")
+            
+            for item in items:
+                if not all(key in item for key in ['name', 'quantity', 'price']):
+                    raise serializers.ValidationError("Each item must have name, quantity, and price")
+                
+                # Convert quantity and price to numbers for validation
+                try:
+                    quantity = int(item['quantity'])
+                    price = float(item['price'])
+                except (ValueError, TypeError):
+                    raise serializers.ValidationError("Quantity must be an integer and price must be a number")
+                
+                if quantity <= 0:
+                    raise serializers.ValidationError("Item quantity must be greater than 0")
+                
+                if price <= 0:
+                    raise serializers.ValidationError("Item price must be greater than 0")
+                
+                # Update the item with converted values
+                item['quantity'] = quantity
+                item['price'] = price
+        
+        elif update_type == 'modification':
+            if 'modifications' not in value:
+                raise serializers.ValidationError("modification updates must include 'modifications' array")
+            
+            modifications = value['modifications']
+            if not isinstance(modifications, list) or len(modifications) == 0:
+                raise serializers.ValidationError("modifications must be a non-empty array")
+            
+            for mod in modifications:
+                if 'item_id' not in mod:
+                    raise serializers.ValidationError("Each modification must include item_id")
+        
+        elif update_type == 'removal':
+            if 'removals' not in value:
+                raise serializers.ValidationError("removal updates must include 'removals' array")
+            
+            removals = value['removals']
+            if not isinstance(removals, list) or len(removals) == 0:
+                raise serializers.ValidationError("removals must be a non-empty array")
+            
+            for removal in removals:
+                if 'item_id' not in removal:
+                    raise serializers.ValidationError("Each removal must include item_id")
+        
+        return value
+
+class OrderUpdateActionSerializer(serializers.Serializer):
+    """Serializer for accepting/rejecting order updates"""
+    action = serializers.ChoiceField(choices=['accept', 'reject'])
+    notes = serializers.CharField(required=False, allow_blank=True)
+    rejection_reason = serializers.CharField(required=False, allow_blank=True)
+    
+    def validate(self, data):
+        action = data['action']
+        
+        if action == 'reject' and not data.get('rejection_reason'):
+            raise serializers.ValidationError("Rejection reason is required when rejecting an update")
+        
+        return data
