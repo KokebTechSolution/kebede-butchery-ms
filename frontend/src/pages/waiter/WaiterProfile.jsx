@@ -338,17 +338,19 @@ const WaiterProfile = ({ onBack }) => {
             <div className="section-header">
               <h2>Recent Printed Orders</h2>
             </div>
-            <div className="mb-6 flex items-center gap-4">
-              <label htmlFor="activity-date-filter" className="font-medium">Filter by Date:</label>
-              <input
-                id="activity-date-filter"
-                type="date"
-                value={filterDate}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={e => setFilterDate(e.target.value)}
-                className="p-2 border rounded"
-              />
-              <span className="text-xs text-gray-500">(Default: today)</span>
+            <div className="date-filter-container">
+              <label htmlFor="activity-date-filter" className="date-filter-label">Filter by Date:</label>
+              <div className="date-filter-input-group">
+                <input
+                  id="activity-date-filter"
+                  type="date"
+                  value={filterDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setFilterDate(e.target.value)}
+                  className="date-filter-input"
+                />
+                <span className="date-filter-hint">(Default: today)</span>
+              </div>
             </div>
             <div className="activity-list">
               {printedOrders.length === 0 && (
@@ -376,27 +378,19 @@ const WaiterProfile = ({ onBack }) => {
                     <span className="activity-time">{order.created_at ? new Date(order.created_at).toLocaleString() : ''}</span>
                     {expandedOrderId === order.id && (
                       <div className="order-items-detail">
-                        <h5 style={{ margin: '10px 0 5px 0' }}>Items:</h5>
-                        <table className="order-items-table">
-                          <thead>
-                            <tr>
-                              <th>Name</th>
-                              <th>Qty</th>
-                              <th>Price</th>
-                              <th>Subtotal</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(orderItems[order.id] || []).map((item, idx) => (
-                              <tr key={idx}>
-                                <td>{item.name}</td>
-                                <td>{item.quantity}</td>
-                                <td>${item.price}</td>
-                                <td>${(item.price * item.quantity).toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <h5>Items:</h5>
+                        <div className="mobile-order-items">
+                          {(orderItems[order.id] || []).map((item, idx) => (
+                            <div key={idx} className="mobile-order-item">
+                              <div className="item-name">{item.name}</div>
+                              <div className="item-details">
+                                <span>Qty: {item.quantity}</span>
+                                <span>Price: ${item.price}</span>
+                                <span>Total: ${(item.price * item.quantity).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                         <div className="order-total-row">
                           <strong>Total: ${
                             (orderItems[order.id] || []).reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)

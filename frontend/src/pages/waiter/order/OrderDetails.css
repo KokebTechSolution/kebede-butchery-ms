@@ -1,3 +1,47 @@
+.order-details-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.order-details-container th,
+.order-details-container td {
+  padding: 10px 12px;
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  /* Hide the full table on small screens; use compact list below */
+  .order-details-container .order-items-table table { display: none; }
+}
+
+/* Compact mobile list under table */
+@media (max-width: 768px) {
+  .mobile-items-list { display: block; margin-top: 8px; }
+  .mobile-item-wrapper { margin-bottom: 8px; }
+  .mobile-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    cursor: pointer;
+  }
+  .mobile-item .name { font-weight: 700; }
+  .mobile-item .meta { color: #6b7280; font-weight: 600; }
+  .mobile-item .details-pill { margin-left: 8px; background: #f3f4f6; color: #111827; font-weight: 700; padding: 2px 8px; border-radius: 9999px; font-size: 11px; }
+
+  .mobile-item-details { background: #fff; border: 1px solid #eee; border-top: none; border-radius: 0 0 10px 10px; padding: 8px 12px; }
+  .mobile-item-details .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .mobile-item-details .label { color: #6b7280; font-weight: 700; }
+  .mobile-item-details .value { font-weight: 600; }
+}
+@media (min-width: 769px) {
+  .mobile-items-list { display: none; }
+}
+
 .order-details-container {
   padding: 20px;
   font-family: Arial, sans-serif;
@@ -38,11 +82,7 @@
   border-radius: 8px;
 }
 
-.order-summary h2 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #333;
-}
+.order-summary h2 { text-align: center; margin-bottom: 12px; color: #333; }
 
 .order-info {
   display: flex;
@@ -60,11 +100,7 @@
   color: #666;
 }
 
-.order-items-table table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
+.order-items-table table { width: 100%; border-collapse: collapse; margin-top: 12px; }
 
 .order-items-table th,
 .order-items-table td {
@@ -90,15 +126,7 @@
   font-size: 0.9em;
 }
 
-.order-total {
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid #ccc;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 1.2em;
-}
+.order-total { margin-top: 16px; padding-top: 12px; border-top: 1px solid #ccc; display: flex; flex-direction: column; align-items: flex-end; font-size: 1.1em; }
 
 .order-total .subtotal,
 .order-total .total {
@@ -108,11 +136,7 @@
   margin-bottom: 5px;
 }
 
-.order-total .total {
-  font-weight: bold;
-  font-size: 1.4em;
-  color: #333;
-}
+.order-total .total { font-weight: bold; font-size: 1.2em; color: #333; }
 
 .order-printed {
   opacity: 0.5;

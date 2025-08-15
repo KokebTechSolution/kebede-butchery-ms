@@ -65,6 +65,7 @@ const WaiterDashboard = () => {
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const [isOrderOverlayOpen, setIsOrderOverlayOpen] = useState(false);
 
   const { 
     activeTableId, 
@@ -340,6 +341,12 @@ const WaiterDashboard = () => {
     setSelectedOrderId(orderId);
     setEditingOrderId(null);
     setCurrentPage('orderDetails');
+    // Open overlay on mobile to avoid extra taps
+    try {
+      if (window && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+        setIsOrderOverlayOpen(true);
+      }
+    } catch (_) {}
   };
 
   const handleOrderDeleted = () => {
@@ -384,6 +391,25 @@ const WaiterDashboard = () => {
               selectedOrderId={selectedOrderId}
               onOrderDeleted={handleOrderDeleted}
             />
+          </div>
+        )}
+        {/* Mobile order details overlay */}
+        {isOrderOverlayOpen && (
+          <div className="order-details-overlay" onClick={(e) => { if (e.target && e.target.classList && e.target.classList.contains('order-details-overlay')) { setIsOrderOverlayOpen(false); const list = document.getElementById('order-list'); if (list) { list.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }}>
+            <div className="order-details-sheet">
+              <div className="sheet-header">
+                <button className="sheet-back" onClick={() => { setIsOrderOverlayOpen(false); const list = document.getElementById('order-list'); if (list) { list.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}>← Back</button>
+                <span>Order Details</span>
+                <span style={{ width: 64 }} />
+              </div>
+              <div className="sheet-body">
+                <OrderDetails
+                  onEditOrder={handleEditOrder}
+                  selectedOrderId={selectedOrderId}
+                  onOrderDeleted={() => { setIsOrderOverlayOpen(false); handleOrderDeleted(); const list = document.getElementById('order-list'); if (list) { list.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}
+                />
+              </div>
+            </div>
           </div>
         )}
         {currentPage === 'profile' && (

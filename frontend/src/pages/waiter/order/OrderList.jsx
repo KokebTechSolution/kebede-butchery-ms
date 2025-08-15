@@ -106,8 +106,17 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
     return 0;
   });
 
+  const onClickOrder = (id) => {
+    onSelectOrder(id);
+    // Smooth scroll to details on mobile
+    const details = document.getElementById('order-details');
+    if (details) {
+      details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <div className="order-list-container">
+    <div id="order-list" className="order-list-container">
       {showNotification && notificationOrder && (
         <NotificationPopup
           message="New order received!"
@@ -117,7 +126,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
           onClose={() => setShowNotification(false)}
         />
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <label htmlFor="order-date-filter" style={{ marginRight: 8 }}>Filter by Date:</label>
           <input
@@ -149,7 +158,7 @@ const OrderList = ({ onSelectOrder, selectedOrderId, refreshKey }) => {
             <div
               key={order.id}
               className={`order-list-item ${order.id === selectedOrderId ? 'active' : ''}`}
-              onClick={() => onSelectOrder(order.id)}
+              onClick={() => onClickOrder(order.id)}
             >
               <span className="order-list-item-id">{order.order_number}</span>
               <span className="order-list-item-status">{getStatusLabel(order.cashier_status)}</span>

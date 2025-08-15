@@ -16,6 +16,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
+        # Enforce that payment can only be created after waiter prints the bill
+        order = serializer.validated_data.get('order')
+        if getattr(order, 'cashier_status', None) != 'printed':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'order': 'Order must be printed by waiter before payment can be processed.'})
+
         payment = serializer.save(processed_by=self.request.user, is_completed=True)
         # Always use the latest order total
         payment.amount = payment.order.total_money

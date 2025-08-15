@@ -119,6 +119,7 @@ const TablesPage = ({ onSelectTable }) => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           zIndex: 1000,
           cursor: loading ? 'not-allowed' : 'pointer',
+          touchAction: 'manipulation'
         }}
         onClick={handleAddTable}
         aria-label="Add Table"

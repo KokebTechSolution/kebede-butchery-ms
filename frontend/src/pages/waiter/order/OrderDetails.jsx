@@ -11,6 +11,19 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
     const saved = localStorage.getItem('printedOrders');
     return saved ? JSON.parse(saved) : [];
   });
+  const [expandedIndexes, setExpandedIndexes] = useState(new Set());
+
+  const toggleExpanded = (idx) => {
+    setExpandedIndexes(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     localStorage.setItem('printedOrders', JSON.stringify(printedOrders));
@@ -102,7 +115,7 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   // --------------------------------
 
   return (
-    <div className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
+    <div id="order-details" className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
       <div className="order-details-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <div className="icon-buttons">
           {/* Icons for edit, print, delete */}
@@ -132,10 +145,18 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
                     throw new Error('Failed to update cashier status');
                   }
                   setPrintedOrders(prev => [...prev, currentOrder.id]);
-                  // Store the current page state before reload
-                  localStorage.setItem('waiterCurrentPage', 'orderDetails');
-                  // Force a refresh of the orders list without navigating away
-                  window.location.reload();
+                  // Update the current order to reflect the printed status
+                  setCurrentOrder(prev => ({
+                    ...prev,
+                    cashier_status: 'printed'
+                  }));
+                  // Scroll to top of order details
+                  setTimeout(() => {
+                    const orderDetailsElement = document.getElementById('order-details');
+                    if (orderDetailsElement) {
+                      orderDetailsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }, 100);
                 } catch (error) {
                   console.error('Error updating cashier status:', error);
                 }
@@ -179,15 +200,32 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
             <tbody>
               {mergedItems.map((item, index) => (
                 <tr key={item.id || item.name + '-' + index}>
-                  <td>{currentOrder.table_number || 'N/A'}</td>
-                  <td>{item.name}</td>
-                  <td>{item.quantity}</td>
-                  <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
-                  <td>{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</td>
+                  <td data-label="Table No.">{currentOrder.table_number || 'N/A'}</td>
+                  <td data-label="Dish">{item.name}</td>
+                  <td data-label="Qty.">{item.quantity}</td>
+                  <td data-label="Amount">ETB {(item.price * item.quantity).toFixed(2)}</td>
+                  <td data-label="Created By">{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <div className="mobile-items-list">
+            {mergedItems.map((item, index) => (
+              <div key={item.id || item.name + '-' + index} className="mobile-item-wrapper">
+                <div className="mobile-item" onClick={() => toggleExpanded(index)}>
+                  <div className="name">{item.name}</div>
+                  <div className="meta">x{item.quantity} • ETB {(item.price * item.quantity).toFixed(2)} <span className="details-pill">{expandedIndexes.has(index) ? 'Hide' : 'Details'}</span></div>
+                </div>
+                {expandedIndexes.has(index) && (
+                  <div className="mobile-item-details">
+                    <div className="row"><span className="label">Table</span><span className="value">{currentOrder.table_number || 'N/A'}</span></div>
+                    <div className="row"><span className="label">Amount</span><span className="value">ETB {(item.price * item.quantity).toFixed(2)}</span></div>
+                    <div className="row"><span className="label">Created By</span><span className="value">{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</span></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* VAT Calculation */}

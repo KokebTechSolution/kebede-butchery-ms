@@ -36,9 +36,9 @@ class OrderListView(generics.ListCreateAPIView):
         print(f"DEBUG: Cashier status filter: {cashier_status}")
         print(f"DEBUG: Date filter: {date}")
         
-        # For cashier dashboard, show all orders (not just user's orders)
+        # For cashier dashboard, show only printed orders
         if user.role == 'cashier':
-            queryset = Order.objects.all()
+            queryset = Order.objects.filter(cashier_status='printed')
         else:
             queryset = Order.objects.filter(created_by=user)
             
@@ -48,13 +48,9 @@ class OrderListView(generics.ListCreateAPIView):
             parsed_date = parse_date(date)
             queryset = queryset.filter(created_at__date=parsed_date)
         if cashier_status:
-            if cashier_status == 'pending':
-                # For 'pending' filter, show both 'pending' and 'ready_for_payment' orders
-                queryset = queryset.filter(cashier_status__in=['pending', 'ready_for_payment'])
-                print(f"DEBUG: Applied pending filter (pending + ready_for_payment)")
-            else:
-                queryset = queryset.filter(cashier_status=cashier_status)
-                print(f"DEBUG: Applied cashier_status filter: {cashier_status}")
+            # Explicit filter if provided; but cashier role base queryset already restricts to 'printed'
+            queryset = queryset.filter(cashier_status=cashier_status)
+            print(f"DEBUG: Applied cashier_status filter: {cashier_status}")
             print(f"DEBUG: Query count after filter: {queryset.count()}")
         
         print(f"DEBUG: Final query count: {queryset.count()}")
@@ -160,6 +156,9 @@ class UpdateCashierStatusView(generics.UpdateAPIView):
 
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
+        # Only allow moving to printed if order is ready for payment
+        if instance.cashier_status != 'ready_for_payment':
+            return Response({'error': 'Order is not ready for payment'}, status=status.HTTP_400_BAD_REQUEST)
         instance.cashier_status = 'printed'
         instance.save()
         serializer = self.get_serializer(instance)
@@ -416,7 +415,7 @@ class OrderItemStatusUpdateView(APIView):
 
         # Update order cashier status
         all_statuses = list(order.items.values_list('status', flat=True))
-        if all(s in ['accepted', 'rejected'] for s in all_statuses):
+        if all(s in ['accepted', 'rejected'] for s in all_statuses) and accepted_items.exists():
             order.cashier_status = 'ready_for_payment'
         else:
             order.cashier_status = 'pending'

@@ -28,7 +28,7 @@ class Order(models.Model):
     waiter_notified_beverage = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', null=True, blank=True)
     cashier_status = models.CharField(
         max_length=20,
-        choices=[('pending', 'Pending'), ('printed', 'Printed')],
+        choices=[('pending', 'Pending'), ('ready_for_payment', 'Ready for Payment'), ('printed', 'Printed')],
         default='pending'
     )
     payment_option = models.CharField(

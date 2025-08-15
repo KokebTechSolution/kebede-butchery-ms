@@ -63,3 +63,15 @@
   font-size: 14px;
   color: #666;
 } 
+
+/* Mobile: stack list above details and make list full width */
+@media (max-width: 768px) {
+  .order-details-layout {
+    flex-direction: column;
+    padding: 12px;
+  }
+  .order-list-container {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+}

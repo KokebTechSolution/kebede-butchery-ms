@@ -9,6 +9,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [activeTab, setActiveTab] = useState('food');
     const [isOrdering, setIsOrdering] = useState(false); // <-- add this
+    const [isCartOpen, setIsCartOpen] = useState(false);
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
 
     useEffect(() => {
@@ -53,9 +54,25 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const latestOrder = previousOrders.length > 0 ? [...previousOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] : null;
     const isPaid = latestOrder && latestOrder.has_payment;
 
+    // Merge cart items for display and compute total
+    function mergeCartItems(items) {
+        const merged = [];
+        items.forEach(item => {
+            const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
+            if (found) {
+                found.quantity += item.quantity;
+            } else {
+                merged.push({ ...item });
+            }
+        });
+        return merged;
+    }
+    const mergedCartItems = mergeCartItems(cartItems);
+    const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     return (
-        <div className="menu-container" style={{ display: 'flex', gap: '2rem' }}>
-            <div style={{ flex: 2 }}>
+        <div className="menu-container" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 520px', minWidth: 0 }}>
                 <div className="menu-header">
                     <h2>{table ? ` Table ${table.number}` : ''}</h2>
                     {onBack && <MdArrowBack size={36} onClick={onBack} style={{ cursor: 'pointer' }} />}
@@ -103,40 +120,27 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                     </div>
                 )}
             </div>
-            <div style={{ flex: 1, minWidth: 300 }}>
+            <div className="desktop-cart-panel" style={{ flex: '1 1 320px', minWidth: 0 }}>
                 <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001', marginBottom: 24 }}>
                     <h3 style={{ marginBottom: 8 }}>🛒 Current Order</h3>
-                    {(() => {
-                        function mergeCartItems(items) {
-                            const merged = [];
-                            items.forEach(item => {
-                                const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-                                if (found) {
-                                    found.quantity += item.quantity;
-                                } else {
-                                    merged.push({ ...item });
-                                }
-                            });
-                            return merged;
-                        }
-                        const mergedCartItems = mergeCartItems(cartItems);
-                        return mergedCartItems.length === 0 ? (
-                            <div>No items in current order.</div>
-                        ) : (
-                            <ul style={{ marginBottom: 12 }}>
-                                {mergedCartItems.map(item => (
-                                    <li key={item.name + '-' + item.price + '-' + (item.item_type || 'food')}>
-                                        {item.name} × {item.quantity} — ${(item.price * item.quantity).toFixed(2)}
-                                    </li>
-                                ))}
-                            </ul>
-                        );
-                    })()}
+                    {mergedCartItems.length === 0 ? (
+                        <div>No items in current order.</div>
+                    ) : (
+                        <ul style={{ marginBottom: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                            {mergedCartItems.map(item => (
+                                <li key={item.name + '-' + item.price + '-' + (item.item_type || 'food')} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', border: '1px solid #eee', borderRadius: 8, padding: '10px 12px' }}>
+                                    <span style={{ fontWeight: 600 }}>{item.name}</span>
+                                    <span style={{ color: '#444' }}>× {item.quantity}</span>
+                                    <span style={{ fontWeight: 600 }}>ETB {(item.price * item.quantity).toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                     <div style={{ fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>
-                        Running Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
+                        Running Total: ${cartTotal.toFixed(2)}
                       </span>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <button
                           style={{
                             background: '#4ade80',
@@ -215,6 +219,66 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                     )}
                 </div>
             </div>
+
+            {/* Mobile cart toggle and panel */}
+            <button
+                type="button"
+                className="mobile-cart-toggle"
+                onClick={() => setIsCartOpen(true)}
+            >
+                🛒 Cart ({mergedCartItems.length}) • ETB {cartTotal.toFixed(2)}
+            </button>
+            {isCartOpen && (
+                <>
+                    <div className="mobile-cart-backdrop" onClick={() => setIsCartOpen(false)} />
+                    <div className="mobile-cart-panel">
+                        <div className="mobile-cart-header">
+                            <span>Current Order</span>
+                            <button type="button" onClick={() => setIsCartOpen(false)}>✕</button>
+                        </div>
+                        <div className="mobile-cart-body">
+                            {mergedCartItems.length === 0 ? (
+                                <div>No items in current order.</div>
+                            ) : (
+                                <ul className="mobile-cart-list">
+                                    {mergedCartItems.map(item => (
+                                        <li key={item.name + '-' + item.price + '-' + (item.item_type || 'food')}>
+                                            <div className="name">{item.name}</div>
+                                            <div className="qty">× {item.quantity}</div>
+                                            <div className="price">ETB {(item.price * item.quantity).toFixed(2)}</div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="mobile-cart-footer">
+                            <div className="total">Total: ETB {cartTotal.toFixed(2)}</div>
+                            <div className="actions">
+                                {cartItems.length > 0 && (
+                                    <button className="btn clear" onClick={clearCart}>Clear</button>
+                                )}
+                                <button
+                                    className="btn order"
+                                    disabled={cartItems.length === 0 || isOrdering}
+                                    onClick={async () => {
+                                        if (isOrdering) return;
+                                        setIsOrdering(true);
+                                        try {
+                                            await onOrder();
+                                            clearCart();
+                                            setIsCartOpen(false);
+                                        } finally {
+                                            setIsOrdering(false);
+                                        }
+                                    }}
+                                >
+                                    {isOrdering ? 'Ordering...' : 'Order'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

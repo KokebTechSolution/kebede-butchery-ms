@@ -118,6 +118,11 @@ class OrderSerializer(serializers.ModelSerializer):
             if new_food_item_added and instance.food_status != 'preparing':
                 instance.food_status = 'pending'
 
+            # If new items were added, immediately revert cashier status
+            # so the order does not appear as ready for payment anymore.
+            if items_data:
+                instance.cashier_status = 'pending'
+
             if instance.all_items_completed():
                 instance.food_status = 'completed'
                 instance.beverage_status = 'completed'
