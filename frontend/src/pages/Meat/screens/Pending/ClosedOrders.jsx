@@ -62,7 +62,7 @@ const ClosedOrders = ({ orders }) => {
                         <FaLock className="inline mr-1" />
                         {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                       </span>
-                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                      <span>${(Number(item.price || 0) * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>

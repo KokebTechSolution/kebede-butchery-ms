@@ -72,8 +72,18 @@ export const AuthProvider = ({ children }) => {
         
         // Validate session with backend
         fetchSessionUser().catch(error => {
-          console.log('[DEBUG] Session validation failed, will retry:', error.message);
-          // Don't clear user immediately, let the retry mechanism handle it
+          console.log('[DEBUG] Session validation failed:', error.message);
+          console.log('[DEBUG] Error response status:', error.response?.status);
+          
+          // If it's a 401 error, clear the user immediately
+          if (error.response && error.response.status === 401) {
+            console.log('[DEBUG] Session expired, clearing user data');
+            setUser(null);
+            localStorage.removeItem('user');
+            localStorage.removeItem('session_key');
+          } else {
+            console.log('[DEBUG] Non-auth error, keeping user data for now');
+          }
         });
       } catch (error) {
         console.error('[DEBUG] Error parsing stored user:', error);
@@ -96,8 +106,12 @@ export const AuthProvider = ({ children }) => {
         setUser(tempUser);
         localStorage.setItem('user', JSON.stringify(tempUser));
         
+        // Wait a moment for session cookies to be properly set in the browser
+        console.log('[DEBUG] Login successful, waiting for cookies to be set...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Then fetch fresh user data from /me endpoint to ensure we have complete user info
-        console.log('[DEBUG] Login successful, fetching fresh user data from /me...');
+        console.log('[DEBUG] Now fetching fresh user data from /me...');
         await fetchSessionUser();
       } else {
         // If no user data provided, fetch from backend
@@ -136,6 +150,39 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // Check if user session is still valid
+  const checkSessionValidity = async () => {
+    try {
+      console.log('[DEBUG] Checking session validity...');
+      const response = await axiosInstance.get('users/me/');
+      console.log('[DEBUG] Session validation successful:', response.data);
+      return true;
+    } catch (error) {
+      console.log('[DEBUG] Session validation failed:', error.message);
+      console.log('[DEBUG] Error response status:', error.response?.status);
+      console.log('[DEBUG] Error response data:', error.response?.data);
+      
+      if (error.response && error.response.status === 401) {
+        // Session expired, clear user data
+        console.log('[DEBUG] Session expired (401), clearing user data');
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('session_key');
+        return false;
+      } else if (error.response && error.response.status === 403) {
+        // Forbidden - also treat as invalid session
+        console.log('[DEBUG] Session forbidden (403), clearing user data');
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('session_key');
+        return false;
+      } else {
+        console.log('[DEBUG] Non-auth error, but treating as invalid session for safety');
+        return false; // Treat any error as invalid session for safety
+      }
+    }
+  };
+
   // Optional: Listen to custom logout event
   useEffect(() => {
     const handleLogoutEvent = () => logout();
@@ -151,6 +198,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        checkSessionValidity,
         isAuthenticated: !!user?.isAuthenticated,
         isInitialized,
       }}

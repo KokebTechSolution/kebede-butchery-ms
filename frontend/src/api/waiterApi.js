@@ -25,7 +25,7 @@ export const createOrder = async (orderData) => {
 
 export const updateOrder = async (orderId, orderData) => {
     try {
-        const response = await axiosInstance.patch(`orders/${orderId}/`, orderData);
+        const response = await axiosInstance.patch(`orders/order-list/${orderId}/`, orderData);
         return response.data;
     } catch (error) {
         console.error('Error updating order:', error);

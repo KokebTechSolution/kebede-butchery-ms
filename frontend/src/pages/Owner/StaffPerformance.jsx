@@ -75,22 +75,22 @@ const StaffPerformance = () => {
   }, [dateRange]);
 
   // Get unique branches for filter dropdown
-  const branches = Array.from(new Set(data.map(w => w.branch))).filter(b => b && b !== 'N/A');
+  const branches = Array.from(new Set((data || []).map(w => w.branch))).filter(b => b && b !== 'N/A');
 
   // Filter data by branch if selected
-  const filteredData = branchFilter === 'All' ? data : data.filter(w => w.branch === branchFilter);
+  const filteredData = branchFilter === 'All' ? (data || []) : (data || []).filter(w => w.branch === branchFilter);
 
   // Get summary for selected branch
   let summary = null;
   if (branchSummary) {
     if (branchFilter === 'All') {
       // Sum all branches
-      const totalRevenue = branchSummary.reduce((sum, b) => sum + b.totalRevenue, 0);
-      const totalOrders = branchSummary.reduce((sum, b) => sum + b.totalOrders, 0);
-      const grossProfit = branchSummary.reduce((sum, b) => sum + b.grossProfit, 0);
+      const totalRevenue = (branchSummary || []).reduce((sum, b) => sum + (b.totalRevenue || 0), 0);
+      const totalOrders = (branchSummary || []).reduce((sum, b) => sum + (b.totalOrders || 0), 0);
+      const grossProfit = (branchSummary || []).reduce((sum, b) => sum + (b.grossProfit || 0), 0);
       summary = { branch: 'All Branches', totalRevenue, totalOrders, grossProfit };
     } else {
-      const b = branchSummary.find(b => b.branch === branchFilter);
+      const b = (branchSummary || []).find(b => b.branch === branchFilter);
       if (b) summary = b;
     }
   }
@@ -111,7 +111,7 @@ const StaffPerformance = () => {
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
           >
             <option value="All">All Branches</option>
-            {branches.map((b, i) => (
+            {Array.isArray(branches) && branches.map((b, i) => (
               <option key={i} value={b}>{b}</option>
             ))}
           </select>
@@ -130,18 +130,22 @@ const StaffPerformance = () => {
               <tbody>
                 <tr>
                   <td className="px-4 py-2">{summary.branch}</td>
-                  <td className="px-4 py-2 text-right">${summary.totalRevenue.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right">ETB {summary.totalRevenue.toLocaleString()}</td>
                   <td className="px-4 py-2 text-right">{summary.totalOrders}</td>
-                  <td className={`px-4 py-2 text-right ${summary.grossProfit < 0 ? 'text-red-600' : 'text-green-600'}`}>${summary.grossProfit.toLocaleString()}</td>
+                  <td className={`px-4 py-2 text-right ${summary.grossProfit < 0 ? 'text-red-600' : 'text-green-600'}`}>ETB {summary.grossProfit.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         )}
         {loading ? (
-          <div>Loading...</div>
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg text-gray-600">Loading staff performance data...</div>
+          </div>
         ) : error ? (
-          <div className="text-red-500">{error}</div>
+          <div className="text-red-500 text-center py-8">{error}</div>
+        ) : !data || data.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">No staff performance data available for the selected period.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg shadow-sm border border-gray-100">
@@ -156,10 +160,10 @@ const StaffPerformance = () => {
               <tbody>
                 {filteredData.map((w, i) => (
                   <tr key={i} className="border-t">
-                    <td className="px-4 py-2">{w.waiter}</td>
-                    <td className="px-4 py-2">{w.branch}</td>
-                    <td className="px-4 py-2 text-right">{w.totalOrders}</td>
-                    <td className="px-4 py-2 text-right">${w.totalSales.toLocaleString()}</td>
+                    <td className="px-4 py-2">{w.waiter || 'Unknown'}</td>
+                    <td className="px-4 py-2">{w.branch || 'N/A'}</td>
+                    <td className="px-4 py-2 text-right">{w.totalOrders || 0}</td>
+                    <td className="px-4 py-2 text-right">ETB {(w.totalSales || 0).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -76,12 +76,15 @@ function StaffListPage() {
           fetchBranches()
         ]);
         setStaffList(staffData);
-        setBranches(branchesData);
+        // Ensure branches is always an array
+        setBranches(Array.isArray(branchesData) ? branchesData : []);
         setLoading(false);
       } catch (err) {
         console.error(err);
         setError(t('failed_load_staff_list'));
         setLoading(false);
+        // Set empty array for branches on error
+        setBranches([]);
       }
     };
     
@@ -584,7 +587,7 @@ function StaffListPage() {
                 className="w-full mb-3 border px-4 py-2 rounded"
               >
                 <option value="">{t('select_branch')}</option>
-                {branches.map(branch => (
+                {Array.isArray(branches) && branches.map(branch => (
                   <option key={branch.id} value={branch.id}>
                     {branch.name}
                   </option>

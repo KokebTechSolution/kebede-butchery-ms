@@ -55,34 +55,50 @@ const TableCard = React.forwardRef(({ table, onClick, className = '' }, ref) => 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.98 }}
-      className={`relative overflow-hidden rounded-xl border ${statusStyles.bg} ${statusStyles.border} shadow-sm hover:shadow-md transition-all duration-200 ${className}`}
+      className={`relative overflow-hidden rounded-xl border-2 ${statusStyles.bg} ${statusStyles.border} shadow-sm hover:shadow-md transition-all duration-200 ${className} cursor-pointer touch-manipulation`}
       onClick={handleClick}
       style={{ cursor: 'pointer' }}
     >
-      <div className="p-3 sm:p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <MdTableRestaurant 
-              className={`w-5 h-5 sm:w-6 sm:h-6 ${statusStyles.icon} flex-shrink-0`} 
-            />
-            <span className="ml-2 font-medium text-sm sm:text-base text-gray-800 truncate">
-              Table {table.number}
-            </span>
-          </div>
-          {table.seats > 0 && (
-            <span className="text-xs bg-white/50 px-2 py-0.5 rounded-full text-gray-600">
-              {table.seats} {table.seats === 1 ? 'seat' : 'seats'}
-            </span>
-          )}
+      {/* Large Table Number Badge - Mobile Optimized */}
+      <div className="absolute -top-1 sm:-top-2 -right-1 sm:-right-2 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center shadow-md">
+        <span className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
+          {table.number}
+        </span>
+      </div>
+
+      <div className="p-3 sm:p-4 pt-4 sm:pt-6">
+        {/* Table Icon and Name - Mobile Optimized */}
+        <div className="flex items-center justify-center mb-2 sm:mb-3">
+          <MdTableRestaurant 
+            className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 ${statusStyles.icon}`} 
+          />
         </div>
         
-        <div className="mt-2 flex items-center justify-between">
-          <span className={`text-xs sm:text-sm font-medium ${statusStyles.text} capitalize`}>
-            {statusStyles.label.toLowerCase()}
+        {/* Table Label - Mobile Optimized */}
+        <div className="text-center mb-2 sm:mb-3">
+          <span className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">
+            Table {table.number}
           </span>
-          
-          {/* Status indicator dot */}
-          <div className={`w-2 h-2 rounded-full ${statusStyles.icon.replace('text', 'bg')}`}></div>
+        </div>
+
+        {/* Seats Information - Mobile Optimized */}
+        {table.seats > 0 && (
+          <div className="text-center mb-2 sm:mb-3">
+            <span className="text-xs sm:text-sm bg-white/70 px-2 sm:px-3 py-1 rounded-full text-gray-700 font-medium">
+              {table.seats} {table.seats === 1 ? 'Seat' : 'Seats'}
+            </span>
+          </div>
+        )}
+        
+        {/* Status Information - Mobile Optimized */}
+        <div className="text-center">
+          <div className={`inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-lg ${statusStyles.bg} ${statusStyles.border}`}>
+            {/* Status indicator dot */}
+            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${statusStyles.icon.replace('text', 'bg')}`}></div>
+            <span className={`text-xs sm:text-sm font-semibold ${statusStyles.text} capitalize`}>
+              {statusStyles.label}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>

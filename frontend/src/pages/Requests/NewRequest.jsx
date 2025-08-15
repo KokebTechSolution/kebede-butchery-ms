@@ -84,7 +84,7 @@ const NewRequest = ({
               required
             >
               <option value="">{t('select_branch')}</option>
-              {branches.map((branch) => (
+              {Array.isArray(branches) && branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
                   {branch.name}
                 </option>

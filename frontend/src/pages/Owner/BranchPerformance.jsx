@@ -96,10 +96,10 @@ const BranchPerformance = () => {
                 {data.map((b) => (
                   <tr key={b.branch} className="border-t">
                     <td className="px-4 py-2">{b.branch}</td>
-                    <td className="px-4 py-2 text-right">${b.totalRevenue.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-right">ETB {b.totalRevenue.toLocaleString()}</td>
                     <td className="px-4 py-2 text-right">{b.totalOrders}</td>
                     <td className={`px-4 py-2 text-right ${b.grossProfit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      ${b.grossProfit.toLocaleString()}
+                                              ETB {b.grossProfit.toLocaleString()}
                     </td>
                   </tr>
                 ))}

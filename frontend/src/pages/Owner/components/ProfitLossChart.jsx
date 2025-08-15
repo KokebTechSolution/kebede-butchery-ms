@@ -12,10 +12,20 @@ import {
 } from 'recharts';
 
 const ProfitLossChart = ({ data }) => {
+  // Handle null or undefined data
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="w-full h-80 flex items-center justify-center text-gray-500">
+        No data available for chart
+      </div>
+    );
+  }
+
   const formatCurrency = (value) => {
+    if (value == null || isNaN(value)) return 'ETB 0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'ETB',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value);

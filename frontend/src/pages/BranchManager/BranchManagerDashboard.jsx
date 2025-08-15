@@ -2,18 +2,12 @@ import React, { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
 import SidebarNav from "../../components/ManagmentComponents/SidebarNav";
-import ManagerOperationsMenu from "../../components/ManagmentComponents/ManagerOperationsMenu";
-import StaffListPage from '../Staff/StaffListPage';
 import { useTranslation } from "react-i18next";
 import { 
   FaTachometerAlt, 
   FaUserFriends, 
-  FaClipboardList, 
+  FaBoxes, 
   FaUtensils, 
-  FaSignOutAlt,
-  FaHome,
-  FaUsers,
-  FaBoxes,
   FaClipboardCheck
 } from "react-icons/fa";
 
@@ -23,8 +17,10 @@ export default function BranchManagerDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const firstName = user?.first_name || "Guest";
-  const [tab, setTab] = useState('dashboard');
   const [activeNav, setActiveNav] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Navigation items for mobile bottom tabs
   const navItems = [
@@ -82,7 +78,7 @@ export default function BranchManagerDashboard() {
     <div className="flex min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-100">
       {/* Desktop Sidebar - Hidden on mobile */}
       <div className="hidden md:block">
-        <SidebarNav />
+        <SidebarNav isOpen={isSidebarOpen} onToggle={toggleSidebar} />
       </div>
       
       {/* Mobile-First Main Content */}
@@ -103,7 +99,8 @@ export default function BranchManagerDashboard() {
         
         {/* Mobile-Optimized Content Section */}
         <section className="space-y-4 sm:space-y-6">
-          {tab === 'dashboard' ? <Outlet /> : <StaffListPage />}
+          {/* The tab logic was removed, so this will always render the Outlet */}
+          <Outlet />
         </section>
       </main>
 

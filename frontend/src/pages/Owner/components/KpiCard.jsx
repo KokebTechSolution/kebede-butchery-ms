@@ -2,10 +2,15 @@ import React from 'react';
 
 const KpiCard = ({ title, value, isCurrency = false, isProfitLoss = false }) => {
   const formatValue = (val) => {
+    // Handle null, undefined, or NaN values
+    if (val == null || isNaN(val)) {
+      return isCurrency ? 'ETB 0' : '0';
+    }
+    
     if (isCurrency) {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'ETB',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(val);
@@ -15,7 +20,7 @@ const KpiCard = ({ title, value, isCurrency = false, isProfitLoss = false }) => 
 
   const getValueColor = () => {
     if (isProfitLoss) {
-      return value >= 0 ? 'text-green-600' : 'text-red-600';
+      return (value || 0) >= 0 ? 'text-green-600' : 'text-red-600';
     }
     return 'text-gray-800';
   };

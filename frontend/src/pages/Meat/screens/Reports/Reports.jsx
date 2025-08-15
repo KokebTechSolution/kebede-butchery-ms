@@ -16,28 +16,47 @@ export const Reports = () => {
     return `${yyyy}-${mm}-${dd}`;
   };
   const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const { reportData } = useReports(filterDate);
+  const { reports, loading } = useReports(filterDate);
+
+  // Safely access data with default values
+  const reportData = reports || {};
+  const totalSold = reportData.totalSold || 0;
+  const totalRejected = reportData.totalRejected || 0;
+  const yesterdayTotalSold = reportData.yesterdayTotalSold || 0;
+  const yesterdayTotalRejected = reportData.yesterdayTotalRejected || 0;
+  const dailySales = reportData.dailySales || [];
 
   const pieData = [
-    { name: 'Sold', value: reportData.totalSold, color: '#10b981' },
-    { name: 'Rejected', value: reportData.totalRejected, color: '#ef4444' },
+    { name: 'Sold', value: totalSold, color: '#10b981' },
+    { name: 'Rejected', value: totalRejected, color: '#ef4444' },
   ];
 
   const comparisonData = [
     {
       period: 'Yesterday',
-      sold: reportData.yesterdayTotalSold,
-      rejected: reportData.yesterdayTotalRejected,
+      sold: yesterdayTotalSold,
+      rejected: yesterdayTotalRejected,
     },
     {
       period: 'Today',
-      sold: reportData.totalSold,
-      rejected: reportData.totalRejected,
+      sold: totalSold,
+      rejected: totalRejected,
     },
   ];
 
-  const soldChange = reportData.totalSold - reportData.yesterdayTotalSold;
-  const rejectedChange = reportData.totalRejected - reportData.yesterdayTotalRejected;
+  const soldChange = totalSold - yesterdayTotalSold;
+  const rejectedChange = totalRejected - yesterdayTotalRejected;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600">Loading reports...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -64,7 +83,7 @@ export const Reports = () => {
             <Package className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{reportData.totalSold}</div>
+            <div className="text-2xl font-bold text-green-600">{totalSold}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               {soldChange >= 0 ? (
                 <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
@@ -84,7 +103,7 @@ export const Reports = () => {
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{reportData.totalRejected}</div>
+            <div className="text-2xl font-bold text-red-600">{totalRejected}</div>
             <div className="flex items-center text-xs text-muted-foreground">
               {rejectedChange <= 0 ? (
                 <TrendingDown className="h-3 w-3 text-green-600 mr-1" />
@@ -105,7 +124,7 @@ export const Reports = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {Math.round((reportData.totalSold / (reportData.totalSold + reportData.totalRejected)) * 100)}%
+              {Math.round((totalSold / (totalSold + totalRejected)) * 100)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Orders successfully completed
@@ -120,7 +139,7 @@ export const Reports = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {reportData.totalSold + reportData.totalRejected}
+              {totalSold + totalRejected}
             </div>
             <p className="text-xs text-muted-foreground">
               All orders processed today
@@ -184,7 +203,7 @@ export const Reports = () => {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={reportData.dailySales}>
+            <BarChart data={dailySales}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 

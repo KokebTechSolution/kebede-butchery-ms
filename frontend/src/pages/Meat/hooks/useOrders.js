@@ -26,7 +26,7 @@ export const useOrders = (filterDate) => {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
       await axiosInstance.patch(
-        `http://localhost:8000/api/orders/${orderId}/`,
+        `/orders/${orderId}/`,
         payload,
         { withCredentials: true }
       );
@@ -70,7 +70,7 @@ export const useOrders = (filterDate) => {
   const updateOrderItemStatus = async (itemId, status) => {
     try {
       const response = await axiosInstance.patch(
-        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
+        `/orders/order-item/${itemId}/update-status/`,
         { status },
         { withCredentials: true }
       );
@@ -94,7 +94,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axiosInstance.patch(`http://localhost:8000/api/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axiosInstance.patch(`/orders/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {

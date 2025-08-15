@@ -4,6 +4,219 @@
   background-color: #f0f0f0;
 }
 
+/* Success Message */
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.success-message span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Payment Option Section */
+.payment-option-section {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.payment-option-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.payment-options {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.payment-option {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.payment-option:hover:not(.disabled) {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.payment-option.selected {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+}
+
+.payment-option.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Disabled Payment Option State */
+.payment-option-disabled {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.payment-option-disabled .payment-option {
+  cursor: default;
+  opacity: 0.8;
+  background-color: #f8f9fa;
+  border-color: #6c757d;
+}
+
+.payment-option-disabled .payment-option:hover {
+  border-color: #6c757d;
+  box-shadow: none;
+}
+
+.payment-locked-message {
+  text-align: center;
+  padding: 10px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  color: #856404;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.payment-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  font-size: 18px;
+}
+
+.payment-option.selected .payment-option-icon {
+  background-color: #007bff;
+  color: white;
+}
+
+.payment-option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payment-option-content span {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.payment-option-content small {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.payment-option-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.radio-circle {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #dee2e6;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.payment-option.selected .radio-circle {
+  border-color: #007bff;
+  background-color: #007bff;
+  position: relative;
+}
+
+.payment-option.selected .radio-circle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.updating-payment {
+  text-align: center;
+  margin-top: 15px;
+  color: #6c757d;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.updating-payment span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.updating-payment span::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid #dee2e6;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .order-details-header {
   display: flex;
   justify-content: space-between;
@@ -140,4 +353,134 @@
 
 .payment-button.online {
   background-color: #008CBA; /* Blue */
+}
+
+/* Order Items Section */
+.order-items {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.order-items h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.items-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid;
+}
+
+.items-section.accepted {
+  background-color: #d4edda;
+  border-left-color: #28a745;
+}
+
+.items-section.pending {
+  background-color: #fff3cd;
+  border-left-color: #ffc107;
+}
+
+.items-section.rejected {
+  background-color: #f8d7da;
+  border-left-color: #dc3545;
+}
+
+.section-title {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title.accepted {
+  color: #155724;
+}
+
+.section-title.pending {
+  color: #856404;
+}
+
+.section-title.rejected {
+  color: #721c24;
+}
+
+.order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-item.accepted {
+  color: #155724;
+}
+
+.order-item.pending {
+  color: #856404;
+}
+
+.order-item.rejected {
+  color: #721c24;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.section-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: right;
+  font-size: 14px;
+}
+
+.section-total.accepted {
+  color: #155724;
+}
+
+.section-total.pending {
+  color: #856404;
+}
+
+.section-total.rejected {
+  color: #721c24;
+}
+
+.grand-total {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e3f2fd;
+  border: 2px solid #2196f3;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.grand-total h5 {
+  margin: 0 0 10px 0;
+  color: #1565c0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.total-amount {
+  font-size: 18px;
+  color: #1565c0;
+}
+
+.total-amount strong {
+  font-size: 20px;
 } 

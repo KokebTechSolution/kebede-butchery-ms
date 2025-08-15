@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
+import { MdArrowBack, MdTableRestaurant, MdRestaurant, MdLocalDrink, MdSearch, MdFilterList, MdShoppingCart } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
-import { useAuth } from '../../../context/AuthContext';
 import { fetchMenuItems } from '../../../api/menu';
-import { formatCartTotal } from '../../../utils/priceUtils';
 import './MenuPage.css';
 
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [activeTab, setActiveTab] = useState('food');
-    const [isOrdering, setIsOrdering] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [isLoading, setIsLoading] = useState(true);
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
-    const { user } = useAuth();
 
     useEffect(() => {
         if (table && table.id) {
@@ -23,16 +22,36 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     useEffect(() => {
         const loadMenuItems = async () => {
             try {
+                setIsLoading(true);
                 const items = await fetchMenuItems();
                 setMenuItems(items);
             } catch (error) {
                 console.error('❌ Error loading menu items:', error);
+            } finally {
+                setIsLoading(false);
             }
         };
         loadMenuItems();
     }, []);
 
-    if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-lg text-gray-600">Loading delicious menu items...</p>
+            </div>
+        );
+    }
+
+    if (!menuItems || menuItems.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                <div className="text-6xl">🍽️</div>
+                <h3 className="text-xl font-semibold text-gray-900">No menu items available</h3>
+                <p className="text-gray-600 text-center">Please check back later or contact management</p>
+            </div>
+        );
+    }
 
     // Group items by type and then by category
     const groupByCategory = (items) => {
@@ -44,281 +63,239 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         return grouped;
     };
 
-    // Filter items based on user role
-    const userRole = user?.role;
-    let foodItems = [];
-    let beverageItems = [];
-    
-    if (userRole === 'bartender') {
-        // Bartenders can only see beverage items
-        beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
-        // Set active tab to beverage for bartenders
-        if (activeTab === 'food') setActiveTab('beverage');
-    } else if (userRole === 'meat') {
-        // Meat staff can only see food items
-        foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-        // Set active tab to food for meat staff
-        if (activeTab === 'beverage') setActiveTab('food');
-    } else {
-        // Other roles (waiter, manager, etc.) can see both
-        foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-        beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
-    }
-    
+    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
+    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
     const foodByCategory = groupByCategory(foodItems);
     const beverageByCategory = groupByCategory(beverageItems);
 
     // Filter previous orders for this table
     const previousOrders = orders.filter(order => order.table_number === table?.id);
-
-    // Find the latest order for this table
     const latestOrder = previousOrders.length > 0 ? [...previousOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] : null;
     const isPaid = latestOrder && latestOrder.has_payment;
 
+    // Get unique categories for filtering
+    const allCategories = ['all', ...new Set(menuItems.map(item => item.category_name))];
+
+    // Filter items based on search and category
+    const filterItems = (items) => {
+        return items.filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = selectedCategory === 'all' || item.category_name === selectedCategory;
+            return matchesSearch && matchesCategory;
+        });
+    };
+
+    const filteredFoodItems = filterItems(foodItems);
+    const filteredBeverageItems = filterItems(beverageItems);
+
     return (
-        <div className="menu-page-container">
-            {/* Header Section */}
-            <div className="menu-header-section">
-                <div className="menu-header-content">
-                    <button 
-                        onClick={onBack}
-                        className="back-button-mobile"
-                        aria-label="Back to tables"
-                    >
-                        <MdArrowBack size={24} />
-                        <span className="back-text">Back to Tables</span>
-                    </button>
-                    
-                    {table && (
-                        <div className="table-info-card">
-                            <div className="table-icon">
-                                <MdTableRestaurant size={28} />
+        <div className="space-y-4 sm:space-y-6">
+            {/* Enhanced Header Section - Mobile Optimized */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border border-blue-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <button 
+                            onClick={onBack}
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-colors border border-blue-200 text-sm sm:text-base"
+                        >
+                            <MdArrowBack size={18} className="sm:w-5 sm:h-5" />
+                            <span className="font-medium hidden sm:inline">Back to Tables</span>
+                            <span className="font-medium sm:hidden">Back</span>
+                        </button>
+                        
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                                <MdTableRestaurant size={20} className="text-white sm:w-6 sm:h-6" />
                             </div>
-                            <div className="table-details">
-                                <h2 className="table-title">Table {table.number}</h2>
-                                <p className="table-subtitle">Select items from the menu below</p>
+                            <div>
+                                <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Table {table?.number}</h1>
+                                <p className="text-sm sm:text-base text-blue-600 font-medium">Ready to take orders</p>
                             </div>
-                            {cartItems.length > 0 && (
-                                <div className="cart-indicator">
-                                    <span className="cart-count">{cartItems.length}</span>
-                                    <span className="cart-text">items</span>
+                        </div>
+                    </div>
+
+                    {isPaid && (
+                        <div className="bg-green-100 border border-green-200 rounded-lg px-3 sm:px-4 py-2 text-center sm:text-left">
+                            <div className="flex items-center justify-center sm:justify-start gap-2">
+                                <span className="text-xl sm:text-2xl">💰</span>
+                                <div>
+                                    <p className="text-green-800 font-semibold text-sm sm:text-base">Table Paid</p>
+                                    <p className="text-green-600 text-xs sm:text-sm">No new orders needed</p>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Tab Navigation - Only show relevant tabs based on user role */}
-            {(userRole !== 'bartender' && userRole !== 'meat') && (
-                <div className="menu-tabs-container">
-                    <div className="menu-tabs">
-                        <button
-                            className={`menu-tab ${activeTab === 'food' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('food')}
+            {/* Enhanced Search and Filter Section - Mobile Optimized */}
+            <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <div className="flex-1 relative">
+                        <MdSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                        <input
+                            type="text"
+                            placeholder="Search for delicious items..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                        />
+                    </div>
+                    
+                    <div className="relative">
+                        <MdFilterList className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            className="pl-9 sm:pl-10 pr-8 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm sm:text-base"
                         >
-                            <span className="tab-icon">🍽️</span>
-                            <span className="tab-text">Food</span>
-                        </button>
-                        <button
-                            className={`menu-tab ${activeTab === 'beverage' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('beverage')}
-                        >
-                            <span className="tab-icon">🥤</span>
-                            <span className="tab-text">Beverages</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-            
-            {/* Role-specific header for single-item-type users */}
-            {(userRole === 'bartender' || userRole === 'meat') && (
-                <div className="role-specific-header">
-                    <div className="role-header-content">
-                        <div className="role-icon">
-                            {userRole === 'bartender' ? '🥤' : '🍽️'}
-                        </div>
-                        <div className="role-title">
-                            {userRole === 'bartender' ? 'Beverage Menu' : 'Food Menu'}
-                        </div>
-                        <div className="role-subtitle">
-                            {userRole === 'bartender' 
-                                ? 'Manage beverage orders and inventory' 
-                                : 'Manage food orders and preparation'
-                            }
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Main Content Grid - Menu and Cart Side by Side */}
-            <div className="menu-cart-grid">
-                {/* Menu Section */}
-                <div className="menu-section-main">
-                    {/* Menu Content - Display based on user role */}
-                    <div className="menu-content">
-                        {/* For bartenders and meat staff, show content based on their role */}
-                        {userRole === 'bartender' && (
-                            <div className="menu-section">
-                                {Object.keys(beverageByCategory).map(category => (
-                                    <div key={category} className="menu-category-section">
-                                        <h3 className="category-title">{category}</h3>
-                                        <div className="menu-items-grid">
-                                            {beverageByCategory[category].map(item => (
-                                                <MenuItem key={item.id} item={item} disabled={isPaid} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        
-                        {userRole === 'meat' && (
-                            <div className="menu-section">
-                                {Object.keys(foodByCategory).map(category => (
-                                    <div key={category} className="menu-category-section">
-                                        <h3 className="category-title">{category}</h3>
-                                        <div className="menu-items-grid">
-                                            {foodByCategory[category].map(item => (
-                                                <MenuItem key={item.id} item={item} disabled={isPaid} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        
-                        {/* For other roles (waiter, manager, etc.), show tabs-based content */}
-                        {userRole !== 'bartender' && userRole !== 'meat' && (
-                            <>
-                                {activeTab === 'food' && (
-                                    <div className="menu-section">
-                                        {Object.keys(foodByCategory).map(category => (
-                                            <div key={category} className="menu-category-section">
-                                                <h3 className="category-title">{category}</h3>
-                                                <div className="menu-items-grid">
-                                                    {foodByCategory[category].map(item => (
-                                                        <MenuItem key={item.id} item={item} disabled={isPaid} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                
-                                {activeTab === 'beverage' && (
-                                    <div className="menu-section">
-                                        {Object.keys(beverageByCategory).map(category => (
-                                            <div key={category} className="menu-category-section">
-                                                <h3 className="category-title">{category}</h3>
-                                                <div className="menu-items-grid">
-                                                    {beverageByCategory[category].map(item => (
-                                                        <MenuItem key={item.id} item={item} disabled={isPaid} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Cart Section - Always Visible on Right Side */}
-                <div className="cart-section-main">
-                    <div className="cart-container-visible">
-                        <div className="cart-header">
-                            <h3 className="cart-title">🛒 Current Order</h3>
-                            {editingOrderId && (
-                                <span className="editing-badge">Editing Order #{editingOrderId}</span>
-                            )}
-                        </div>
-                        
-                        {/* Cart Items */}
-                        <div className="cart-items-list">
-                            {cartItems.length === 0 ? (
-                                <div className="empty-cart">
-                                    <div className="empty-cart-icon">📋</div>
-                                    <p className="empty-cart-title">Your cart is empty</p>
-                                    <p className="empty-cart-subtitle">Add items from the menu to get started</p>
-                                </div>
-                            ) : (
-                                cartItems.map((item, index) => (
-                                    <div key={index} className="cart-item-visible">
-                                        <div className="cart-item-info">
-                                            <span className="cart-item-name">{item.name}</span>
-                                            <span className="cart-item-price">ETB {item.price}</span>
-                                        </div>
-                                        <div className="cart-item-quantity">
-                                            <span className="quantity-display">×{item.quantity}</span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        
-                        {/* Cart Summary */}
-                        {cartItems.length > 0 && (
-                            <div className="cart-summary-visible">
-                                <div className="cart-summary-row">
-                                    <span className="summary-label">Total Items:</span>
-                                    <span className="summary-value">{cartItems.reduce((total, item) => total + item.quantity, 0)}</span>
-                                </div>
-                                <div className="cart-summary-row">
-                                    <span className="summary-label">Total Amount:</span>
-                                    <span className="summary-value total-amount">{formatCartTotal(cartItems)}</span>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Cart Actions */}
-                        {cartItems.length > 0 && (
-                            <div className="cart-actions-visible">
-                                <button 
-                                    onClick={() => clearCart()}
-                                    className="cart-btn clear-cart-btn"
-                                >
-                                    🗑️ Clear Cart
-                                </button>
-                                <button 
-                                    onClick={onOrder}
-                                    className="cart-btn place-order-btn"
-                                    disabled={cartItems.length === 0}
-                                >
-                                    ✅ {editingOrderId ? 'Update Order' : 'Place Order'}
-                                </button>
-                            </div>
-                        )}
+                            {allCategories.map(category => (
+                                <option key={category} value={category}>
+                                    {category === 'all' ? 'All Categories' : category}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile Order Summary - Only visible on small screens */}
-            <div className="mobile-order-summary">
-                <div className="mobile-order-header">
-                    <h3>🛒 Current Order</h3>
-                    <span className="mobile-total">
-                        {formatCartTotal(cartItems)}
-                    </span>
+            {/* Enhanced Tab Navigation - Mobile Optimized */}
+            <div className="bg-white rounded-xl p-2 border border-gray-200 shadow-sm">
+                <div className="flex gap-2">
+                    <button
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
+                            activeTab === 'food' 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setActiveTab('food')}
+                    >
+                        <MdRestaurant size={18} className="sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Food Menu</span>
+                        <span className="sm:hidden">Food</span>
+                        <span className="bg-white/20 px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-bold">
+                            {filteredFoodItems.length}
+                        </span>
+                    </button>
+                    <button
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
+                            activeTab === 'beverage' 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setActiveTab('beverage')}
+                    >
+                        <MdLocalDrink size={18} className="sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Beverages</span>
+                        <span className="sm:hidden">Drinks</span>
+                        <span className="bg-white/20 px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-bold">
+                            {filteredBeverageItems.length}
+                        </span>
+                    </button>
                 </div>
-                {cartItems.length === 0 ? (
-                    <p className="mobile-empty-cart">No items in current order</p>
-                ) : (
-                    <div className="mobile-cart-items">
-                        {cartItems.slice(0, 3).map((item, index) => (
-                            <div key={index} className="mobile-cart-item">
-                                <span className="mobile-item-name">{item.name}</span>
-                                <span className="mobile-item-quantity">×{item.quantity}</span>
-                            </div>
-                        ))}
-                        {cartItems.length > 3 && (
-                            <div className="mobile-more-items">
-                                +{cartItems.length - 3} more items
+            </div>
+
+            {/* Enhanced Menu Content - Mobile Optimized */}
+            <div className="space-y-4 sm:space-y-6">
+                {activeTab === 'food' && (
+                    <div>
+                        {Object.keys(foodByCategory).length > 0 ? (
+                            Object.keys(foodByCategory).map(category => {
+                                const categoryItems = filterItems(foodByCategory[category]);
+                                if (categoryItems.length === 0) return null;
+                                
+                                return (
+                                    <div key={category} className="mb-6 sm:mb-8">
+                                        <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm mb-3 sm:mb-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">{category}</h3>
+                                                <span className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                                    {categoryItems.length} items
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                                            {categoryItems.map(item => (
+                                                <MenuItem key={item.id} item={item} disabled={isPaid} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-center py-8 sm:py-12">
+                                <div className="text-4xl sm:text-6xl mb-4">🍽️</div>
+                                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No food items found</h3>
+                                <p className="text-sm sm:text-base text-gray-600">Try adjusting your search or category filter</p>
                             </div>
                         )}
                     </div>
                 )}
+
+                {activeTab === 'beverage' && (
+                    <div>
+                        {Object.keys(beverageByCategory).length > 0 ? (
+                            Object.keys(beverageByCategory).map(category => {
+                                const categoryItems = filterItems(beverageByCategory[category]);
+                                if (categoryItems.length === 0) return null;
+                                
+                                return (
+                                    <div key={category} className="mb-6 sm:mb-8">
+                                        <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm mb-3 sm:mb-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">{category}</h3>
+                                                <span className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                                                    {categoryItems.length} items
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                                            {categoryItems.map(item => (
+                                                <MenuItem key={item.id} item={item} disabled={isPaid} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-center py-8 sm:py-12">
+                                <div className="text-4xl sm:text-6xl mb-4">🥤</div>
+                                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No beverage items found</h3>
+                                <p className="text-sm sm:text-base text-gray-600">Try adjusting your search or category filter</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Enhanced Quick Stats - Mobile Optimized */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm text-center">
+                    <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-xl mx-auto mb-2 sm:mb-3">
+                        <MdShoppingCart size={20} className="text-blue-600 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="text-lg sm:text-2xl font-bold text-gray-900">{cartItems.length}</div>
+                    <div className="text-xs sm:text-sm text-gray-600">Items in Cart</div>
+                </div>
+                
+                <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm text-center">
+                    <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-xl mx-auto mb-2 sm:mb-3">
+                        <MdRestaurant size={20} className="text-green-600 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="text-lg sm:text-2xl font-bold text-gray-900">{filteredFoodItems.length + filteredBeverageItems.length}</div>
+                    <div className="text-xs sm:text-sm text-gray-600">Available Items</div>
+                </div>
+                
+                <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200 shadow-sm text-center">
+                    <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-xl mx-auto mb-2 sm:mb-3">
+                        <MdFilterList size={20} className="text-purple-600 sm:w-6 sm:h-6" />
+                    </div>
+                    <div className="text-lg sm:text-2xl font-bold text-gray-900">{Object.keys(foodByCategory).length + Object.keys(beverageByCategory).length}</div>
+                    <div className="text-xs sm:text-sm text-gray-600">Categories</div>
+                </div>
             </div>
         </div>
     );

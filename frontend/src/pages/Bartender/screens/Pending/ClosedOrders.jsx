@@ -127,7 +127,7 @@ const ClosedOrders = ({ orders, filterDate, setFilterDate }) => {
                             </div>
                             <div className="text-right">
                               <div className="text-lg font-bold text-gray-900">
-                                ETB {(item.price * item.quantity).toFixed(2)}
+                                ETB {(Number(item.price || 0) * item.quantity).toFixed(2)}
                               </div>
                               <div className={`flex items-center justify-center space-x-2 px-3 py-1 rounded-lg text-sm font-medium ${
                                 item.status === 'accepted' 

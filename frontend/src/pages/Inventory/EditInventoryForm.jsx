@@ -489,7 +489,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Current Price:</span>
-                    <span className="ml-2 text-gray-800">${product.base_unit_price || 'N/A'}</span>
+                    <span className="ml-2 text-gray-800">ETB {product.base_unit_price || 'N/A'}</span>
                   </div>
                 </div>
               </div>
@@ -512,7 +512,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                 <div className="text-sm text-yellow-700 space-y-1">
                   <div><strong>restock_quantity:</strong> {restockData.restock_quantity || 'None'} (type: {typeof restockData.restock_quantity})</div>
                   <div><strong>restock_type:</strong> {restockData.restock_type || 'None'}</div>
-                  <div><strong>price_per_unit:</strong> {restockData.price_per_unit || 'None'} (type: {typeof restockData.price_per_unit})</div>
+                  <div><strong>price_per_unit:</strong> {restockData.price_per_unit ? Number(restockData.price_per_unit).toFixed(2) : 'None'} (type: {typeof restockData.price_per_unit})</div>
                   <div><strong>calculatedTotal:</strong> {calculatedTotal} (type: {typeof calculatedTotal})</div>
                   <div><strong>receipt_file:</strong> {restockData.receipt_file ? restockData.receipt_file.name : 'None'}</div>
                   <div><strong>Full restockData:</strong> {JSON.stringify(restockData, null, 2)}</div>
@@ -579,7 +579,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                     Price Per Unit *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">ETB</span>
                     <input
                       type="number"
                       name="price_per_unit"
@@ -599,7 +599,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                     Total Amount
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">ETB</span>
                     <input
                       type="text"
                       value={calculatedTotal.toFixed(2)}

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { CheckIcon, XIcon } from 'lucide-react';
-import { FaPrint } from 'react-icons/fa';
+import { FaPrint, FaUser, FaClock, FaLock } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { RejectOrderDialog } from './RejectOrderDialog';
-import { FaLock } from 'react-icons/fa';
 
 export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, onRejectItem, onCancelItem, onPrint, showActions = true }) => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -30,24 +29,65 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
     ? Number(order.total_money)
     : acceptedTotal;
 
+  // Get order status for visual indication
+  const getOrderStatus = () => {
+    const pendingItems = order.items.filter(item => item.status === 'pending');
+    const acceptedItems = order.items.filter(item => item.status === 'accepted');
+    const rejectedItems = order.items.filter(item => item.status === 'rejected');
+    
+    if (pendingItems.length > 0) return 'pending';
+    if (acceptedItems.length > 0 && rejectedItems.length === 0) return 'accepted';
+    if (rejectedItems.length > 0) return 'rejected';
+    return 'mixed';
+  };
+
+  const orderStatus = getOrderStatus();
+
   return (
     <>
-      <Card className="w-full max-w-4xl rounded-xl border border-gray-200 shadow-sm mb-4 transition-all duration-300 ease-in-out bg-white">
-        <CardContent className="p-4 sm:p-6">
+      <Card className={`w-full max-w-4xl rounded-2xl border-2 shadow-lg mb-6 transition-all duration-300 ease-in-out bg-white/90 backdrop-blur-sm hover:shadow-xl hover:-translate-y-1 ${
+        orderStatus === 'pending' ? 'border-orange-200 shadow-orange-100' :
+        orderStatus === 'accepted' ? 'border-green-200 shadow-green-100' :
+        orderStatus === 'rejected' ? 'border-red-200 shadow-red-100' :
+        'border-gray-200 shadow-gray-100'
+      }`}>
+        <CardContent className="p-6 lg:p-8">
           {/* Header */}
-          <div className="flex flex-wrap items-start justify-between w-full gap-4">
-            <div className="flex flex-col gap-1 min-w-0 flex-1">
-              <p className="font-['Work_Sans',Helvetica] text-[12px] sm:text-sm text-[#6b7582] break-words">
-                Order #{order.order_number}
-                <span className="ml-2 text-gray-500">({order.waiterName || order.created_by_username || 'Unknown'})</span>
-                <span className="ml-2 text-[11px] sm:text-xs text-gray-400">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}</span>
-              </p>
-              <h3 className="font-['Work_Sans',Helvetica] font-semibold text-sm sm:text-base text-[#111416]">
-                {order.items.length} items
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between w-full gap-4 mb-6">
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+                  orderStatus === 'pending' ? 'bg-orange-100 text-orange-700' :
+                  orderStatus === 'accepted' ? 'bg-green-100 text-green-700' :
+                  orderStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-gray-100 text-gray-700'
+                }">
+                  <span className={`w-2 h-2 rounded-full ${
+                    orderStatus === 'pending' ? 'bg-orange-500' :
+                    orderStatus === 'accepted' ? 'bg-green-500' :
+                    orderStatus === 'rejected' ? 'bg-red-500' :
+                    'bg-gray-500'
+                  }`}></span>
+                  {orderStatus.charAt(0).toUpperCase() + orderStatus.slice(1)}
+                </span>
+                <span className="text-sm text-gray-500">#{order.order_number}</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <FaUser className="text-orange-500" />
+                  {order.waiterName || order.created_by_username || 'Unknown'}
+                </span>
+                <span className="flex items-center gap-1">
+                  <FaClock className="text-blue-500" />
+                  {order.created_at ? new Date(order.created_at).toLocaleTimeString() : ''}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {order.items.length} item{order.items.length !== 1 ? 's' : ''}
               </h3>
             </div>
             <div className="text-right flex-shrink-0">
-              <span className="text-xl sm:text-2xl font-extrabold text-blue-700 leading-none block">
+              <span className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-none block">
                 ${displayTotal.toFixed(2)}
               </span>
             </div>
@@ -73,7 +113,7 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
               return mergedItems.map((item, index) => (
                 <div key={index} className="w-full flex flex-wrap justify-between items-center gap-3 text-[13px] sm:text-sm py-3 border-t first:border-t-0">
                   <span className="min-w-0 flex-1 break-words text-sm sm:text-base">{item.name} × {item.quantity}</span>
-                  <span className="font-medium flex-shrink-0 text-sm sm:text-base">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="font-medium flex-shrink-0 text-sm sm:text-base">${(Number(item.price || 0) * item.quantity).toFixed(2)}</span>
                   <span className="flex-shrink-0">
                     {item.status === 'pending' && (
                       <>

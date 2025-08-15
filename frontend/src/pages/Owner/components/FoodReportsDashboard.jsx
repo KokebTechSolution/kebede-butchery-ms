@@ -14,28 +14,47 @@ const FoodReportsDashboard = () => {
     return `${yyyy}-${mm}-${dd}`;
   };
   const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const { reportData } = useFoodReports(filterDate);
+  const { foodReports, loading } = useFoodReports(filterDate);
+
+  // Safely access data with default values
+  const reportData = foodReports || {};
+  const totalSold = reportData.totalSold || 0;
+  const totalRejected = reportData.totalRejected || 0;
+  const yesterdayTotalSold = reportData.yesterdayTotalSold || 0;
+  const yesterdayTotalRejected = reportData.yesterdayTotalRejected || 0;
+  const dailySales = reportData.dailySales || [];
 
   const pieData = [
-    { name: 'Sold', value: reportData.totalSold, color: '#10b981' },
-    { name: 'Rejected', value: reportData.totalRejected, color: '#ef4444' },
+    { name: 'Sold', value: totalSold, color: '#10b981' },
+    { name: 'Rejected', value: totalRejected, color: '#ef4444' },
   ];
 
   const comparisonData = [
     {
       period: 'Yesterday',
-      sold: reportData.yesterdayTotalSold,
-      rejected: reportData.yesterdayTotalRejected,
+      sold: yesterdayTotalSold,
+      rejected: yesterdayTotalRejected,
     },
     {
       period: 'Today',
-      sold: reportData.totalSold,
-      rejected: reportData.totalRejected,
+      sold: totalSold,
+      rejected: totalRejected,
     },
   ];
 
-  const soldChange = reportData.totalSold - reportData.yesterdayTotalSold;
-  const rejectedChange = reportData.totalRejected - reportData.yesterdayTotalRejected;
+  const soldChange = totalSold - yesterdayTotalSold;
+  const rejectedChange = totalRejected - yesterdayTotalRejected;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-600">Loading reports...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -61,7 +80,7 @@ const FoodReportsDashboard = () => {
             <Package className="h-4 w-4 text-green-600" />
             <h3 className="text-sm font-medium">Total Sold Today</h3>
           </div>
-          <div className="text-2xl font-bold text-green-600">{reportData.totalSold}</div>
+          <div className="text-2xl font-bold text-green-600">{totalSold}</div>
           <div className="flex items-center text-xs text-muted-foreground">
             {soldChange >= 0 ? (
               <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
@@ -78,12 +97,12 @@ const FoodReportsDashboard = () => {
             <XCircle className="h-4 w-4 text-red-600" />
             <h3 className="text-sm font-medium">Total Rejected Today</h3>
           </div>
-          <div className="text-2xl font-bold text-red-600">{reportData.totalRejected}</div>
+          <div className="text-2xl font-bold text-red-600">{totalRejected}</div>
           <div className="flex items-center text-xs text-muted-foreground">
             {rejectedChange <= 0 ? (
-              <TrendingDown className="h-3 w-3 text-green-600 mr-1" />
+              <TrendingDown className="h-3 w-3 text-green-600" />
             ) : (
-              <TrendingUp className="h-3 w-3 text-red-600 mr-1" />
+              <TrendingUp className="h-3 w-3 text-red-600" />
             )}
             <span className={rejectedChange <= 0 ? 'text-green-600' : 'text-red-600'}>
               {rejectedChange >= 0 ? '+' : ''}{rejectedChange} from yesterday
@@ -96,8 +115,8 @@ const FoodReportsDashboard = () => {
             <h3 className="text-sm font-medium">Success Rate</h3>
           </div>
           <div className="text-2xl font-bold text-blue-600">
-            {reportData.totalSold + reportData.totalRejected > 0
-              ? Math.round((reportData.totalSold / (reportData.totalSold + reportData.totalRejected)) * 100)
+            {totalSold + totalRejected > 0
+              ? Math.round((totalSold / (totalSold + totalRejected)) * 100)
               : 0
             }%
           </div>
@@ -109,7 +128,7 @@ const FoodReportsDashboard = () => {
             <h3 className="text-sm font-medium">Total Orders</h3>
           </div>
           <div className="text-2xl font-bold text-purple-600">
-            {reportData.totalSold + reportData.totalRejected}
+            {totalSold + totalRejected}
           </div>
           <p className="text-xs text-muted-foreground">All food orders processed today</p>
         </div>
@@ -158,7 +177,7 @@ const FoodReportsDashboard = () => {
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <h2 className="text-lg font-semibold mb-4">Weekly Performance Trend</h2>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={reportData.dailySales}>
+          <BarChart data={dailySales}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="date"

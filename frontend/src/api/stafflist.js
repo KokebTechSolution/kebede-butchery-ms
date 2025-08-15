@@ -78,9 +78,22 @@ export const resetUserPassword = async (id, newPassword) => {
 export const fetchBranches = async () => {
   try {
     const response = await axiosInstance.get('branches/');
-    return response.data;
+    // Defensive: handle array or object
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    }
+    if (response.data && Array.isArray(response.data.branches)) {
+      return response.data.branches;
+    }
+    // If not an array, return empty array to avoid .map error
+    console.warn('Branches response is not an array:', response.data);
+    return [];
   } catch (error) {
     console.warn('Failed to fetch branches:', error);
-    throw new Error('Unable to load branches. Please refresh or try again later.');
+    // Return empty array instead of throwing error to prevent .map errors
+    return [];
   }
 };

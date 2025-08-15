@@ -106,13 +106,21 @@ const AnalyticsDashboard = () => {
 
   if (loading) return <div>Loading analytics...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
-  if (!analyticsData) return <div>No analytics data available.</div>;
+  if (!analyticsData || !analyticsData.kpi) return <div>No analytics data available.</div>;
 
   // Calculate Revenue Growth
   let revenueGrowth = 0;
   if (prevAnalyticsData && prevAnalyticsData.kpi && prevAnalyticsData.kpi.totalRevenue > 0) {
     revenueGrowth = ((analyticsData.kpi.totalRevenue - prevAnalyticsData.kpi.totalRevenue) / prevAnalyticsData.kpi.totalRevenue) * 100;
   }
+
+  // Safely access KPI data with default values
+  const kpi = analyticsData.kpi || {};
+  const totalRevenue = kpi.totalRevenue || 0;
+  const costOfInventory = kpi.costOfInventory || 0;
+  const profitOfInventory = kpi.profitOfInventory || 0;
+  const foodIncome = kpi.foodIncome || 0;
+  const avgOrderValue = kpi.avgOrderValue || 0;
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6 lg:p-8">
@@ -131,17 +139,17 @@ const AnalyticsDashboard = () => {
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <KpiCard title="Total Revenue" value={analyticsData.kpi.totalRevenue} isCurrency />
-          <KpiCard title="Cost of Inventory" value={analyticsData.kpi.costOfInventory} isCurrency />
-          <KpiCard title="Profit of Inventory" value={analyticsData.kpi.profitOfInventory} isCurrency isProfitLoss />
+          <KpiCard title="Total Revenue" value={totalRevenue} isCurrency />
+          <KpiCard title="Cost of Inventory" value={costOfInventory} isCurrency />
+          <KpiCard title="Profit of Inventory" value={profitOfInventory} isCurrency isProfitLoss />
           {/* Net Profit replaced with Income from Food */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-1">INCOME FROM FOOD</p>
             <p className="text-2xl font-bold text-green-600">
-              ${analyticsData.kpi.foodIncome?.toLocaleString() ?? '0'}
+                              ETB {foodIncome.toLocaleString()}
             </p>
           </div>
-          <KpiCard title="Avg Order Value" value={analyticsData.kpi.avgOrderValue} isCurrency />
+          <KpiCard title="Avg Order Value" value={avgOrderValue} isCurrency />
         </div>
 
         {/* Charts Grid */}
@@ -152,9 +160,9 @@ const AnalyticsDashboard = () => {
               <TrendingUp className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-semibold text-gray-900">Profit & Loss Trend</h2>
             </div>
-            <ProfitLossChart data={analyticsData.profitTrend.map(pt => ({
+            <ProfitLossChart data={(analyticsData.profitTrend || []).map(pt => ({
               ...pt,
-              costs: analyticsData.kpi.costOfInventory // or pt.costOfInventory if available per period
+              costs: costOfInventory // or pt.costOfInventory if available per period
             }))} />
           </div>
 
@@ -164,7 +172,7 @@ const AnalyticsDashboard = () => {
               <Package className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-semibold text-gray-900">Top Selling Items</h2>
             </div>
-            <TopItemsChart data={analyticsData.topSellingItems} />
+            <TopItemsChart data={analyticsData.topSellingItems || []} />
           </div>
         </div>
 

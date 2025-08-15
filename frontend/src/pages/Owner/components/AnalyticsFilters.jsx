@@ -13,10 +13,12 @@ const AnalyticsFilters = ({ dateRange, setDateRange, selectedBranch, setSelected
     const fetchBranches = async () => {
       try {
         const response = await axiosInstance.get('/owner/branches/');
-        setBranches(response.data);
+        // Ensure branches is always an array
+        setBranches(Array.isArray(response.data) ? response.data : []);
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch branches:', error);
+        setBranches([]); // Set empty array on error
         setLoading(false);
       }
     };
@@ -62,7 +64,7 @@ const AnalyticsFilters = ({ dateRange, setDateRange, selectedBranch, setSelected
           className="ml-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
           <option value="all">All Branches</option>
-          {branches.map((branch) => (
+          {Array.isArray(branches) && branches.map((branch) => (
             <option key={branch.id} value={branch.id}>
               {branch.name}
             </option>

@@ -300,7 +300,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
                     required
                   >
                     <option value="">Select Branch</option>
-                    {branches.map((branch) => (
+                    {Array.isArray(branches) && branches.map((branch) => (
                       <option key={branch.id} value={branch.id}>
                         {branch.name}
                       </option>
@@ -422,7 +422,7 @@ const AddProductsForm = ({ onSuccess, onCancel }) => {
                     <div><span className="font-medium">Category:</span> {categories.find(c => c.id === formData.category)?.category_name}</div>
                     <div><span className="font-medium">Type:</span> {itemTypes.find(t => t.id === formData.type_id)?.type_name}</div>
                     <div><span className="font-medium">Unit:</span> {formData.unit}</div>
-                    <div><span className="font-medium">Price:</span> ${formData.price_per_unit}</div>
+                    <div><span className="font-medium">Price:</span> ETB {Number(formData.price_per_unit || 0).toFixed(2)}</div>
                     <div><span className="font-medium">Stock:</span> {formData.stock_qty}</div>
                     <div><span className="font-medium">Branch:</span> {branches.find(b => b.id === formData.branch_id)?.name}</div>
                     <div><span className="font-medium">Expires:</span> {formData.expiration_date}</div>

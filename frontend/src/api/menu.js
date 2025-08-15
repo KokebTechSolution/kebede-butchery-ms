@@ -2,6 +2,7 @@
 
 import axiosInstance from './axiosInstance';
 
+// Menu Management Functions
 export const fetchMenus = async () => {
     try {
         const response = await axiosInstance.get('menu/menus/');
@@ -184,5 +185,16 @@ export const fetchMenuCategories = async () => {
     console.error('❌ Error response:', error.response?.data);
     console.error('❌ Error status:', error.response?.status);
     throw error;
+  }
+};
+
+// New Order Additions Functionality
+export const createOrderAddition = async (orderId, additionsData) => {
+  try {
+    const response = await axiosInstance.post(`/orders/${orderId}/additions/`, additionsData);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to create order addition:', error);
+    throw new Error('Unable to add items to order. Please try again.');
   }
 };

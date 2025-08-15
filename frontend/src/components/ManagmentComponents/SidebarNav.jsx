@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -7,17 +7,21 @@ import {
   FaClipboardList,
   FaUtensils,
   FaSignOutAlt,
-  FaBars,
-  FaTimes,
   FaAngleDoubleRight,
   FaAngleDoubleLeft,
 } from "react-icons/fa";
 
-export default function SidebarNav({ isOpen, onToggle }) {
+export default function SidebarNav({ isOpen = true, onToggle = () => {} }) {
   const { t } = useTranslation();
   //const [isOpen, setIsOpen] = useState(true); // default open on desktop
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  const toggleSidebar = () => {
+    if (typeof onToggle === 'function') {
+      onToggle();
+    } else {
+      console.warn('onToggle prop is not a function:', onToggle);
+    }
+  };
 
   const navItems = [
     { label: t("dashboard"), icon: <FaTachometerAlt />, path: "/branch-manager" },

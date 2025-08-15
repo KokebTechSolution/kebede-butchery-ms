@@ -63,8 +63,8 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes, productRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true }),
+          axios.get('/inventory/productunits/', { withCredentials: true }),
+          axios.get('/inventory/products/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -135,7 +135,7 @@ const AddProductForm = () => {
   // Helper to reload products after adding
   const reloadProducts = async () => {
     try {
-      const productRes = await axios.get('http://localhost:8000/api/inventory/products/', { withCredentials: true });
+      const productRes = await axios.get('/inventory/products/', { withCredentials: true });
       setProducts(productRes.data);
       console.log('Products reloaded from /api/inventory/products/', productRes.data);
     } catch (error) {

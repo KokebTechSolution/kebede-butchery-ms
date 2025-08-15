@@ -169,14 +169,21 @@ export const SidebarSection = () => {
                     <p className="text-sm text-gray-600">Table {order.table_number}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-green-600">${order.total_money}</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                      order.payment_option === 'online'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {formatPaymentOption(order.payment_option)}
-                    </span>
+                    <p className="text-lg font-bold text-green-600">${Number(order.total_money || 0).toFixed(2)}</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                        order.payment_option === 'online'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {formatPaymentOption(order.payment_option)}
+                      </span>
+                      {order.has_payment && (
+                        <span className="text-xs text-gray-500">
+                          🔒 Locked
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -198,7 +205,7 @@ export const SidebarSection = () => {
                         <span className="text-gray-900">
                           <span className="font-medium">{item.quantity}x</span> {item.name}
                         </span>
-                        <span className="text-gray-600">${item.price}</span>
+                        <span className="text-gray-600">${Number(item.price || 0).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -278,25 +285,32 @@ export const SidebarSection = () => {
                         {order.items.filter(item => item.status === 'accepted').map((item, itemIndex) => (
                           <li key={item.id || `${item.name}-${itemIndex}`} className="text-sm">
                             <span className="font-medium">{item.quantity}x</span> {item.name}
-                            <span className="text-[#876363] ml-2">({item.price})</span>
+                            <span className="text-[#876363] ml-2">({Number(item.price || 0).toFixed(2)})</span>
                           </li>
                         ))}
                       </ul>
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-sm align-top">
-                      {`$${order.total_money}`}
+                      {`$${Number(order.total_money || 0).toFixed(2)}`}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#161111] text-sm align-top">
                       {order.order_number}
                     </TableCell>
                     <TableCell className="px-4 py-3 [font-family:'Work_Sans',Helvetica] font-normal text-[#82686b] text-xl align-top">
-                      <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                        order.payment_option === 'online'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {formatPaymentOption(order.payment_option)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                          order.payment_option === 'online'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {formatPaymentOption(order.payment_option)}
+                        </span>
+                        {order.has_payment && (
+                          <span className="text-xs text-gray-500 text-center">
+                            🔒 Locked
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 align-top">
                       {order.has_payment ? (

@@ -136,7 +136,7 @@ const MenuTable = ({ refreshFlag, onEdit, onDelete, loading, searchTerm = '' }) 
 
         const discountedItems = menuItems.map(item => ({
             ...item,
-            price: (item.price - (item.price * (discount / 100))).toFixed(2)
+            price: (Number(item.price || 0) - (Number(item.price || 0) * (discount / 100))).toFixed(2)
         }));
         setMenuItems(discountedItems);
         setDiscountValue('');
@@ -151,7 +151,7 @@ const MenuTable = ({ refreshFlag, onEdit, onDelete, loading, searchTerm = '' }) 
                     <p className="text-gray-600 text-sm mt-1">{item.description}</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-2xl font-bold text-orange-600">ETB {item.price}</p>
+                    <p className="text-2xl font-bold text-orange-600">ETB {Number(item.price || 0).toFixed(2)}</p>
                     <p className="text-sm text-gray-500">{item.category?.category_name || 'N/A'}</p>
                 </div>
             </div>
@@ -262,7 +262,7 @@ const MenuTable = ({ refreshFlag, onEdit, onDelete, loading, searchTerm = '' }) 
                             <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
                                 <div>
                                     <span className="text-gray-500">Price:</span>
-                                    <p className="font-medium">ETB {item.price}</p>
+                                    <p className="font-medium">ETB {Number(item.price || 0).toFixed(2)}</p>
                                 </div>
                                 <div>
                                     <span className="text-gray-500">Type:</span>
@@ -318,7 +318,7 @@ const MenuTable = ({ refreshFlag, onEdit, onDelete, loading, searchTerm = '' }) 
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     <td className="p-2 border text-center text-sm">{item.id}</td>
                                     <td className="p-2 border text-center text-sm">{item.name}</td>
-                                    <td className="p-2 border text-center text-sm">{item.price}</td>
+                                    <td className="p-2 border text-center text-sm">{Number(item.price || 0).toFixed(2)}</td>
                                     <td className="p-2 border text-center text-sm">{item.is_available ? t('yes') : t('no')}</td>
                                     <td className="p-2 border text-center text-sm">{item.item_type}</td>
                                     <td className="p-2 border text-center text-sm">{renderDate(item.created_at)}</td>

@@ -288,8 +288,15 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       
       // Check waiter actions first
       const actions = await checkWaiterActions(orderId);
-      if (actions && !actions.actions?.edit?.enabled) {
-        throw new Error(actions.actions.edit.reason || 'Edit not allowed for this order');
+      console.log('CartContext: Waiter actions response:', actions);
+      
+      // Safely check if edit is allowed
+      if (actions && actions.actions && actions.actions.edit) {
+        if (!actions.actions.edit.enabled) {
+          throw new Error(actions.actions.edit.reason || 'Edit not allowed for this order');
+        }
+      } else {
+        console.warn('CartContext: Waiter actions not available or edit action not found, proceeding with update');
       }
       
       // Build payload with all items and their current status
@@ -348,13 +355,18 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const loadCartForEditing = (tableId, items) => {
     console.log('CartContext: loadCartForEditing called with tableId:', tableId, 'items:', items);
+    
+    // First set the active table ID
     setActiveTableId(tableId);
-
+    
+    // Then update the table carts with the items
     setTableCarts(prev => ({
       ...prev,
       [tableId]: items // Don't merge items when loading for editing - keep them as they are
     }));
+    
     console.log(`CartContext: Loaded cart for editing table ${tableId}. Items:`, items);
+    console.log(`CartContext: activeTableId set to:`, tableId);
   };
 
   const getTotalItems = () => {
@@ -362,7 +374,7 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => total + (Number(item.price || 0) * item.quantity), 0);
   };
 
   const getTableCart = (tableId) => {

@@ -118,7 +118,6 @@ export default function BartenderDashboard() {
 
   const handleNavClick = (section) => {
     setActiveSection(section);
-    setIsDropdownOpen(false); // Close dropdown after selection
     if (section === 'Closed') {
       const today = new Date();
       const yyyy = today.getFullYear();
