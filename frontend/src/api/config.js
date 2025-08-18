@@ -1,6 +1,19 @@
 // Dynamic API URL based on environment and access type
 const getApiBaseUrl = () => {
-  // Check if we're in development mode
+  // Check if we're in production mode first
+  if (process.env.NODE_ENV === 'production') {
+    // Use environment variable if set
+    if (process.env.REACT_APP_API_URL) {
+      console.log('🚀 Production mode, using REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+      return process.env.REACT_APP_API_URL;
+    }
+    
+    // Fallback for production
+    console.log('🚀 Production mode, using fallback URL');
+    return 'https://kebede-butchery-ms.onrender.com';
+  }
+  
+  // Development mode
   if (process.env.NODE_ENV === 'development') {
     // Use environment variable if set
     if (process.env.REACT_APP_API_URL) {
@@ -27,10 +40,10 @@ const getApiBaseUrl = () => {
     }
   }
   
-  // Production mode - use environment variable or default
-  const productionUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-  console.log('🚀 Production mode, using:', productionUrl);
-  return productionUrl;
+  // Fallback
+  const fallbackUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  console.log('🔧 Fallback mode, using:', fallbackUrl);
+  return fallbackUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();

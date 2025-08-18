@@ -1,5 +1,5 @@
 """
-Production settings for Kebede Butchery MS
+Vercel-specific settings for Kebede Butchery MS
 """
 from . import deployment_settings
 from .settings import *  # noqa
@@ -17,13 +17,15 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# CORS and CSRF
+# CORS and CSRF for Vercel
 CORS_ALLOWED_ORIGINS = deployment_settings.CORS_ALLOWED_ORIGINS
 CSRF_TRUSTED_ORIGINS = deployment_settings.CSRF_TRUSTED_ORIGINS
-# Remove specific domain restriction to allow all Vercel subdomains
-CSRF_COOKIE_DOMAIN = None
 
-# Additional CORS settings for production
+# Cookie settings for Vercel
+CSRF_COOKIE_DOMAIN = None  # Allow all Vercel subdomains
+SESSION_COOKIE_DOMAIN = None  # Allow all Vercel subdomains
+
+# Additional CORS settings for Vercel
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -57,19 +59,26 @@ CORS_EXPOSE_HEADERS = [
 ]
 
 # Database
-# Configure your production database settings here
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'kebede_butchery'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }
-}
+import dj_database_url
+import os
 
-# Static files (CSS, JavaScript, Images)
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'kebede_butchery'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
+
+# Static files
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
@@ -77,31 +86,8 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
-# Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = os.getenv('EMAIL_PORT', 587)
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@kebede-butchery.com')
-
-# Caching (Redis recommended for production)
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
-
-# Session settings
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
-
-# Production session cookie settings
+# Session settings for Vercel
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database for Vercel
 SESSION_COOKIE_SECURE = True  # HTTPS only
 SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access
 SESSION_COOKIE_SAMESITE = 'Lax'  # Cross-site requests
@@ -111,7 +97,7 @@ SESSION_COOKIE_PATH = '/'
 SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
-# CSRF settings for production
+# CSRF settings for Vercel
 CSRF_COOKIE_SECURE = True  # HTTPS only
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access
 CSRF_COOKIE_SAMESITE = 'Lax'  # Cross-site requests
@@ -142,9 +128,6 @@ LOGGING = {
     },
 }
 
-# Security middleware (add these if not already in MIDDLEWARE)
+# Security middleware
 if 'django.middleware.security.SecurityMiddleware' not in MIDDLEWARE:
     MIDDLEWARE.insert(0, 'django.middleware.security.SecurityMiddleware')
-
-# Add security middleware for CSP if needed
-# MIDDLEWARE.append('csp.middleware.CSPMiddleware')

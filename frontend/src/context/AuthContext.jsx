@@ -24,11 +24,15 @@ export const AuthProvider = ({ children }) => {
   const fetchSessionUser = async () => {
     try {
       console.log('[DEBUG] Fetching session user...');
+      console.log('[DEBUG] Current cookies:', document.cookie);
+      console.log('[DEBUG] Local storage session key:', localStorage.getItem('session_key'));
+      console.log('[DEBUG] Local storage user:', localStorage.getItem('user'));
       
       // Use unified endpoint for both local and network access
       const meEndpoint = 'users/me/';
       
       console.log('[DEBUG] Using endpoint:', meEndpoint);
+      console.log('[DEBUG] Axios instance base URL:', axiosInstance.defaults.baseURL);
       
       const response = await axiosInstance.get(meEndpoint);
       const data = response.data;
@@ -47,9 +51,14 @@ export const AuthProvider = ({ children }) => {
       return data;
     } catch (error) {
       console.error('Authentication error:', error);
+      console.error('[DEBUG] Error response:', error.response);
+      console.error('[DEBUG] Error config:', error.config);
+      console.error('[DEBUG] Error status:', error.response?.status);
+      console.error('[DEBUG] Error data:', error.response?.data);
       
       // Only clear user if it's a 401 (unauthorized) error
       if (error.response && error.response.status === 401) {
+        console.log('[DEBUG] 401 error detected, clearing user data');
         setUser(null);
         localStorage.removeItem('user');
         localStorage.removeItem('session_key');
