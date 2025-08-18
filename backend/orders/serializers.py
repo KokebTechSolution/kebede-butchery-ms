@@ -36,13 +36,14 @@ class OrderSerializer(serializers.ModelSerializer):
     table = serializers.PrimaryKeyRelatedField(queryset=Table.objects.all())
     table_number = serializers.IntegerField(source='table.number', read_only=True)
     branch = serializers.PrimaryKeyRelatedField(read_only=True)
+    receipt_image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'table', 'table_number', 'waiterName', 'assigned_to',
             'food_status', 'beverage_status', 'branch', 'items', 'created_at', 'updated_at',
-            'total_money', 'cashier_status', 'payment_option', 'has_payment',
+            'total_money', 'cashier_status', 'payment_option', 'has_payment', 'receipt_image',
         ]
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
@@ -66,8 +67,40 @@ class OrderSerializer(serializers.ModelSerializer):
         if items_data is None:
             raise serializers.ValidationError("Order must include 'items'.")
 
-        order = Order.objects.create(**validated_data)
-        print(f"[DEBUG] OrderSerializer.create - Order created: {order.id}")
+        # Generate order number automatically
+        from datetime import datetime
+        today = datetime.now().strftime('%Y%m%d')
+        
+        # Get the last order number for today
+        last_order = Order.objects.filter(
+            order_number__startswith=today
+        ).order_by('-order_number').first()
+        
+        if last_order:
+            # Extract the sequence number and increment
+            try:
+                last_sequence = int(last_order.order_number.split('-')[1])
+                new_sequence = last_sequence + 1
+            except (IndexError, ValueError):
+                new_sequence = 1
+        else:
+            new_sequence = 1
+        
+        # Format: YYYYMMDD-XX (e.g., 20250817-01)
+        validated_data['order_number'] = f"{today}-{new_sequence:02d}"
+        
+        print(f"[DEBUG] OrderSerializer.create - Generated order number: {validated_data['order_number']}")
+        print(f"[DEBUG] OrderSerializer.create - Table: {table}, Branch: {table.branch if table else 'None'}")
+        print(f"[DEBUG] OrderSerializer.create - Validated data keys: {list(validated_data.keys())}")
+
+        try:
+            order = Order.objects.create(**validated_data)
+            print(f"[DEBUG] OrderSerializer.create - Order created: {order.id}")
+        except Exception as e:
+            print(f"[DEBUG] OrderSerializer.create - Error creating order: {str(e)}")
+            print(f"[DEBUG] OrderSerializer.create - Error type: {type(e)}")
+            print(f"[DEBUG] OrderSerializer.create - Validated data: {validated_data}")
+            raise
         
         total = 0
         for item_data in items_data:
@@ -76,7 +109,10 @@ class OrderSerializer(serializers.ModelSerializer):
                 print(f"[DEBUG] OrderSerializer.create - Product field: {item_data.get('product')}")
                 
                 # Create order item with original item_type (no mapping needed)
-                item = OrderItem.objects.create(order=order, **item_data)
+                # Remove any fields that don't exist in OrderItem model
+                item_fields = {k: v for k, v in item_data.items() 
+                             if k in ['name', 'quantity', 'price', 'item_type', 'status']}
+                item = OrderItem.objects.create(order=order, **item_fields)
                 print(f"[DEBUG] OrderSerializer.create - Item created: {item.id}, Product: {item.product}, item_type: {item_data.get('item_type')}")
                 
                 if item.status == 'accepted':

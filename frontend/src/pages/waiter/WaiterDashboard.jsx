@@ -10,7 +10,8 @@ import '../../App.css';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
-import { FaTable, FaUtensils, FaClipboardList, FaUser, FaTimes, FaPrint } from 'react-icons/fa';
+import { FaTable, FaUtensils, FaClipboardList, FaUser, FaTimes, FaPrint, FaCheck } from 'react-icons/fa';
+import { printOrder } from '../../api/waiterApi';
 
 const WaiterDashboard = () => {
   const location = useLocation();
@@ -34,17 +35,23 @@ const WaiterDashboard = () => {
   const [message, setMessage] = useState('');
   const [tablesData, setTablesData] = useState([]);
 
-  const { 
-    activeTableId, 
-    setActiveTable, 
-    placeOrder, 
-    cartItems, 
-    loadCartForEditing, 
-    updateOrder, 
-    deleteOrder, 
+  const {
+    cartItems,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
     clearCart,
     user,
-    orders
+    orders,
+    setActiveTable,
+    activeTableId,
+    placeOrder,
+    loadCartForEditing,
+    updateOrder,
+    deleteOrder,
+    refreshOrders,
+    refreshTables,
+    refreshAll
   } = useCart();
 
   // Function to fetch tables data
@@ -52,9 +59,12 @@ const WaiterDashboard = () => {
     try {
       const response = await axiosInstance.get('/branches/tables/');
       setTablesData(response.data);
-      console.log('[DEBUG] Tables data fetched:', response.data);
+      
+      // Also refresh orders when tables are refreshed
+      await refreshOrders();
     } catch (error) {
-      console.error('[DEBUG] Failed to fetch tables data:', error);
+      console.error('Failed to fetch tables:', error);
+      setMessage('Failed to fetch tables data.');
     }
   };
 
@@ -90,25 +100,39 @@ const WaiterDashboard = () => {
     };
   };
 
+  // Function to check if a table is in ordering status
+  const isTableOrdering = (tableId) => {
+    if (!tableId || !orders) return false;
+    
+    // Check if there's an active order for this table
+    const tableOrder = orders.find(order => {
+      const orderTableNumber = order.table_number || order.table || order.table_id;
+      const tableNumber = tableId;
+      return orderTableNumber == tableNumber;
+    });
+    
+    // Return true if table has an active order (not completed/cancelled)
+    return tableOrder && !tableOrder.has_payment && tableOrder.status !== 'cancelled';
+  };
+
   // Ensure selectedTable is always available when on menu page
   useEffect(() => {
     if (currentPage === 'menu' && activeTableId && !selectedTable) {
-      console.log('[DEBUG] Restoring selectedTable from activeTableId:', activeTableId);
       const tableInfo = getTableInfo(activeTableId);
-      console.log('[DEBUG] Restored table info:', tableInfo);
       setSelectedTable(tableInfo);
     }
   }, [currentPage, activeTableId, selectedTable]);
 
   // Debug logging for state changes
   useEffect(() => {
-    console.log('[DEBUG] State changed:', {
-      currentPage,
-      selectedTable,
-      activeTableId,
-      editingOrderId
-    });
-  }, [currentPage, selectedTable, activeTableId, editingOrderId]);
+    // console.log('[DEBUG] State changed:', {
+    //   currentPage,
+    //   selectedTable,
+    //   activeTableId,
+    //   editingOrderId,
+    //   cartItems: cartItems?.length || 0
+    // });
+  }, [currentPage, selectedTable, activeTableId, editingOrderId, cartItems]);
 
   // Fetch tables data on component mount
   useEffect(() => {
@@ -120,15 +144,13 @@ const WaiterDashboard = () => {
     try {
       setMessage('Sending order to cashier...');
       
-      // Update order status to printed and send to cashier
-      const response = await axiosInstance.patch(`/orders/order-list/${orderId}/`, {
-        cashier_status: 'printed',
-        status: 'ready_to_pay'
-      });
+      // Use the dedicated print endpoint
+      const response = await printOrder(orderId);
       
-      if (response.status === 200) {
+      if (response) {
         setMessage('Order sent to cashier successfully!');
-        // Refresh orders list
+        // Refresh orders list and tables to show updated status
+        await refreshAll();
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (error) {
@@ -148,12 +170,11 @@ const WaiterDashboard = () => {
   const handleCloseOrderModal = () => {
     setShowOrderModal(false);
     setSelectedOrderForModal(null);
+    // Stay on the current page (tables) instead of redirecting
   };
 
   // Function to handle table selection
   const handleTableSelect = async (table) => {
-    console.log('[DEBUG] handleTableSelect called with:', table);
-    
     if (!table || !table.id) {
       setMessage('Invalid table selected');
       return;
@@ -161,6 +182,41 @@ const WaiterDashboard = () => {
 
     setSelectedTable(table);
     setActiveTable(table.id);
+    
+    // Check if this table has an existing order (passed from TablesPage)
+    if (table.orderId) {
+      // Find the order data to show in modal
+      const existingOrder = orders?.find(order => order.id === table.orderId);
+      
+      if (existingOrder) {
+        setSelectedOrderForModal(existingOrder);
+        setShowOrderModal(true);
+        setMessage(`Table ${table.number} selected. Viewing existing order.`);
+      } else {
+        // Fallback to page redirect if order not found in current state
+        setSelectedOrderId(table.orderId);
+        setCurrentPage('orderDetails');
+        setMessage(`Table ${table.number} selected. Viewing existing order.`);
+      }
+      return;
+    }
+    
+    // FALLBACK: If no orderId but table status indicates ordering, try to find the order
+    if (table.status === 'ordering' || table.status === 'ready_to_pay') {
+      // Try to find order by table number
+      const orderForTable = orders?.find(order => {
+        const orderTableNumber = order.table_number || order.table || order.table_id;
+        const tableNumber = table.number || table.id;
+        return orderTableNumber == tableNumber;
+      });
+      
+      if (orderForTable) {
+        setSelectedOrderForModal(orderForTable);
+        setShowOrderModal(true);
+        setMessage(`Table ${table.number} selected. Viewing existing order.`);
+        return;
+      }
+    }
     
     // Check if there's already an open order for this table
     try {
@@ -172,22 +228,39 @@ const WaiterDashboard = () => {
         );
         
         if (orderWithTable) {
-          console.log('[DEBUG] Found existing order for table:', orderWithTable);
-          setSelectedOrderId(orderWithTable.id);
-          setCurrentPage('orderDetails');
+          // Show order in modal instead of redirecting
+          setSelectedOrderForModal(orderWithTable);
+          setShowOrderModal(true);
+          setMessage(`Table ${table.number} selected. Viewing existing order.`);
           return;
         }
       }
       
-      // If no existing order, proceed to menu
+      // Check if table can accept new orders before going to menu
+      if (isTableOrdering(table.id)) {
+        setMessage(`Table ${table.number} already has an active order. Please edit the existing order instead.`);
+        return;
+      }
+      
+      // If no existing order and table can accept orders, proceed to menu
       setCurrentPage('menu');
       setMessage(`Table ${table.number} selected. Ready to take orders.`);
       
     } catch (error) {
-      console.error('[DEBUG] Error checking existing orders:', error);
+      // Check if table can accept new orders before going to menu
+      if (isTableOrdering(table.id)) {
+        setMessage(`Table ${table.number} already has an active order. Please edit the existing order instead.`);
+        return;
+      }
+      
       setCurrentPage('menu');
       setMessage(`Table ${table.number} selected. Ready to take orders.`);
     }
+  };
+
+  // Function to check if table can accept new orders
+  const canTableAcceptNewOrder = (tableId) => {
+    return !isTableOrdering(tableId);
   };
 
   const handleNavigate = (page) => {
@@ -201,45 +274,57 @@ const WaiterDashboard = () => {
     }
     
     if (page === 'profile') {
-      setCurrentPage('profile');
+      setCurrentPage(page);
       setMessage('');
       return;
     }
     
     setCurrentPage(page);
-    if (page === 'tables') setSelectedTable(null);
+    // Don't clear selectedTable when navigating to tables - it should be preserved
+    // setSelectedTable(null);
   };
 
   const handleOrder = async () => {
-    if (!selectedTable || !selectedTable.id) {
+    let tableToUse = selectedTable;
+    if (!tableToUse && activeTableId) {
+      tableToUse = getTableInfo(activeTableId);
+    }
+    if (!tableToUse || !tableToUse.id) {
       setMessage('No valid table selected. Please select a table first.');
       setCurrentPage('tables');
       return;
     }
-    
+
+    // Check if table is already in ordering status
+    if (isTableOrdering(tableToUse.id)) {
+      setMessage('This table already has an active order. Please edit the existing order instead.');
+      return;
+    }
+
     const newOrderData = {
-      table: selectedTable.id,
+      table: tableToUse.id,
       items: cartItems.map(item => ({
         name: item.name,
         quantity: item.quantity,
         price: item.price,
         item_type: item.item_type || 'food',
-        status: item.status // <-- preserve status!
+        status: item.status
       })),
       waiter_username: user?.username,
-      waiter_table_number: selectedTable?.number
+      waiter_table_number: tableToUse?.number
     };
     
-    console.log('[DEBUG] New order data:', newOrderData);
-    console.log('POST payload:', newOrderData); // <-- log payload
     try {
       const newOrderId = await placeOrder(newOrderData);
+      
       if (!newOrderId) {
         throw new Error('Failed to place order.');
       }
       setSelectedOrderId(newOrderId);
       setMessage('Order placed successfully!');
-      console.log('[DEBUG] Placed new order:', newOrderId);
+      
+      // Refresh orders and tables after placing new order
+      await refreshAll();
     } catch (error) {
       console.error('Order submission error:', error);
       setMessage(error.message || 'There was an issue placing your order.');
@@ -268,12 +353,9 @@ const WaiterDashboard = () => {
   };
 
   const handleEditOrder = (orderToEdit) => {
-    console.log('[DEBUG] handleEditOrder called with:', orderToEdit);
-    
     if (orderToEdit) {
       // Determine the table ID - check both branch and table fields
       const tableId = orderToEdit.branch || orderToEdit.table;
-      console.log('[DEBUG] Editing order for table:', tableId, 'Order ID:', orderToEdit.id);
       
       if (!tableId) {
         console.error("Cannot edit order: order has no table or branch information.", orderToEdit);
@@ -286,7 +368,6 @@ const WaiterDashboard = () => {
       if (orderToEdit.table_number) {
         tableForEditing.number = orderToEdit.table_number; // Use the actual table number from order
       }
-      console.log('[DEBUG] Table for editing:', tableForEditing);
       
       // Set the table and editing state first
       setSelectedTable(tableForEditing);
@@ -300,8 +381,6 @@ const WaiterDashboard = () => {
       
       // Navigate to menu page
       setCurrentPage('menu');
-    
-      console.log('[DEBUG] Order editing setup complete - editingOrderId:', orderToEdit.id, 'selectedTable:', tableForEditing);
     } else {
       console.error("Cannot edit order: order data is missing.", orderToEdit);
       setMessage("Could not edit the selected order.");
@@ -321,21 +400,38 @@ const WaiterDashboard = () => {
     setSelectedOrderId(null);
     setEditingOrderId(null);
     setMessage('Order deleted successfully.');
+    
+    // Refresh orders and tables after deleting order
+    refreshAll();
+  };
+
+  // Handle when order is done (Done button clicked)
+  const handleOrderDone = () => {
+    // Close the modal
+    setShowOrderModal(false);
+    setSelectedOrderForModal(null);
+    
+    // Navigate to tables page
+    setCurrentPage('tables');
+    setSelectedOrderId(null);
+    setEditingOrderId(null);
+    
+    // Show success message
+    setMessage('Order completed successfully! Redirected to tables.');
+    setTimeout(() => setMessage(''), 3000);
   };
 
   const handleAddItems = async (newItems) => {
     try {
-      console.log('[DEBUG] Adding items to order:', newItems);
-      
       // This will be handled by the OrderDetails component
       // The backend API will create order additions
       setMessage('Items added to order successfully!');
       
-      // Refresh the orders list
-      // TODO: Implement order refresh logic
+      // Refresh the orders list and tables
+      await refreshAll();
       
     } catch (error) {
-      console.error('[DEBUG] Error adding items to order:', error);
+      console.error('Error adding items to order:', error);
       setMessage('Failed to add items to order.');
     }
   };
@@ -362,8 +458,17 @@ const WaiterDashboard = () => {
               <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Manage tables & orders</p>
             </div>
           </div>
-          <div className="text-xs sm:text-sm text-gray-600">
-            {user?.username || 'Waiter'}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={refreshAll}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+              title="Refresh all data"
+            >
+              🔄 Refresh
+            </button>
+            <div className="text-xs sm:text-sm text-gray-600">
+              {user?.username || 'Waiter'}
+            </div>
           </div>
         </div>
       </header>
@@ -384,14 +489,32 @@ const WaiterDashboard = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {currentPage === 'tables' && (
             <div className="p-2 sm:p-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Tables</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Tables</h2>
+                <button
+                  onClick={refreshAll}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  title="Refresh tables and orders"
+                >
+                  🔄 Refresh All
+                </button>
+              </div>
               <TablesPage onSelectTable={handleTableSelect} />
             </div>
           )}
           
           {currentPage === 'menu' && (
             <div className="p-2 sm:p-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Menu</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Menu</h2>
+                <button
+                  onClick={refreshAll}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  title="Refresh menu and orders"
+                >
+                  🔄 Refresh All
+                </button>
+              </div>
               <div className="grid grid-cols-1 gap-4">
                 <div className="order-2 sm:order-1">
                   <MenuPage table={selectedTable || (activeTableId ? getTableInfo(activeTableId) : null)} onBack={handleBackFromMenu} onOrder={handleOrder} />
@@ -401,6 +524,8 @@ const WaiterDashboard = () => {
                     onOrder={handleOrder} 
                     onClearCart={handleClearCart}
                     onPrintOrder={handlePrintOrder}
+                    table={selectedTable || (activeTableId ? getTableInfo(activeTableId) : null)}
+                    isTableOrdering={selectedTable ? isTableOrdering(selectedTable.id) : (activeTableId ? isTableOrdering(activeTableId) : false)}
                   />
                 </div>
               </div>
@@ -409,7 +534,16 @@ const WaiterDashboard = () => {
           
           {currentPage === 'orderDetails' && (
             <div className="p-2 sm:p-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Orders</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Orders</h2>
+                <button
+                  onClick={refreshAll}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  title="Refresh orders and tables"
+                >
+                  🔄 Refresh All
+                </button>
+              </div>
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 sm:p-4">
                 <OrderList
                   onSelectOrder={handleShowOrderModal}
@@ -436,10 +570,10 @@ const WaiterDashboard = () => {
             <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200">
               <div className="flex-1 min-w-0">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-                  Order Details - Table {selectedOrderForModal.table_number || selectedOrderForModal.branch}
+                  Order Details - Table {selectedOrderForModal.table_number || selectedOrderForModal.table || 'Unknown'}
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  Order ID: {selectedOrderForModal.id}
+                  Order #{selectedOrderForModal.order_number || selectedOrderForModal.id}
                 </p>
               </div>
               <button
@@ -453,30 +587,23 @@ const WaiterDashboard = () => {
             {/* Modal Content - Mobile Optimized */}
             <div className="p-3 sm:p-4">
               <OrderDetails
-                onEditOrder={handleEditOrder}
                 selectedOrderId={selectedOrderForModal.id}
+                onEditOrder={handleEditOrder}
                 onOrderDeleted={handleOrderDeleted}
                 onAddItems={handleAddItems}
-                onPrintOrder={handlePrintOrder}
-                isModal={true}
+                onDone={handleOrderDone}
               />
             </div>
 
             {/* Modal Footer - Mobile Optimized */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 p-3 sm:p-4 border-t border-gray-200">
               <button
-                onClick={() => handleEditOrder(selectedOrderForModal)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-              >
-                Edit Order
-              </button>
-              <button
-                onClick={() => handlePrintOrder(selectedOrderForModal.id)}
+                onClick={handleOrderDone}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
               >
-                <FaPrint className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Print & Send to Cashier</span>
-                <span className="sm:hidden">Print</span>
+                <FaCheck className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Done - Return to Tables</span>
+                <span className="sm:hidden">Done</span>
               </button>
             </div>
           </div>

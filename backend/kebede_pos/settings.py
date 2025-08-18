@@ -179,6 +179,9 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
     'x-environment',
+    'x-session-key',
+    'X-Session-Key',
+    'X-SESSION-KEY',
     'access-control-allow-credentials',
     'access-control-allow-origin',
     'access-control-allow-methods',
@@ -191,6 +194,9 @@ CORS_EXPOSE_HEADERS = [
     'access-control-allow-methods',
     'access-control-allow-headers',
     'x-environment',
+    'x-session-key',
+    'X-Session-Key',
+    'X-SESSION-KEY',
 ]
 
 # Session settings
@@ -228,6 +234,10 @@ CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_DOMAIN = None  # Allow all domains
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
+
+# Ensure proper cookie handling for cross-origin requests
+CSRF_COOKIE_ACCESSIBLE = True
+SESSION_COOKIE_ACCESSIBLE = True
 
 # Add CSRF trusted origins for both local and network
 if DEBUG:

@@ -39,9 +39,9 @@ class CORSMiddleware(MiddlewareMixin):
             response['Access-Control-Allow-Origin'] = '*'
             
         response['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-        response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRFToken, X-Requested-With, Accept, Origin'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-CSRFToken, X-Requested-With, Accept, Origin, X-Session-Key, x-session-key, X-SESSION-KEY'
         response['Access-Control-Allow-Credentials'] = 'true'
-        response['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-CSRFToken, Set-Cookie'
+        response['Access-Control-Expose-Headers'] = 'Content-Type, Authorization, X-CSRFToken, Set-Cookie, X-Session-Key'
         
         # Handle preflight requests
         if request.method == 'OPTIONS':
@@ -53,6 +53,7 @@ class CORSMiddleware(MiddlewareMixin):
             print(f"[DEBUG] CORS middleware: Network origin detected: {origin}")
             print(f"[DEBUG] CORS middleware: Setting Access-Control-Allow-Origin: {origin}")
             print(f"[DEBUG] CORS middleware: Access-Control-Allow-Credentials: true")
+            print(f"[DEBUG] CORS middleware: Access-Control-Expose-Headers: {response['Access-Control-Expose-Headers']}")
         
         return response
 

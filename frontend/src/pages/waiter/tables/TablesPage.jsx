@@ -6,16 +6,31 @@ import { getMyOrders } from '../../../api/cashier';
 import { MdTableRestaurant } from 'react-icons/md';
 
 const getTableStatus = (table, orders) => {
-  // Find all orders for this table (matching by table.number)
-  const tableOrders = orders.filter(order => order.table_number === table.number);
-  if (tableOrders.length === 0) return 'available';
-
-  // Sort by created_at descending to get latest order
+  const tableOrders = orders.filter(order => {
+    const orderTableNumber = order.table_number || order.table || order.table_id;
+    const tableNumber = table.number || table.id;
+    return orderTableNumber == tableNumber;
+  });
+  
+  if (tableOrders.length === 0) {
+    return 'available';
+  }
+  
+  // Sort by created_at to get the latest order
   tableOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const latestOrder = tableOrders[0];
-
-  if (latestOrder.has_payment) return 'available';
-  if (latestOrder.cashier_status === 'printed') return 'ready_to_pay';
+  
+  // Check if the latest order has been paid
+  if (latestOrder.has_payment) {
+    return 'available';
+  }
+  
+  // Check if the order has been printed (sent to cashier) - NOW TREATED AS AVAILABLE FOR NEW ORDERS
+  if (latestOrder.cashier_status === 'printed') {
+    return 'available'; // Changed from 'ready_to_pay' to 'available' to allow new orders
+  }
+  
+  // If order exists but not paid and not printed, it's still ordering
   return 'ordering';
 };
 
@@ -56,6 +71,64 @@ const TablesPage = ({ onSelectTable }) => {
     fetchOrders();
   }, []);
 
+  // Handle table selection based on status
+  const handleTableSelect = (table) => {
+    const tableStatus = getTableStatus(table, orders);
+    
+    if (tableStatus === 'available') {
+      // Table is available - allow new order (including printed orders)
+      onSelectTable(table);
+    } else if (tableStatus === 'ordering') {
+      // Table has active order - find the order and show details
+      const tableOrders = orders.filter(order => {
+        // Use the same improved table number matching logic
+        const orderTableNumber = order.table_number || order.table || order.table_id;
+        const tableNumber = table.number || table.id;
+        return orderTableNumber == tableNumber; // Use == for type coercion
+      });
+      
+      if (tableOrders.length > 0) {
+        // Sort by created_at descending to get latest order
+        tableOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const latestOrder = tableOrders[0];
+        
+        // Pass the order ID to view details instead of creating new order
+        const tableWithOrderId = { ...table, status: tableStatus, orderId: latestOrder.id };
+        onSelectTable(tableWithOrderId);
+      } else {
+        // Fallback - should not happen but just in case
+        onSelectTable(table);
+      }
+    } else {
+      // Default behavior
+      onSelectTable(table);
+    }
+  };
+
+  // Check if table can accept new orders
+  const canTableAcceptNewOrder = (table) => {
+    const tableStatus = getTableStatus(table, orders);
+    return tableStatus === 'available';
+  };
+
+  // Get table status description for better UX
+  const getTableStatusDescription = (table) => {
+    const tableStatus = getTableStatus(table, orders);
+    
+    switch (tableStatus) {
+      case 'available':
+        return 'Ready for new orders';
+      case 'ordering':
+        return 'Currently taking orders';
+      case 'ready_to_pay':
+        return 'Ready for payment';
+      case 'occupied':
+        return 'Has active order';
+      default:
+        return 'Unknown status';
+    }
+  };
+
   // Handle adding a new table, auto-increment table number
   const handleAddTable = async () => {
     setLoading(true);
@@ -89,7 +162,7 @@ const TablesPage = ({ onSelectTable }) => {
       </div>
 
       {/* Add Table Button - Mobile Optimized */}
-      <div className="flex justify-center mb-4 sm:mb-6">
+      <div className="flex justify-center mb-4 sm:mb-6 gap-2">
         <button
           onClick={handleAddTable}
           disabled={loading}
@@ -99,6 +172,17 @@ const TablesPage = ({ onSelectTable }) => {
           <span className="hidden sm:inline">Add New Table</span>
           <span className="sm:hidden">Add Table</span>
         </button>
+        
+        <button
+          onClick={() => {
+            fetchTables();
+            fetchOrders();
+          }}
+          className="px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+        >
+          <span>🔄</span>
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {/* Tables Grid - Mobile Optimized */}
@@ -106,13 +190,25 @@ const TablesPage = ({ onSelectTable }) => {
         {tables
           .slice()
           .sort((a, b) => a.number - b.number)
-          .map((table) => (
-            <TableCard
-              key={table.id}
-              table={{ ...table, status: getTableStatus(table, orders) }}
-              onClick={() => onSelectTable(table)}
-            />
-          ))}
+          .map((table) => {
+            const tableStatus = getTableStatus(table, orders);
+            const statusDescription = getTableStatusDescription(table);
+            const canAcceptNewOrder = canTableAcceptNewOrder(table);
+            
+            return (
+              <TableCard
+                key={table.id}
+                table={{ 
+                  ...table, 
+                  status: tableStatus,
+                  statusDescription: statusDescription,
+                  canAcceptNewOrder: canAcceptNewOrder
+                }}
+                onClick={() => handleTableSelect(table)}
+                showStatusDescription={true}
+              />
+            );
+          })}
       </div>
 
       {/* Empty State - Mobile Optimized */}

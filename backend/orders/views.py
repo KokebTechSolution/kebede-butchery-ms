@@ -26,6 +26,8 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import Order, OrderUpdate
 from .serializers import OrderUpdateSerializer, OrderUpdateActionSerializer
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound
 
 @method_decorator(csrf_exempt, name='dispatch')
 class OrderListView(generics.ListCreateAPIView):
@@ -34,6 +36,29 @@ class OrderListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        
+        # Check for session key in headers as fallback
+        session_key = self.request.headers.get('X-Session-Key')
+        if session_key and not user.is_authenticated:
+            try:
+                from django.contrib.sessions.models import Session
+                from django.contrib.auth import get_user_model
+                
+                # Get session data
+                session = Session.objects.get(session_key=session_key)
+                user_id = session.get_decoded().get('_auth_user_id')
+                
+                if user_id:
+                    User = get_user_model()
+                    user = User.objects.get(id=user_id)
+                    print(f"[DEBUG] User authenticated via session key: {user.username}")
+                else:
+                    print(f"[DEBUG] No user ID found in session: {session_key}")
+                    return Order.objects.none()
+            except (Session.DoesNotExist, User.DoesNotExist) as e:
+                print(f"[DEBUG] Session validation failed: {e}")
+                return Order.objects.none()
+        
         print(f"[DEBUG] OrderListView.get_queryset - User: {user.username if user.is_authenticated else 'Anonymous'}, Role: {getattr(user, 'role', 'None')}, ID: {user.id if user.is_authenticated else 'None'}")
         
         if not user.is_authenticated:
@@ -91,7 +116,33 @@ class OrderListView(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
-        user = self.request.user if self.request.user.is_authenticated else None
+        user = self.request.user
+        
+        # Check for session key in headers as fallback
+        if not user.is_authenticated:
+            session_key = self.request.headers.get('X-Session-Key')
+            if session_key:
+                try:
+                    from django.contrib.sessions.models import Session
+                    from django.contrib.auth import get_user_model
+                    
+                    # Get session data
+                    session = Session.objects.get(session_key=session_key)
+                    user_id = session.get_decoded().get('_auth_user_id')
+                    
+                    if user_id:
+                        User = get_user_model()
+                        user = User.objects.get(id=user_id)
+                        print(f"[DEBUG] User authenticated via session key in perform_create: {user.username}")
+                    else:
+                        print(f"[DEBUG] No user ID found in session during create: {session_key}")
+                        raise PermissionDenied("User not authenticated")
+                except (Session.DoesNotExist, User.DoesNotExist) as e:
+                    print(f"[DEBUG] Session validation failed during create: {e}")
+                    raise PermissionDenied("Invalid session")
+        
+        if not user.is_authenticated:
+            raise PermissionDenied("User not authenticated")
         
         # Check if this is an edit operation
         is_edit = self.request.data.get('is_edit', False)
@@ -155,6 +206,39 @@ class OrderListView(generics.ListCreateAPIView):
             except Order.DoesNotExist:
                 raise ValidationError("Original order not found")
         
+        # This is a new order - check table availability
+        table_id = self.request.data.get('table')
+        if not table_id:
+            raise ValidationError("Table is required for order creation")
+        
+        try:
+            from branches.models import Table
+            table = Table.objects.get(id=table_id)
+        except Table.DoesNotExist:
+            raise ValidationError("Specified table does not exist")
+        
+        # Check if table can accept new orders
+        can_accept, reason = table.can_accept_order()
+        if not can_accept:
+            raise ValidationError(f"Cannot create order: {reason}")
+        
+        # Check if there are already active orders for this table
+        from orders.models import Order
+        active_orders = Order.objects.filter(
+            table=table,
+            cashier_status__in=['pending', 'ready_for_payment']
+        ).exclude(
+            food_status__in=['completed', 'cancelled', 'rejected'],
+            beverage_status__in=['completed', 'cancelled', 'rejected']
+        )
+        
+        if active_orders.exists():
+            latest_order = active_orders.latest('created_at')
+            raise ValidationError(
+                f"Table {table.number} already has an active order (#{latest_order.order_number}). "
+                f"Please complete or cancel the existing order before creating a new one."
+            )
+        
         # This is a new order
         today = timezone.now().date()
         today_str = today.strftime('%Y%m%d')
@@ -168,19 +252,69 @@ class OrderListView(generics.ListCreateAPIView):
         while Order.objects.filter(order_number=new_order_number).exists():
             new_seq += 1
             new_order_number = f"{today_str}-{new_seq:02d}"
+        
+        # Handle receipt image and payment option
+        receipt_image = self.request.FILES.get('receipt_image')
+        payment_option = self.request.data.get('payment_option', 'cash')
+        
+        # If receipt image is provided, it should be in the request data
+        if receipt_image:
+            print(f"[DEBUG] Order creation - Receipt image provided: {receipt_image.name}")
+        
+        # Handle items data - could be from JSON or regular form data
         items_data = self.request.data.get('items', [])
         
-        has_food = any(item.get('item_type') == 'food' for item in items_data)
-        has_beverages = any(item.get('item_type') == 'beverage' for item in items_data)
-        food_status = 'pending' if has_food else 'not_applicable'
-        beverage_status = 'pending' if has_beverages else 'not_applicable'
+        # If items is a JSON string (from FormData), parse it
+        if isinstance(items_data, str):
+            try:
+                import json
+                items_data = json.loads(items_data)
+                print(f"[DEBUG] Order creation - Parsed items from JSON string: {len(items_data)} items")
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] Order creation - Failed to parse items JSON: {e}")
+                items_data = []
         
-        order = serializer.save(
-            created_by=user, 
-            order_number=new_order_number,
-            food_status=food_status,
-            beverage_status=beverage_status
-        )
+        if not items_data:
+            raise ValidationError("Order must include at least one item")
+        
+        # Create the order
+        order_data = {
+            'order_number': new_order_number,
+            'table': table,
+            'created_by': user,
+            'branch': table.branch,
+            'payment_option': payment_option,
+        }
+        
+        # Create order instance
+        order = Order.objects.create(**order_data)
+        
+        # Create order items
+        total = 0
+        for item_data in items_data:
+            item = OrderItem.objects.create(
+                order=order,
+                name=item_data.get('name'),
+                quantity=item_data.get('quantity', 1),
+                price=item_data.get('price', 0),
+                item_type=item_data.get('item_type'),
+                product_id=item_data.get('product'),
+                status='pending'
+            )
+            if item.status == 'accepted':
+                total += item.price * item.quantity
+        
+        # Set order total and save
+        order.total_money = total
+        order.save()
+        
+        # Update table status to reflect the new order
+        table.update_status_from_order(order)
+        
+        print(f"[DEBUG] New order created: {order.order_number} for table {table.number}")
+        print(f"[DEBUG] Table status updated to: {table.status}")
+        
+        return order
 
     def list(self, request, *args, **kwargs):
         """
@@ -205,8 +339,30 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         print(f"[DEBUG] OrderDetailView.get_queryset - User: {user.username if user.is_authenticated else 'Anonymous'}")
         print(f"[DEBUG] OrderDetailView.get_queryset - User authenticated: {user.is_authenticated}")
-        print(f"[DEBUG] OrderDetailView.get_queryset - User ID: {user.id if user.is_authenticated else 'None'}")
         print(f"[DEBUG] OrderDetailView.get_queryset - User role: {getattr(user, 'role', 'None')}")
+        
+        # Check for session key in headers as fallback
+        if not user.is_authenticated:
+            session_key = self.request.headers.get('X-Session-Key')
+            if session_key:
+                try:
+                    from django.contrib.sessions.models import Session
+                    from django.contrib.auth import get_user_model
+                    
+                    # Get session data
+                    session = Session.objects.get(session_key=session_key)
+                    user_id = session.get_decoded().get('_auth_user_id')
+                    
+                    if user_id:
+                        User = get_user_model()
+                        user = User.objects.get(id=user_id)
+                        print(f"[DEBUG] User authenticated via session key in OrderDetailView: {user.username}")
+                    else:
+                        print(f"[DEBUG] No user ID found in session in OrderDetailView: {session_key}")
+                        return Order.objects.none()
+                except (Session.DoesNotExist, User.DoesNotExist) as e:
+                    print(f"[DEBUG] Session validation failed in OrderDetailView: {e}")
+                    return Order.objects.none()
         
         if not user.is_authenticated:
             print(f"[DEBUG] OrderDetailView.get_queryset - User not authenticated, returning empty queryset")
@@ -233,6 +389,73 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         return queryset
 
+    def get_object(self):
+        """
+        Custom get_object method with better debugging and error handling
+        """
+        try:
+            print(f"[DEBUG] OrderDetailView.get_object - User: {self.request.user.username if self.request.user.is_authenticated else 'Anonymous'}")
+            print(f"[DEBUG] OrderDetailView.get_object - User authenticated: {self.request.user.is_authenticated}")
+            print(f"[DEBUG] OrderDetailView.get_object - User role: {getattr(self.request.user, 'role', 'None')}")
+            
+            # Check for session key in headers as fallback
+            user = self.request.user
+            if not user.is_authenticated:
+                session_key = self.request.headers.get('X-Session-Key')
+                if session_key:
+                    try:
+                        from django.contrib.sessions.models import Session
+                        from django.contrib.auth import get_user_model
+                        
+                        # Get session data
+                        session = Session.objects.get(session_key=session_key)
+                        user_id = session.get_decoded().get('_auth_user_id')
+                        
+                        if user_id:
+                            User = get_user_model()
+                            user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] User authenticated via session key in get_object: {user.username}")
+                        else:
+                            print(f"[DEBUG] No user ID found in session in get_object: {session_key}")
+                            raise PermissionDenied("Invalid session")
+                    except (Session.DoesNotExist, User.DoesNotExist) as e:
+                        print(f"[DEBUG] Session validation failed in get_object: {e}")
+                        raise PermissionDenied("Invalid session")
+                else:
+                    raise PermissionDenied("Authentication required")
+            
+            # Get the order
+            order_id = self.kwargs.get('pk')
+            print(f"[DEBUG] OrderDetailView.get_object - Looking for order ID: {order_id}")
+            
+            # Check user role and filter accordingly
+            if user.is_superuser:
+                # Superuser can see all orders
+                order = Order.objects.get(id=order_id)
+                print(f"[DEBUG] Superuser - order access granted")
+            elif hasattr(user, 'role') and user.role in ['manager', 'owner', 'cashier']:
+                # Managers, owners, and cashiers can see all orders in their branch
+                if hasattr(user, 'branch') and user.branch:
+                    order = Order.objects.get(id=order_id, branch=user.branch)
+                    print(f"[DEBUG] {user.role} - order access granted for branch {user.branch.name}")
+                else:
+                    order = Order.objects.get(id=order_id)
+                    print(f"[DEBUG] {user.role} without branch - order access granted")
+            else:
+                # Waiters and other users can only see their own orders
+                order = Order.objects.get(id=order_id, created_by=user)
+                print(f"[DEBUG] Waiter {user.username} - order access granted (own order)")
+            
+            print(f"[DEBUG] OrderDetailView.get_object - Order found: {order.id}, Order number: {order.order_number}")
+            return order
+            
+        except Order.DoesNotExist:
+            print(f"[ERROR] OrderDetailView.get_object - Order not found: {self.kwargs.get('pk')}")
+            raise NotFound("Order not found")
+        except Exception as e:
+            print(f"[ERROR] OrderDetailView.get_object - Exception: {str(e)}")
+            raise e
+
     def retrieve(self, request, *args, **kwargs):
         """
         Custom retrieve method with better debugging and error handling
@@ -242,6 +465,41 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
             print(f"[DEBUG] OrderDetailView.retrieve - Order ID: {kwargs.get('pk')}")
             print(f"[DEBUG] OrderDetailView.retrieve - User authenticated: {request.user.is_authenticated}")
             print(f"[DEBUG] OrderDetailView.retrieve - User role: {getattr(request.user, 'role', 'None')}")
+            
+            # Check for session key in headers as fallback
+            user = request.user
+            if not user.is_authenticated:
+                session_key = request.headers.get('X-Session-Key')
+                if session_key:
+                    try:
+                        from django.contrib.sessions.models import Session
+                        from django.contrib.auth import get_user_model
+                        
+                        # Get session data
+                        session = Session.objects.get(session_key=session_key)
+                        user_id = session.get_decoded().get('_auth_user_id')
+                        
+                        if user_id:
+                            User = get_user_model()
+                            user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] User authenticated via session key in retrieve: {user.username}")
+                        else:
+                            print(f"[DEBUG] No user ID found in session in retrieve: {session_key}")
+                            return Response(
+                                {"error": "Invalid session"}, 
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                    except (Session.DoesNotExist, User.DoesNotExist) as e:
+                        print(f"[DEBUG] Session validation failed in retrieve: {e}")
+                        return Response(
+                            {"error": "Invalid session"}, 
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                else:
+                    return Response(
+                        {"error": "Authentication required"}, 
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
             
             instance = self.get_object()
             print(f"[DEBUG] OrderDetailView.retrieve - Order found: {instance.id}, Order number: {instance.order_number}")
@@ -255,6 +513,190 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
             print(f"[ERROR] OrderDetailView.retrieve - Exception: {str(e)}")
             return Response(
                 {"error": f"Failed to retrieve order: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def update(self, request, *args, **kwargs):
+        """
+        Custom update method with better debugging and error handling
+        """
+        try:
+            print(f"[DEBUG] OrderDetailView.update - User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
+            print(f"[DEBUG] OrderDetailView.update - Order ID: {kwargs.get('pk')}")
+            print(f"[DEBUG] OrderDetailView.update - User authenticated: {request.user.is_authenticated}")
+            print(f"[DEBUG] OrderDetailView.update - User role: {getattr(request.user, 'role', 'None')}")
+            
+            # Check for session key in headers as fallback
+            user = request.user
+            if not user.is_authenticated:
+                session_key = request.headers.get('X-Session-Key')
+                if session_key:
+                    try:
+                        from django.contrib.sessions.models import Session
+                        from django.contrib.auth import get_user_model
+                        
+                        # Get session data
+                        session = Session.objects.get(session_key=session_key)
+                        user_id = session.get_decoded().get('_auth_user_id')
+                        
+                        if user_id:
+                            User = get_user_model()
+                            user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] User authenticated via session key in update: {user.username}")
+                        else:
+                            print(f"[DEBUG] No user ID found in session in update: {session_key}")
+                            return Response(
+                                {"error": "Invalid session"}, 
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                    except (Session.DoesNotExist, User.DoesNotExist) as e:
+                        print(f"[DEBUG] Session validation failed in update: {e}")
+                        return Response(
+                            {"error": "Invalid session"}, 
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                else:
+                    return Response(
+                        {"error": "Authentication required"}, 
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            
+            instance = self.get_object()
+            print(f"[DEBUG] OrderDetailView.update - Order found: {instance.id}, Order number: {instance.order_number}")
+            
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                print(f"[DEBUG] OrderDetailView.update - Order updated successfully")
+                return Response(serializer.data)
+            else:
+                print(f"[DEBUG] OrderDetailView.update - Validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            print(f"[ERROR] OrderDetailView.update - Exception: {str(e)}")
+            return Response(
+                {"error": f"Failed to update order: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Custom destroy method with better debugging and error handling
+        """
+        try:
+            print(f"[DEBUG] OrderDetailView.destroy - User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
+            print(f"[DEBUG] OrderDetailView.destroy - Order ID: {kwargs.get('pk')}")
+            print(f"[DEBUG] OrderDetailView.destroy - User authenticated: {request.user.is_authenticated}")
+            print(f"[DEBUG] OrderDetailView.destroy - User role: {getattr(request.user, 'role', 'None')}")
+            
+            # Check for session key in headers as fallback
+            user = request.user
+            if not user.is_authenticated:
+                session_key = request.headers.get('X-Session-Key')
+                if session_key:
+                    try:
+                        from django.contrib.sessions.models import Session
+                        from django.contrib.auth import get_user_model
+                        
+                        # Get session data
+                        session = Session.objects.get(session_key=session_key)
+                        user_id = session.get_decoded().get('_auth_user_id')
+                        
+                        if user_id:
+                            User = get_user_model()
+                            user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] User authenticated via session key in destroy: {user.username}")
+                        else:
+                            print(f"[DEBUG] No user ID found in session in destroy: {session_key}")
+                            return Response(
+                                {"error": "Invalid session"}, 
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                    except (Session.DoesNotExist, User.DoesNotExist) as e:
+                        print(f"[DEBUG] Session validation failed in destroy: {e}")
+                        return Response(
+                            {"error": "Invalid session"}, 
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                else:
+                    return Response(
+                        {"error": "Authentication required"}, 
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            
+            instance = self.get_object()
+            print(f"[DEBUG] OrderDetailView.destroy - Order found: {instance.id}, Order number: {instance.order_number}")
+            
+            instance.delete()
+            print(f"[DEBUG] OrderDetailView.destroy - Order deleted successfully")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+                
+        except Exception as e:
+            print(f"[ERROR] OrderDetailView.destroy - Exception: {str(e)}")
+            return Response(
+                {"error": f"Failed to delete order: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['patch'], url_path='upload-receipt')
+    def upload_receipt(self, request, pk=None):
+        """Upload receipt image for an order"""
+        try:
+            # Check authentication
+            user = request.user
+            if not user.is_authenticated:
+                session_key = request.headers.get('X-Session-Key')
+                if session_key:
+                    try:
+                        from django.contrib.sessions.models import Session
+                        from django.contrib.auth import get_user_model
+                        
+                        # Get session data
+                        session = Session.objects.get(session_key=session_key)
+                        user_id = session.get_decoded().get('_auth_user_id')
+                        
+                        if user_id:
+                            User = get_user_model()
+                            user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] User authenticated via session key in upload_receipt: {user.username}")
+                        else:
+                            return Response(
+                                {"error": "Invalid session"}, 
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                    except (Session.DoesNotExist, User.DoesNotExist) as e:
+                        print(f"[DEBUG] Session validation failed in upload_receipt: {e}")
+                        return Response(
+                            {"error": "Invalid session"}, 
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                else:
+                    return Response(
+                        {"error": "Authentication required"}, 
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+            
+            order = self.get_object()
+            receipt_image = request.FILES.get('receipt_image')
+            
+            if not receipt_image:
+                return Response(
+                    {"error": "No receipt image provided"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Update the order with receipt image
+            order.receipt_image = receipt_image
+            order.save()
+            
+            serializer = self.get_serializer(order)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            print(f"[ERROR] upload_receipt - Exception: {str(e)}")
+            return Response(
+                {"error": f"Failed to upload receipt: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -476,13 +918,61 @@ class PrintOrderView(generics.UpdateAPIView):
         instance.cashier_status = 'printed'
         instance.save()
         
-        print(f"[DEBUG] PrintOrderView - Order printed successfully")
+        # Automatically reset table status to allow new orders
+        if instance.table:
+            try:
+                # Import Table model here to avoid circular imports
+                from branches.models import Table
+                table = instance.table
+                table.status = 'available'
+                table.save()
+                print(f"[DEBUG] PrintOrderView - Table {table.number} status reset to 'available' for new orders")
+            except Exception as e:
+                print(f"[WARNING] PrintOrderView - Failed to reset table status: {e}")
+        
+        print(f"[DEBUG] PrintOrderView - Order printed successfully and table reset for new orders")
         
         serializer = self.get_serializer(instance)
         return Response({
-            'message': 'Order printed successfully',
-            'order': serializer.data
+            'message': 'Order printed successfully and table is now available for new orders',
+            'order': serializer.data,
+            'table_reset': True
         })
+
+class ResetTableStatusView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+            
+            if not order.table:
+                return Response({'error': 'Order has no associated table'}, status=400)
+            
+            # Check if order has been printed (sent to cashier)
+            if order.cashier_status != 'printed':
+                return Response({'error': 'Table can only be reset after order has been printed'}, status=400)
+            
+            # Reset table status to available
+            table = order.table
+            table.status = 'available'
+            table.save()
+            
+            print(f"[DEBUG] ResetTableStatusView - Table {table.number} manually reset to 'available' for new orders")
+            
+            return Response({
+                'message': f'Table {table.number} reset successfully. Ready for new orders.',
+                'table_number': table.number,
+                'table_status': 'available'
+            })
+            
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=404)
+        except Exception as e:
+            print(f"[ERROR] ResetTableStatusView - Exception: {str(e)}")
+            return Response({'error': f'Error resetting table: {str(e)}'}, status=500)
+
+
 
 class AcceptbeverageOrderView(APIView):
     permission_classes = [AllowAny]
@@ -1128,3 +1618,246 @@ def add_items_to_order(request, order_id):
     except Exception as e:
         print(f"[ERROR] add_items_to_order - Unexpected error: {str(e)}")
         return Response({'error': f'Unexpected error: {str(e)}'}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_table_availability(request):
+    """Check if a table is available for new orders"""
+    table_id = request.query_params.get('table_id')
+    if not table_id:
+        return Response({'error': 'Table ID is required'}, status=400)
+    
+    try:
+        from branches.models import Table
+        table = Table.objects.get(id=table_id)
+    except Table.DoesNotExist:
+        return Response({'error': 'Table not found'}, status=404)
+    
+    # Check if table can accept new orders
+    can_accept, reason = table.can_accept_order()
+    
+    # Check for existing active orders
+    # Check for existing active orders that would prevent new orders
+    # Only orders that are still being processed should block new orders
+    blocking_orders = Order.objects.filter(
+        table=table,
+        cashier_status__in=['pending']  # Only 'pending' orders block new orders
+    ).exclude(
+        food_status__in=['completed', 'cancelled', 'rejected'],
+        beverage_status__in=['completed', 'cancelled', 'rejected']
+    )
+    
+    has_blocking_orders = blocking_orders.exists()
+    latest_order = None
+    
+    if has_blocking_orders:
+        latest_order = blocking_orders.latest('created_at')
+    
+    # NEW LOGIC: Table can accept new orders if:
+    # 1. No blocking orders (orders still being processed), OR
+    # 2. All orders are in terminal states (ready_for_payment, printed, etc.)
+    can_accept_new_order = not has_blocking_orders
+    
+    return Response({
+        'table_id': table.id,
+        'table_number': table.number,
+        'current_status': table.status,
+        'can_accept_new_order': can_accept_new_order,
+        'reason': reason if not can_accept else None,
+        'has_blocking_orders': has_blocking_orders,
+        'blocking_order': {
+            'id': latest_order.id,
+            'order_number': latest_order.order_number,
+            'created_at': latest_order.created_at,
+            'food_status': latest_order.food_status,
+            'beverage_status': latest_order.beverage_status,
+            'cashier_status': latest_order.cashier_status
+        } if latest_order else None,
+        'message': (
+            f"Table {table.number} is {'available' if can_accept_new_order else 'unavailable'} "
+            f"for new orders. {reason or ''}"
+        )
+    })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def force_table_available(request):
+    """Force a table to be available (for managers/cashiers)"""
+    table_id = request.data.get('table_id')
+    if not table_id:
+        return Response({'error': 'Table ID is required'}, status=400)
+    
+    try:
+        from branches.models import Table
+        table = Table.objects.get(id=table_id)
+    except Table.DoesNotExist:
+        return Response({'error': 'Table not found'}, status=404)
+    
+    # Check if user has permission to force table availability
+    user = request.user
+    if not (user.is_superuser or getattr(user, 'role', '') in ['manager', 'owner', 'cashier']):
+        return Response({'error': 'Insufficient permissions to force table availability'}, status=403)
+    
+    # Force table to available status
+    table.status = 'available'
+    table.current_order = None
+    table.save()
+    
+    return Response({
+        'message': f'Table {table.number} has been forced to available status',
+        'table_id': table.id,
+        'table_number': table.number,
+        'new_status': table.status
+    })
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def edit_order_items_view(request, order_id):
+    """
+    Edit existing order items by modifying quantities and removing items.
+    This endpoint allows waiters to modify pending items before they are accepted.
+    """
+    try:
+        # Log the incoming request data
+        print(f"[edit_order_items_view] Request data: {request.data}")
+        print(f"[edit_order_items_view] Order ID: {order_id}")
+        print(f"[edit_order_items_view] User: {request.user.username}")
+        
+        # Get the order
+        order = get_object_or_404(Order, id=order_id)
+        
+        # Check if user has permission to edit this order
+        if not (request.user.is_superuser or 
+                request.user.role in ['manager', 'owner'] or 
+                order.created_by == request.user):
+            return Response({
+                'error': 'You do not have permission to edit this order'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Check if order can be edited (only if not printed/completed)
+        if order.cashier_status in ['printed', 'completed']:
+            return Response({
+                'error': 'Cannot edit order that has been printed or completed'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get the updated items from request data
+        updated_items = request.data.get('items', [])
+        
+        print(f"[edit_order_items_view] Updated items: {updated_items}")
+        print(f"[edit_order_items_view] Items count: {len(updated_items)}")
+        
+        if not updated_items:
+            return Response({
+                'error': 'No items provided for order update'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate updated items structure
+        for item in updated_items:
+            if not all(key in item for key in ['id', 'name', 'quantity', 'price']):
+                return Response({
+                    'error': 'Each item must have id, name, quantity, and price'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate quantity is positive
+            if int(item['quantity']) < 0:
+                return Response({
+                    'error': f'Quantity for item "{item["name"]}" must be non-negative'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate price is positive
+            if float(item['price']) < 0:
+                return Response({
+                    'error': f'Price for item "{item["name"]}" must be non-negative'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Start transaction
+        with transaction.atomic():
+            # Get current pending items
+            current_pending_items = order.items.filter(status='pending')
+            current_pending_ids = set(current_pending_items.values_list('id', flat=True))
+            
+            # Get updated item IDs
+            updated_item_ids = set(item['id'] for item in updated_items)
+            
+            # Remove items that are no longer in the updated list
+            items_to_remove = current_pending_items.filter(id__in=current_pending_ids - updated_item_ids)
+            removed_count = items_to_remove.count()
+            items_to_remove.delete()
+            
+            # Update existing items and add new ones
+            total_money = 0
+            updated_count = 0
+            
+            for item_data in updated_items:
+                item_id = item_data['id']
+                order_item = None  # Initialize order_item variable
+                
+                try:
+                    # Try to update existing item
+                    order_item = order.items.get(id=item_id, status='pending')
+                    order_item.quantity = item_data['quantity']
+                    order_item.price = item_data['price']
+                    order_item.save()
+                    updated_count += 1
+                except OrderItem.DoesNotExist:
+                    # Create new item if it doesn't exist
+                    order_item = OrderItem.objects.create(
+                        order=order,
+                        name=item_data['name'],
+                        quantity=int(item_data['quantity']),
+                        price=float(item_data['price']),
+                        item_type=item_data.get('item_type', 'food'),
+                        product=item_data.get('product_id') or item_data.get('product'),
+                        status='pending'
+                    )
+                    updated_count += 1
+                
+                # Add to total (only for accepted items)
+                if order_item and order_item.status == 'accepted':
+                    total_money += float(item_data['price']) * int(item_data['quantity'])
+            
+            # Update order total - calculate from all items (accepted + pending)
+            all_items_total = 0
+            for item in order.items.all():
+                if item.status in ['accepted', 'pending']:
+                    all_items_total += item.price * item.quantity
+            
+            order.total_money = all_items_total
+            order.save()
+            
+            # Create order update record
+            order_update = OrderUpdate.objects.create(
+                original_order=order,
+                update_type='modification',  # Use valid choice from model
+                total_addition_cost=0,  # No additional cost for edits
+                notes=f'Order items edited by {request.user.username}. {removed_count} items removed, {updated_count} items updated.',
+                status='pending',
+                created_by=request.user
+            )
+            
+            # Log the edit action
+            print(f"[edit_order_items_view] Order {order.order_number} edited by {request.user.username}")
+            print(f"[edit_order_items_view] {removed_count} items removed, {updated_count} items updated")
+            
+            return Response({
+                'message': f'Order updated successfully. {removed_count} items removed, {updated_count} items updated.',
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'order_update_id': order_update.id,
+                'items_removed': removed_count,
+                'items_updated': updated_count,
+                'new_total_money': total_money,
+                'order_update_status': order_update.status
+            }, status=status.HTTP_200_OK)
+            
+    except Order.DoesNotExist:
+        return Response({
+            'error': 'Order not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        import traceback
+        print(f"[edit_order_items_view] Error: {str(e)}")
+        print(f"[edit_order_items_view] Traceback: {traceback.format_exc()}")
+        return Response({
+            'error': f'Failed to edit order items: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

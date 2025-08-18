@@ -4,6 +4,7 @@ import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { API_BASE_URL } from '../../api/config';
 
 // Helper to get CSRF token from cookies
 function getCookie(name) {

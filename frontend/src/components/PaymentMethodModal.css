@@ -266,3 +266,166 @@
   }
 }
 
+/* Receipt capture styles */
+.receipt-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #f0fdf4;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+.receipt-capture-section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.receipt-capture-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.receipt-capture-header h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.receipt-capture-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.capture-receipt-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.capture-receipt-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.receipt-thumbnail {
+  width: 100%;
+  max-width: 300px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.recapture-btn, .remove-btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.recapture-btn {
+  background: #f59e0b;
+  color: white;
+}
+
+.recapture-btn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.remove-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.remove-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Enhanced payment option styles for receipt status */
+.payment-option-content {
+  flex: 1;
+  position: relative;
+}
+
+.payment-option-content h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.payment-option-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments for receipt capture */
+@media (max-width: 640px) {
+  .receipt-capture-section {
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .receipt-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .recapture-btn, .remove-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .receipt-thumbnail {
+    max-width: 100%;
+    height: 150px;
+  }
+}
+

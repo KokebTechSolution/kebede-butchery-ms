@@ -125,7 +125,7 @@ class SessionLoginView(APIView):
                         print(f"[DEBUG] Error parsing origin: {e}")
                         cookie_domain = None
                 
-                # Set session cookie without domain restriction for better cross-origin support
+                # Set session cookie with proper settings for cross-origin
                 response.set_cookie(
                     'sessionid',
                     session_key,
@@ -137,6 +137,10 @@ class SessionLoginView(APIView):
                     domain=None  # Don't restrict domain - let browser handle it
                 )
                 print(f"[DEBUG] Session cookie set without domain restriction")
+                
+                # Also set a custom header to help frontend track session
+                response['X-Session-Key'] = session_key
+                print(f"[DEBUG] Session key header set: {session_key}")
             
             # Set CSRF cookie if not already set
             if 'csrftoken' not in request.COOKIES:
@@ -155,6 +159,7 @@ class SessionLoginView(APIView):
                     print(f"[DEBUG] CSRF cookie set without domain restriction")
             
             print(f"[DEBUG] Response cookies: {dict(response.cookies)}")
+            print(f"[DEBUG] Response headers: {dict(response.headers)}")
             return response
         
         print(f"[DEBUG] Authentication failed for user: {username}")

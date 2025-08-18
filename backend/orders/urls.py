@@ -9,6 +9,7 @@ urlpatterns = [
     path('<int:pk>/update-cashier-status/', views.UpdateCashierStatusView.as_view(), name='update-cashier-status'),
     path('<int:pk>/update-payment-option/', views.UpdatePaymentOptionView.as_view(), name='update-payment-option'),
     path('<int:pk>/print/', views.PrintOrderView.as_view(), name='print-order'),
+    path('<int:pk>/reset-table-status/', views.ResetTableStatusView.as_view(), name='reset-table-status'),
     path('food/', views.FoodOrderListView.as_view(), name='food-order-list'),
     path('beverages/', views.BeverageOrderListView.as_view(), name='beverage-order-list'),
     path('printed-orders/', views.PrintedOrderListView.as_view(), name='printed-order-list'),
@@ -33,8 +34,13 @@ urlpatterns = [
     
     # Edit order functionality
     path('<int:order_id>/edit/', views.edit_order_view, name='edit-order'),
+    path('<int:order_id>/edit-items/', views.edit_order_items_view, name='edit-order-items'),
     path('<int:order_id>/display/', views.get_order_display_view, name='get-order-display'),
     path('updates/<int:order_update_id>/check-completion/', views.check_order_update_completion_view, name='check-order-update-completion'),
+    
+    # Table availability management
+    path('check-table-availability/', views.check_table_availability, name='check-table-availability'),
+    path('force-table-available/', views.force_table_available, name='force-table-available'),
     
     # Test endpoints
     path('test-order-update/<int:order_id>/', views.test_order_update, name='test-order-update'),

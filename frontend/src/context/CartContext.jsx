@@ -57,10 +57,12 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   });
   const [activeTableId, setActiveTableId] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [refreshFlag, setRefreshFlag] = useState(0);
 
   // Fetch orders and filter them based on status and table availability
   const fetchAndFilterOrders = async () => {
     try {
+      console.log('[CartContext] 🔄 Fetching and filtering orders...');
       // First, fetch all orders
       const response = await axiosInstance.get('/orders/order-list/');
       
@@ -84,11 +86,42 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
         return isActiveOrder && isTableOccupied;
       });
       
+      console.log('[CartContext] ✅ Orders fetched and filtered:', filteredOrders.length);
       setOrders(filteredOrders);
     } catch (error) {
       console.error("Failed to fetch orders or tables:", error);
     }
   };
+
+  // Function to refresh orders data
+  const refreshOrders = useCallback(async () => {
+    console.log('[CartContext] 🔄 Manual refresh triggered');
+    setRefreshFlag(prev => prev + 1);
+    await fetchAndFilterOrders();
+  }, []);
+
+  // Function to refresh tables data
+  const refreshTables = useCallback(async () => {
+    console.log('[CartContext] 🔄 Refreshing tables data...');
+    try {
+      const response = await axiosInstance.get('/branches/tables/');
+      console.log('[CartContext] ✅ Tables data refreshed');
+      return response.data;
+    } catch (error) {
+      console.error('[CartContext] ❌ Failed to refresh tables:', error);
+      return null;
+    }
+  }, []);
+
+  // Function to refresh everything (orders, tables, and cart)
+  const refreshAll = useCallback(async () => {
+    console.log('[CartContext] 🔄 Full refresh triggered');
+    await Promise.all([
+      fetchAndFilterOrders(),
+      refreshTables()
+    ]);
+    setRefreshFlag(prev => prev + 1);
+  }, [refreshTables]);
 
   // Fetch orders on mount and set up polling - ONLY when authenticated
   useEffect(() => {
@@ -97,6 +130,36 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       fetchAndFilterOrders();
     }
   }, [isAuthenticated, user]);
+
+  // Listen for refresh events from other components
+  useEffect(() => {
+    const handleRefreshOrders = () => {
+      console.log('[CartContext] 📡 Received refreshOrders event');
+      refreshOrders();
+    };
+
+    const handleRefreshAll = () => {
+      console.log('[CartContext] 📡 Received refreshAll event');
+      refreshAll();
+    };
+
+    // Add event listeners
+    window.addEventListener('refreshOrders', handleRefreshOrders);
+    window.addEventListener('refreshAll', handleRefreshAll);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('refreshOrders', handleRefreshOrders);
+      window.removeEventListener('refreshAll', handleRefreshAll);
+    };
+  }, [refreshOrders, refreshAll]);
+
+  // Refresh orders when refreshFlag changes
+  useEffect(() => {
+    if (refreshFlag > 0) {
+      fetchAndFilterOrders();
+    }
+  }, [refreshFlag]);
 
   useEffect(() => {
     try {
@@ -138,136 +201,189 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     console.log('CartContext: Cart items changed for table', activeTableId, ':', cartItems);
   }, [cartItems, activeTableId]);
 
-  const addToCart = (item) => {
+  const addToCart = useCallback((item) => {
     if (!activeTableId) {
-      console.warn("No active table selected. Cannot add item to cart.");
+      console.warn('CartContext: addToCart called but activeTableId is null/undefined');
       return;
     }
-    const { icon, ...rest } = item;
-    setTableCarts((prevTableCarts) => {
-      const currentTableCart = prevTableCarts[activeTableId] || [];
-      let found = false;
-      const updatedTableCart = currentTableCart.map((cartItem) => {
-        if (
-          cartItem.name === rest.name &&
-          cartItem.price === rest.price &&
-          (cartItem.item_type || 'food') === (rest.item_type || 'food')
-        ) {
-          found = true;
-          // If the item is accepted/rejected, revert status to pending when adding more
-          return {
-            ...cartItem,
-            quantity: cartItem.quantity + 1,
-            status: (cartItem.status === 'accepted' || cartItem.status === 'rejected') ? 'pending' : cartItem.status,
-          };
-        }
-        return cartItem;
-      });
-      if (!found) {
-        updatedTableCart.push({ ...rest, quantity: 1, status: rest.status || 'pending' });
-      }
-      return {
-        ...prevTableCarts,
-        [activeTableId]: updatedTableCart,
-      };
-    });
-  };
 
-  const removeFromCart = (itemId) => {
-    if (!activeTableId) return;
-    setTableCarts((prevTableCarts) => {
-      const currentTableCart = prevTableCarts[activeTableId] || [];
-      // Remove any item with matching id, regardless of status
-      const updatedTableCart = currentTableCart.filter(
-        (item) => item.id !== itemId
+    console.log('CartContext: addToCart called with item:', item, 'for table:', activeTableId);
+    
+    setTableCarts(prev => {
+      const currentTableCart = prev[activeTableId] || [];
+      
+      // Check if item already exists in cart (by name and price)
+      const existingItemIndex = currentTableCart.findIndex(cartItem => 
+        cartItem.name === item.name && 
+        cartItem.price === item.price &&
+        cartItem.item_type === item.item_type
       );
-      console.log('CartContext: Removed item', itemId, 'for table', activeTableId, '. New cart:', updatedTableCart);
-      return {
-        ...prevTableCarts,
-        [activeTableId]: updatedTableCart,
-      };
+      
+      console.log('CartContext: Existing item index:', existingItemIndex);
+      console.log('CartContext: Current cart items:', currentTableCart);
+      
+      let newTableCart;
+      if (existingItemIndex >= 0) {
+        // Item exists, increase quantity
+        newTableCart = [...currentTableCart];
+        const oldQuantity = newTableCart[existingItemIndex].quantity || 0;
+        const newQuantity = oldQuantity + 1;
+        newTableCart[existingItemIndex] = {
+          ...newTableCart[existingItemIndex],
+          quantity: newQuantity
+        };
+        console.log('CartContext: Increased quantity for existing item:', newTableCart[existingItemIndex], 'from', oldQuantity, 'to', newQuantity);
+      } else {
+        // New item, add with quantity 1
+        const newItem = { 
+          ...item, 
+          id: Date.now() + Math.random(),
+          quantity: 1  // Set default quantity to 1
+        };
+        newTableCart = [...currentTableCart, newItem];
+        console.log('CartContext: Added new item to cart:', newItem);
+      }
+      
+      const newTableCarts = { ...prev, [activeTableId]: newTableCart };
+      console.log('CartContext: Updated tableCarts:', newTableCarts);
+      return newTableCarts;
     });
-  };
+    
+    // Trigger refresh after adding item to cart
+    setTimeout(() => refreshOrders(), 100);
+  }, [activeTableId, refreshOrders]);
 
-  const updateQuantity = (itemId, quantity) => {
-    if (!activeTableId) return;
-    if (quantity < 1) {
-      removeFromCart(itemId);
+  const removeFromCart = useCallback((itemId) => {
+    if (!activeTableId) {
+      console.warn('CartContext: removeFromCart called but activeTableId is null/undefined');
       return;
     }
+
+    console.log('CartContext: removeFromCart called with itemId:', itemId, 'for table:', activeTableId);
+    
+    setTableCarts(prev => {
+      const currentTableCart = prev[activeTableId] || [];
+      const updatedTableCart = currentTableCart.filter(item => item.id !== itemId);
+      const newTableCarts = { ...prev, [activeTableId]: updatedTableCart };
+      
+      console.log('CartContext: Removed item', itemId, 'for table', activeTableId, '. New cart:', updatedTableCart);
+      return newTableCarts;
+    });
+    
+    // Trigger refresh after removing item from cart
+    setTimeout(() => refreshOrders(), 100);
+  }, [activeTableId, refreshOrders]);
+
+  const updateQuantity = useCallback((itemId, quantity) => {
+    if (!activeTableId) {
+      console.warn('CartContext: updateQuantity called but activeTableId is null/undefined');
+      return;
+    }
+
     console.log('CartContext: updateQuantity called with itemId:', itemId, 'quantity:', quantity);
     console.log('CartContext: Current cart items:', cartItems);
     
-    setTableCarts((prevTableCarts) => {
-      const currentTableCart = prevTableCarts[activeTableId] || [];
+    setTableCarts(prev => {
+      const currentTableCart = prev[activeTableId] || [];
       console.log('CartContext: Current table cart:', currentTableCart);
       
-      // First try to find by id
-      let foundItem = currentTableCart.find(item => item.id === itemId);
-      
-      // If not found by id, try to find by name and price (fallback for items without id)
-      if (!foundItem && typeof itemId === 'string') {
-        // If itemId is a string, it might be a name
-        foundItem = currentTableCart.find(item => item.name === itemId);
-      }
-      
-      if (!foundItem) {
-        console.warn('CartContext: Could not find item with id:', itemId, 'in cart:', currentTableCart);
-        return prevTableCarts;
-      }
-      
-      const updatedTableCart = currentTableCart.map((item) => {
-        console.log('CartContext: Checking item:', item, 'against itemId:', itemId);
-        if (item.id === itemId || (typeof itemId === 'string' && item.name === itemId)) {
+      const updatedTableCart = currentTableCart.map(item => {
+        if (item.id === itemId) {
           console.log('CartContext: Found matching item, updating quantity from', item.quantity, 'to', quantity);
-          return {
-            ...item,
-            quantity,
-            status: item.status
-          };
+          return { ...item, quantity: Math.max(0, quantity) };
         }
         return item;
-      });
+      }).filter(item => item.quantity > 0); // Remove items with 0 quantity
+      
+      const newTableCarts = { ...prev, [activeTableId]: updatedTableCart };
+      
       console.log('CartContext: Updated quantity for item', itemId, 'to', quantity, 'for table', activeTableId, '. New cart:', updatedTableCart);
-      return {
-        ...prevTableCarts,
-        [activeTableId]: updatedTableCart,
-      };
+      return newTableCarts;
     });
-  };
+    
+    // Trigger refresh after updating quantity
+    setTimeout(() => refreshOrders(), 100);
+  }, [activeTableId, cartItems, refreshOrders]);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     if (!activeTableId) {
       console.warn('CartContext: clearCart called but activeTableId is null/undefined');
       return;
     }
-    setTableCarts((prevTableCarts) => ({
-      ...prevTableCarts,
-      [activeTableId]: [],
-    }));
+
     console.log('CartContext: Cart cleared for table', activeTableId);
-  };
+    
+    setTableCarts(prev => {
+      const newTableCarts = { ...prev, [activeTableId]: [] };
+      return newTableCarts;
+    });
+    
+    // Trigger refresh after clearing cart
+    setTimeout(() => refreshOrders(), 100);
+  }, [activeTableId, refreshOrders]);
 
   const placeOrder = async (orderData) => {
+    console.log('[CartContext] placeOrder called with:', orderData);
+    
     try {
+      // First check if table is available for new orders
+      console.log('[CartContext] Checking table availability for table:', orderData.table);
+      console.log('[CartContext] Making request to:', `/orders/check-table-availability/?table_id=${orderData.table}`);
+      
+      const availabilityResponse = await axiosInstance.get(`/orders/check-table-availability/?table_id=${orderData.table}`);
+      console.log('[CartContext] Table availability response:', availabilityResponse.data);
+      
+      if (!availabilityResponse.data.can_accept_new_order) {
+        const errorMessage = availabilityResponse.data.message || 'Table is not available for new orders';
+        console.log('[CartContext] Table not available:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      console.log('[CartContext] Table is available, creating order...');
+      
+      // Create the order payload
       const payload = {
-        ...orderData,
+        table: orderData.table,
+        created_by: orderData.created_by, // Add the user ID for created_by field
         items: orderData.items.map(item => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          item_type: item.item_type, // Remove default fallback - item_type must be set
-          status: 'pending'
-        }))
+          item_type: item.item_type || 'food',
+          status: item.status || 'pending'
+        })),
+        waiter_username: orderData.waiter_username,
+        waiter_table_number: orderData.waiter_table_number,
+        payment_option: orderData.payment_option || 'cash'
       };
-
-      const response = await axiosInstance.post('/orders/order-list/', payload);
       
-      // Clear cart after successful order
-      clearCart();
+      console.log('[CartContext] Order payload:', payload);
+      console.log('[CartContext] Making POST request to:', '/orders/order-list/');
+      
+      // Create the order
+      const response = await axiosInstance.post('/orders/order-list/', payload);
+      console.log('[CartContext] Order creation response:', response.data);
+      
+      // Clear the cart for this table after successful order creation
+      setTableCarts(prev => ({
+        ...prev,
+        [orderData.table]: []
+      }));
+      
+      // Trigger refresh after placing order
+      setTimeout(() => refreshAll(), 100);
+      
       return response.data.id;
+      
     } catch (error) {
-      console.error('Error placing order:', error);
+      console.error('[CartContext] Error placing order:', error);
+      console.error('[CartContext] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        method: error.config?.method
+      });
       throw error;
     }
   };
@@ -283,74 +399,89 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const updateOrder = async (orderId, updatedItems) => {
+    console.log('CartContext: updateOrder called with orderId:', orderId, 'updatedItems:', updatedItems);
+    
     try {
-      console.log('CartContext: updateOrder called with orderId:', orderId, 'updatedItems:', updatedItems);
-      
-      // Check waiter actions first
-      const actions = await checkWaiterActions(orderId);
+      // First check if waiter actions are available
+      const actions = await axiosInstance.get(`/orders/${orderId}/waiter-actions/`);
       console.log('CartContext: Waiter actions response:', actions);
       
-      // Safely check if edit is allowed
-      if (actions && actions.actions && actions.actions.edit) {
-        if (!actions.actions.edit.enabled) {
-          throw new Error(actions.actions.edit.reason || 'Edit not allowed for this order');
-        }
-      } else {
+      if (!actions.data || !actions.data.edit) {
         console.warn('CartContext: Waiter actions not available or edit action not found, proceeding with update');
       }
       
-      // Build payload with all items and their current status
+      // Prepare the update payload
       const payload = {
         items: updatedItems.map(item => ({
-          ...item,
-          status: item.status || 'pending', // Default to pending if not set
-        })),
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          item_type: item.item_type || 'food',
+          status: item.status || 'pending'
+        }))
       };
       
       console.log('CartContext: updateOrder payload being sent:', payload);
-      const response = await axiosInstance.patch(`/orders/order-list/${orderId}/`, payload);
-      const updatedOrder = response.data;
       
+      // Update the order
+      const response = await axiosInstance.patch(`/orders/${orderId}/update/`, payload);
+      const updatedOrder = response.data;
       console.log('CartContext: updateOrder response from backend:', updatedOrder);
-
+      
       // Update the orders state in CartContext
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId ? updatedOrder : order
-        )
-      );
+      setOrders(prev => prev.map(order => 
+        order.id === orderId ? updatedOrder : order
+      ));
+      
       console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
       
-      // Dispatch a custom event to notify other components about the order update
-      const event = new CustomEvent('orderUpdated', { 
-        detail: { 
-          orderId: orderId,
-          updatedOrder: updatedOrder,
-          source: 'CartContext'
-        } 
-      });
-      window.dispatchEvent(event);
+      // Clear the cart after successful update
+      setTableCarts(prev => ({
+        ...prev,
+        [activeTableId]: []
+      }));
+      
+      // Trigger refresh after updating order
+      setTimeout(() => refreshAll(), 100);
+      
+      // Dispatch custom event for other components
+      window.dispatchEvent(new CustomEvent('orderUpdated', { 
+        detail: { orderId, updatedItems },
+        source: 'CartContext'
+      }));
+      
       console.log('CartContext: Dispatched orderUpdated event');
       
-      // Also try to manually refresh the order list
+      // Also call the global refresh function
       if (window.refreshOrderList) {
-        console.log('CartContext: Calling window.refreshOrderList');
         window.refreshOrderList();
+        console.log('CartContext: Calling window.refreshOrderList');
       }
       
-      // Don't clear cart here - let the calling component handle it
-      // clearCart();
-      
       return updatedOrder;
+      
     } catch (error) {
-      console.error('Failed to update order:', error);
-      throw error; // Re-throw the error so calling code can handle it
+      console.error('CartContext: Error updating order:', error);
+      throw error;
     }
   };
 
-  const deleteOrder = (orderId) => {
-    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
-    console.log(`CartContext: Deleted order ${orderId}`);
+  const deleteOrder = async (orderId) => {
+    try {
+      await axiosInstance.delete(`/orders/${orderId}/delete/`);
+      console.log(`CartContext: Deleted order ${orderId}`);
+      
+      // Remove from orders state
+      setOrders(prev => prev.filter(order => order.id !== orderId));
+      
+      // Trigger refresh after deleting order
+      setTimeout(() => refreshAll(), 100);
+      
+      return true;
+    } catch (error) {
+      console.error('CartContext: Error deleting order:', error);
+      throw error;
+    }
   };
 
   const loadCartForEditing = (tableId, items) => {
@@ -370,11 +501,15 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const getTotalItems = () => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
+    return cartItems.reduce((total, item) => total + (Number(item.quantity) || 0), 0);
   };
 
   const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + (Number(item.price || 0) * item.quantity), 0);
+    return cartItems.reduce((total, item) => {
+      const quantity = Number(item.quantity) || 0;
+      const price = Number(item.price) || 0;
+      return total + (price * quantity);
+    }, 0);
   };
 
   const getTableCart = (tableId) => {
@@ -407,6 +542,9 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
         deleteOrder,
         getTableCart,
         user,
+        refreshOrders,
+        refreshTables,
+        refreshAll,
       }}
     >
       {children}

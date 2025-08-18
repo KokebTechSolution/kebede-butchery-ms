@@ -40,6 +40,12 @@ class Order(models.Model):
         choices=[('cash', 'Cash'), ('online', 'Online')],
         null=True, blank=True
     )
+    receipt_image = models.ImageField(
+        upload_to='receipts/',
+        null=True,
+        blank=True,
+        help_text='Payment receipt image for online payments'
+    )
 
     def __str__(self):
         return self.order_number

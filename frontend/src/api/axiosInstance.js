@@ -21,6 +21,19 @@ axiosInstance.interceptors.request.use(async (config) => {
       return config;
     }
     
+    // Check if user is authenticated
+    const sessionKey = localStorage.getItem('session_key');
+    const user = localStorage.getItem('user');
+    
+    console.log('🔍 Request interceptor - Session check:', {
+      url: config.url,
+      method: config.method,
+      hasSessionKey: !!sessionKey,
+      hasUser: !!user,
+      cookies: document.cookie,
+      withCredentials: config.withCredentials
+    });
+    
     // Ensure CSRF token is available
     const csrfToken = await ensureCSRFToken();
     
@@ -32,6 +45,17 @@ axiosInstance.interceptors.request.use(async (config) => {
     } else {
       console.warn('⚠️ No CSRF token found for request:', config.url);
     }
+    
+    // Add session validation header if available
+    if (sessionKey) {
+      config.headers = config.headers || {};
+      config.headers['X-Session-Key'] = sessionKey;
+      console.log('✅ Session key added to request:', config.url);
+    }
+    
+    // Ensure withCredentials is set for all requests
+    config.withCredentials = true;
+    
   } catch (error) {
     console.error('❌ Error setting CSRF token:', error);
   }
@@ -66,6 +90,30 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      console.error('❌ Authentication error (401):', error.response.data);
+      console.error('❌ Request details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        cookies: document.cookie,
+        withCredentials: error.config?.withCredentials
+      });
+      
+      // Clear stored session data
+      localStorage.removeItem('session_key');
+      localStorage.removeItem('user');
+      localStorage.removeItem('csrf_token');
+      
+      // Redirect to login if not already there
+      if (window.location.pathname !== '/login') {
+        console.log('🔄 Redirecting to login due to authentication error');
+        window.location.href = '/login';
+      }
+    } else if (error.response?.status === 403) {
+      console.error('❌ Permission denied (403):', error.response.data);
+    }
+    
     return Promise.reject(error);
   }
 );

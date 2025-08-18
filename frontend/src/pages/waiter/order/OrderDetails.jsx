@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaEdit, FaTrash, FaPrint, FaTimes, FaPlus, FaCreditCard, FaMoneyBillWave } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPrint, FaTimes, FaPlus, FaCreditCard, FaMoneyBillWave, FaCamera, FaCheck } from 'react-icons/fa';
 import OrderAdditionsModal from './OrderAdditionsModal';
+import OrderEditModal from './OrderEditModal';
+import PaymentMethodModal from '../../../components/PaymentMethodModal';
+import CameraCapture from '../../../components/CameraCapture';
 import axiosInstance from '../../../api/axiosInstance';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import './OrderDetails.css';
 
-const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems }) => {
+const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems, onDone }) => {
   const { t } = useTranslation();
   const { user, checkSessionValidity } = useAuth();
-  const { clearCart } = useCart();
+  const { clearCart, refreshOrders, refreshTables, refreshAll } = useCart();
   const [currentOrder, setCurrentOrder] = useState(null);
   const [showAddItemsModal, setShowAddItemsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [menuItems, setMenuItems] = useState([]);
   const [menuItemsLoading, setMenuItemsLoading] = useState(false);
   const [orderUpdates, setOrderUpdates] = useState([]);
@@ -21,6 +25,9 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
   const [successMessage, setSuccessMessage] = useState('');
   const [paymentOption, setPaymentOption] = useState('');
   const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedReceipt, setCapturedReceipt] = useState(null);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -165,6 +172,17 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
     setShowAddItemsModal(true);
   };
 
+  const handleEditOrder = () => {
+    setShowEditModal(true);
+  };
+
+  const handleOrderUpdated = (updatedOrder) => {
+    // Refresh order details after successful update
+    setCurrentOrder(updatedOrder);
+    fetchOrderDetails();
+    fetchOrderUpdates();
+  };
+
   const handleAddItems = async (itemsData) => {
     try {
       console.log('[OrderDetails] Adding items to order:', itemsData);
@@ -198,6 +216,12 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
   const handlePaymentOptionChange = async (newPaymentOption) => {
     if (newPaymentOption === paymentOption) return;
     
+    // Check if order can be modified
+    if (currentOrder?.cashier_status === 'printed') {
+      alert('⚠️ Cannot change payment method for printed orders. The order has already been sent to the cashier.');
+      return;
+    }
+    
     try {
       setUpdatingPayment(true);
       const response = await axiosInstance.patch(`/orders/${currentOrder.id}/update-payment-option/`, {
@@ -208,11 +232,117 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
       setPaymentOption(newPaymentOption);
       setCurrentOrder(prev => ({ ...prev, payment_option: newPaymentOption }));
       setSuccessMessage(`Payment option updated to ${newPaymentOption}!`);
+      
+      // Refresh orders and tables after payment update
+      await refreshAll();
     } catch (error) {
       console.error('[OrderDetails] Error updating payment option:', error);
-      alert('Failed to update payment option: ' + (error.response?.data?.message || error.message));
+      
+      // Provide more specific error messages
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.error || 'Payment option cannot be changed';
+        alert(`⚠️ ${errorMessage}\n\nThis usually happens when:\n• The order has already been printed\n• The order has already been processed for payment\n• The payment option is invalid`);
+      } else {
+        alert('Failed to update payment option: ' + (error.response?.data?.message || error.message));
+      }
     } finally {
       setUpdatingPayment(false);
+    }
+  };
+
+  const handlePaymentMethodSelect = (method) => {
+    // Check if order can be modified
+    if (currentOrder?.cashier_status === 'printed') {
+      alert('⚠️ Cannot change payment method for printed orders. The order has already been sent to the cashier.');
+      return;
+    }
+    
+    if (method === 'online') {
+      // For online payment, show camera to capture receipt
+      setShowCamera(true);
+    } else {
+      // For cash payment, update directly
+      handlePaymentOptionChange(method);
+    }
+  };
+
+  const handleReceiptCapture = (receiptData) => {
+    setCapturedReceipt(receiptData);
+    setShowCamera(false);
+    
+    // Now update the payment option to online and upload receipt
+    updatePaymentWithReceipt('online', receiptData);
+  };
+
+  const updatePaymentWithReceipt = async (paymentMethod, receiptData) => {
+    try {
+      // First update payment option
+      await handlePaymentOptionChange(paymentMethod);
+      
+      // Then upload receipt image
+      if (receiptData?.blob) {
+        const formData = new FormData();
+        formData.append('receipt_image', receiptData.blob, 'payment_receipt.jpg');
+        
+        const response = await axiosInstance.patch(`/orders/${currentOrder.id}/upload-receipt/`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        console.log('Receipt uploaded successfully:', response.data);
+        setSuccessMessage('Payment method updated to online and receipt uploaded successfully!');
+        
+        // Refresh orders and tables after receipt upload
+        await refreshAll();
+      }
+    } catch (error) {
+      console.error('Error updating payment with receipt:', error);
+      setSuccessMessage('Payment method updated but failed to upload receipt. Please try again.');
+    }
+  };
+
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false);
+    setCapturedReceipt(null);
+  };
+
+  const handlePrintOrder = async () => {
+    try {
+      // Update cashier status to 'printed' to send to cashier
+      const response = await axiosInstance.patch(`/orders/${currentOrder.id}/update-cashier-status/`, {
+        cashier_status: 'printed'
+      });
+      
+      console.log('[OrderDetails] Order printed successfully:', response.data);
+      setSuccessMessage('Order printed and sent to cashier successfully! Table is now available for new orders.');
+      
+      // Refresh order details, orders list, and tables to show updated status
+      await Promise.all([
+        fetchOrderDetails(),
+        refreshAll()
+      ]);
+      
+    } catch (error) {
+      console.error('[OrderDetails] Error printing order:', error);
+      alert('Failed to print order: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleResetTable = async () => {
+    try {
+      const response = await axiosInstance.post(`/orders/${currentOrder.id}/reset-table-status/`);
+      console.log('[OrderDetails] Table status reset successfully:', response.data);
+      setSuccessMessage('Table status reset to available for new orders!');
+      
+      // Refresh order details, orders list, and tables
+      await Promise.all([
+        fetchOrderDetails(),
+        refreshAll()
+      ]);
+    } catch (error) {
+      console.error('[OrderDetails] Error resetting table status:', error);
+      alert('Failed to reset table status: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -259,6 +389,33 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
 
   const isPrinted = currentOrder?.cashier_status === 'printed';
 
+  // Handle Done button - refresh all data and redirect to tables
+  const handleDone = async () => {
+    try {
+      // Show loading state
+      setSuccessMessage('Refreshing data...');
+      
+      // Refresh all data
+      await refreshAll();
+      
+      // Show success message
+      setSuccessMessage('Data refreshed successfully! Redirecting to tables...');
+      
+      // Call parent onDone callback if provided
+      if (onDone) {
+        onDone();
+      }
+      
+      // Clear success message after a short delay
+      setTimeout(() => setSuccessMessage(''), 2000);
+      
+    } catch (error) {
+      console.error('[OrderDetails] Error in handleDone:', error);
+      setSuccessMessage('Error refreshing data. Please try again.');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    }
+  };
+
   if (!currentOrder) {
     if (error) {
       return (
@@ -294,33 +451,6 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
 
       <div className="order-details-header">
         <h3>Order #{currentOrder.id}</h3>
-        <div className="order-details-actions">
-          {!isPrinted && (
-            <>
-              <span
-                className="icon"
-                onClick={() => onEditOrder(currentOrder)}
-                title="Edit order"
-              >
-                <FaEdit />
-              </span>
-              <span
-                className="icon"
-                onClick={handleOpenAddItemsModal}
-                title="Add items to order"
-              >
-                <FaPlus />
-              </span>
-            </>
-          )}
-          <span
-            className="icon"
-            onClick={() => onEditOrder(currentOrder)}
-            title="View order details"
-          >
-            <FaTimes />
-          </span>
-        </div>
       </div>
 
       <div className="order-details-content">
@@ -336,68 +466,140 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
           <p><strong>Billable Total:</strong> ETB {getTotalPrice().toFixed(2)}</p>
         </div>
 
-        {/* Payment Option Section */}
-        <div className="payment-option-section">
-          <h4>Payment Method:</h4>
-          {currentOrder.has_payment ? (
-            <div className="payment-option-disabled">
-              <div className="payment-option selected">
-                <div className="payment-option-icon">
-                  {paymentOption === 'cash' ? <FaMoneyBillWave /> : <FaCreditCard />}
-                </div>
-                <div className="payment-option-content">
-                  <span>{paymentOption === 'cash' ? 'Cash Payment' : 'Online Payment'}</span>
-                  <small>Payment processed - cannot be changed</small>
-                </div>
-                <div className="payment-option-radio">
-                  <div className="radio-circle selected"></div>
-                </div>
-              </div>
-              <div className="payment-locked-message">
-                <span>🔒 Payment option locked after processing</span>
+        {/* Payment Method Section */}
+        <div className="payment-method-section">
+          <h4>💳 Payment Method</h4>
+          
+          {/* Warning for printed orders */}
+          {currentOrder?.cashier_status === 'printed' && (
+            <div className="payment-warning" style={{
+              backgroundColor: '#fff3cd',
+              border: '1px solid #ffeaa7',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px'
+            }}>
+              <div className="warning-icon" style={{ fontSize: '20px' }}>⚠️</div>
+              <div className="warning-content">
+                <strong style={{ color: '#856404', display: 'block', marginBottom: '8px' }}>Payment method cannot be changed</strong>
+                <p style={{ color: '#856404', margin: 0, fontSize: '14px' }}>This order has already been printed and sent to the cashier. Payment method changes are not allowed for printed orders.</p>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="payment-options">
-                <div 
-                  className={`payment-option ${paymentOption === 'cash' ? 'selected' : ''} ${updatingPayment ? 'disabled' : ''}`}
-                  onClick={() => !updatingPayment && handlePaymentOptionChange('cash')}
-                >
-                  <div className="payment-option-icon">
-                    <FaMoneyBillWave />
-                  </div>
-                  <div className="payment-option-content">
-                    <span>Cash Payment</span>
-                    <small>Customer pays with cash</small>
-                  </div>
-                  <div className="payment-option-radio">
-                    <div className={`radio-circle ${paymentOption === 'cash' ? 'selected' : ''}`}></div>
-                  </div>
-                </div>
-                
-                <div 
-                  className={`payment-option ${paymentOption === 'online' ? 'selected' : ''} ${updatingPayment ? 'disabled' : ''}`}
-                  onClick={() => !updatingPayment && handlePaymentOptionChange('online')}
-                >
-                  <div className="payment-option-icon">
-                    <FaCreditCard />
-                  </div>
-                  <div className="payment-option-content">
-                    <span>Online Payment</span>
-                    <small>Card, mobile money, etc.</small>
-                  </div>
-                  <div className="payment-option-radio">
-                    <div className={`radio-circle ${paymentOption === 'online' ? 'selected' : ''}`}></div>
-                  </div>
+          )}
+          
+          {/* Table Ready for New Orders Section */}
+          {currentOrder?.cashier_status === 'printed' && (
+            <div className="table-ready-section" style={{
+              backgroundColor: '#d4edda',
+              border: '1px solid #c3e6cb',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontSize: '20px' }}>✅</div>
+                <div>
+                  <strong style={{ color: '#155724', display: 'block', marginBottom: '4px' }}>Table Ready for New Orders</strong>
+                  <p style={{ color: '#155724', margin: 0, fontSize: '14px' }}>This table is now available to take new orders. The current order has been sent to the cashier.</p>
                 </div>
               </div>
-              {updatingPayment && (
-                <div className="updating-payment">
-                  <span>Updating payment option...</span>
-                </div>
-              )}
-            </>
+              <button 
+                onClick={handleResetTable}
+                style={{
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+                title="Reset table status to ensure it's marked as available"
+              >
+                Reset Table Status
+              </button>
+            </div>
+          )}
+          
+          <p className="payment-instruction">
+            {!paymentOption ? 'Select payment method for this order:' : 'Current payment method:'}
+          </p>
+          
+          <div className="payment-options">
+            <div 
+              className={`payment-option ${paymentOption === 'cash' ? 'selected' : ''} ${updatingPayment || currentOrder?.cashier_status === 'printed' ? 'disabled' : ''}`}
+              onClick={() => !updatingPayment && currentOrder?.cashier_status !== 'printed' && handlePaymentOptionChange('cash')}
+              style={{
+                opacity: (updatingPayment || currentOrder?.cashier_status === 'printed') ? 0.5 : 1,
+                cursor: (updatingPayment || currentOrder?.cashier_status === 'printed') ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <div className="payment-option-icon">
+                <FaMoneyBillWave />
+              </div>
+              <div className="payment-option-content">
+                <span>Cash Payment</span>
+                <small>Customer pays with cash</small>
+              </div>
+              <div className="payment-option-radio">
+                <div className={`radio-circle ${paymentOption === 'cash' ? 'selected' : ''}`}></div>
+              </div>
+            </div>
+            
+            <div 
+              className={`payment-option ${paymentOption === 'online' ? 'selected' : ''} ${updatingPayment || currentOrder?.cashier_status === 'printed' ? 'disabled' : ''}`}
+              onClick={() => !updatingPayment && currentOrder?.cashier_status !== 'printed' && handlePaymentMethodSelect('online')}
+              style={{
+                opacity: (updatingPayment || currentOrder?.cashier_status === 'printed') ? 0.5 : 1,
+                cursor: (updatingPayment || currentOrder?.cashier_status === 'printed') ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <div className="payment-option-icon">
+                <FaCreditCard />
+              </div>
+              <div className="payment-option-content">
+                <span>Online Payment</span>
+                <small>Card, mobile money, etc.</small>
+                {capturedReceipt && (
+                  <div className="receipt-status">
+                    <FaCamera className="text-green-500" />
+                    <span className="text-green-600 text-sm">Receipt captured</span>
+                  </div>
+                )}
+              </div>
+              <div className="payment-option-radio">
+                <div className={`radio-circle ${paymentOption === 'online' ? 'selected' : ''}`}></div>
+              </div>
+            </div>
+          </div>
+          
+          {updatingPayment && (
+            <div className="updating-payment">
+              <span>Updating payment option...</span>
+            </div>
+          )}
+          
+          {/* Receipt capture button for online payment */}
+          {paymentOption === 'online' && !capturedReceipt && currentOrder?.cashier_status !== 'printed' && (
+            <div className="receipt-capture-section">
+              <button 
+                onClick={() => setShowCamera(true)}
+                className="capture-receipt-btn"
+              >
+                <FaCamera className="w-5 h-5" />
+                Capture Payment Receipt
+              </button>
+              <p className="receipt-instruction">
+                Take a photo of the customer's payment confirmation (screenshot, bank app, etc.)
+              </p>
+            </div>
           )}
         </div>
 
@@ -499,6 +701,65 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
             <p>No updates for this order</p>
           )}
         </div>
+
+        {/* Action Buttons Section */}
+        <div className="order-action-buttons">
+          <div className="action-buttons-container">
+            {/* Primary Actions Group */}
+            <div className="primary-actions">
+              {/* Edit Order Button - Only show if order has pending items */}
+              {currentOrder.items?.filter(item => item.status === 'pending').length > 0 && (
+                <button
+                  className="edit-order-btn"
+                  onClick={handleEditOrder}
+                  disabled={isPrinted}
+                  title="Edit pending items in this order"
+                >
+                  <FaEdit className="mr-2" />
+                  Edit Order
+                </button>
+              )}
+              
+              {/* Add Items Button - Always show if not printed */}
+              {!isPrinted && (
+                <button
+                  className="add-items-btn"
+                  onClick={handleOpenAddItemsModal}
+                  title="Add new items to this order"
+                >
+                  <FaPlus className="mr-2" />
+                  Add Items
+                </button>
+              )}
+            </div>
+
+            {/* Secondary Actions Group */}
+            <div className="secondary-actions">
+              {/* Print & Send to Cashier Button - Only show if order has accepted items and is not printed */}
+              {currentOrder.items?.filter(item => item.status === 'accepted').length > 0 && !isPrinted && (
+                <button
+                  className="print-order-btn"
+                  onClick={handlePrintOrder}
+                  disabled={isPrinted}
+                  title="Print order and send to cashier"
+                >
+                  <FaPrint className="mr-2" />
+                  Print & Send to Cashier
+                </button>
+              )}
+              
+              {/* Done Button - Always visible */}
+              <button
+                className="done-btn"
+                onClick={handleDone}
+                title="Complete order and return to tables"
+              >
+                <FaCheck className="mr-2" />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <OrderAdditionsModal
@@ -508,6 +769,30 @@ const OrderDetails = ({ selectedOrderId, onEditOrder, onOrderDeleted, onAddItems
         onAddItems={handleAddItems}
         availableMenuItems={menuItems}
         loading={menuItemsLoading}
+      />
+
+      {/* Order Edit Modal */}
+      <OrderEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        currentOrder={currentOrder}
+        onOrderUpdated={handleOrderUpdated}
+      />
+
+      {/* Camera Capture Modal for Receipt */}
+      <CameraCapture
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleReceiptCapture}
+        title="Capture Payment Receipt"
+      />
+
+      {/* Payment Method Modal */}
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={handlePaymentModalClose}
+        onConfirm={handlePaymentMethodSelect}
+        selectedTable={currentOrder?.table}
       />
     </div>
   );
