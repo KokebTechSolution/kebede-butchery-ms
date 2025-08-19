@@ -41,7 +41,7 @@ const getApiBaseUrl = () => {
   }
   
   // Fallback
-  const fallbackUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  const fallbackUrl = process.env.REACT_APP_API_URL || 'https://kebede-butchery-ms.onrender.com';
   console.log('🔧 Fallback mode, using:', fallbackUrl);
   return fallbackUrl;
 };
