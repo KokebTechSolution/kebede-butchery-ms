@@ -6,7 +6,7 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "build",
-        "installCommand": "npm install",
+        "installCommand": "npm ci --only=production",
         "buildCommand": "npm run build"
       }
     }
@@ -32,11 +32,18 @@
   "env": {
     "REACT_APP_API_URL": "https://kebede-butchery-ms.onrender.com",
     "NODE_ENV": "production",
-    "CI": "false"
+    "CI": "false",
+    "GENERATE_SOURCEMAP": "false"
   },
   "build": {
     "env": {
-      "CI": "false"
+      "CI": "false",
+      "GENERATE_SOURCEMAP": "false"
+    }
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs18.x"
     }
   },
   "headers": [

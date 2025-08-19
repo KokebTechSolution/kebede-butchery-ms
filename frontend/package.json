@@ -44,9 +44,9 @@
   "homepage": "./",
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
-    "build:prod": "CI=false react-scripts build",
-    "vercel-build": "CI=false react-scripts build",
+    "build": "CI=false GENERATE_SOURCEMAP=false react-scripts build",
+    "build:prod": "CI=false GENERATE_SOURCEMAP=false react-scripts build",
+    "vercel-build": "CI=false GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
