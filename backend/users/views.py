@@ -126,12 +126,13 @@ class SessionLoginView(APIView):
                         cookie_domain = None
                 
                 # Set session cookie with proper settings for cross-origin
+                from django.conf import settings
                 response.set_cookie(
                     'sessionid',
                     session_key,
                     max_age=86400,  # 24 hours
-                    secure=False,  # Allow HTTP for local development
-                    samesite='Lax',  # Works for both local and network
+                    secure=not settings.DEBUG,  # Secure in production, not in development
+                    samesite='None' if not settings.DEBUG else 'Lax',  # None for production, Lax for development
                     httponly=False,
                     path='/',
                     domain=None  # Don't restrict domain - let browser handle it
@@ -150,8 +151,8 @@ class SessionLoginView(APIView):
                         'csrftoken',
                         csrf_token,
                         max_age=31449600,  # 1 year
-                        secure=False,  # Allow HTTP for local development
-                        samesite='Lax',  # Works for both local and network
+                        secure=not settings.DEBUG,  # Secure in production, not in development
+                        samesite='None' if not settings.DEBUG else 'Lax',  # None for production, Lax for development
                         httponly=False,
                         path='/',
                         domain=None  # Don't restrict domain - let browser handle it
@@ -198,12 +199,13 @@ def get_csrf(request):
                 print(f"[DEBUG] Error parsing origin: {e}")
                 cookie_domain = None
         
+        from django.conf import settings
         response.set_cookie(
             'csrftoken',
             csrf_token,
             max_age=31449600,  # 1 year
-            secure=False,  # Allow HTTP for local development
-            samesite='Lax',  # Works for both local and network
+            secure=not settings.DEBUG,  # Secure in production, not in development
+            samesite='None' if not settings.DEBUG else 'Lax',  # None for production, Lax for development
             httponly=False,
             path='/',
             domain=None  # Don't restrict domain - let browser handle it
@@ -374,6 +376,14 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]  # Require authentication
 
     def get(self, request):
+        # Add debugging information
+        print(f"[DEBUG] /me/ endpoint called")
+        print(f"[DEBUG] Request cookies: {dict(request.COOKIES)}")
+        print(f"[DEBUG] Request headers: {dict(request.headers)}")
+        print(f"[DEBUG] Session key: {request.session.session_key if hasattr(request, 'session') else 'No session'}")
+        print(f"[DEBUG] User: {request.user}")
+        print(f"[DEBUG] Is authenticated: {request.user.is_authenticated if hasattr(request, 'user') else False}")
+        
         # Django's authentication middleware should have already authenticated the user
         # if the session is valid
         if request.user and request.user.is_authenticated:
@@ -441,7 +451,10 @@ class CORSTestView(APIView):
             "message": "CORS test successful",
             "origin": request.headers.get('Origin'),
             "method": request.method,
-            "headers": dict(request.headers)
+            "headers": dict(request.headers),
+            "cookies": dict(request.COOKIES),
+            "session_key": request.session.session_key if hasattr(request, 'session') else None,
+            "is_authenticated": request.user.is_authenticated if hasattr(request, 'user') else False
         })
     
     def post(self, request):
@@ -449,7 +462,10 @@ class CORSTestView(APIView):
             "message": "CORS POST test successful",
             "data": request.data,
             "origin": request.headers.get('Origin'),
-            "method": request.method
+            "method": request.method,
+            "cookies": dict(request.COOKIES),
+            "session_key": request.session.session_key if hasattr(request, 'session') else None,
+            "is_authenticated": request.user.is_authenticated if hasattr(request, 'user') else False
         })
 
 class HealthCheckView(APIView):

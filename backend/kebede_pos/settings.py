@@ -208,13 +208,17 @@ CORS_EXPOSE_HEADERS = [
 
 # Session settings
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_SAMESITE = 'Lax'  # Works for both local and network access
-SESSION_COOKIE_SECURE = False  # Keep False for HTTP in development
+if DEBUG:
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Works for local development
+    SESSION_COOKIE_SECURE = False  # Keep False for HTTP in development
+else:
+    SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests in production
+    SESSION_COOKIE_SECURE = True  # Must be True when SameSite=None
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_DOMAIN = None  # Allow all domains
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_COOKIE_PATH = '/'
-SESSION_SAVE_EVERY_REQUEST = False  # Only save when session data changes
+SESSION_SAVE_EVERY_REQUEST = True  # Save on every request for better session handling
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_NAME = 'sessionid'
 
@@ -236,8 +240,12 @@ CSRF_USE_REFERER = False
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'  # Match session cookie setting
-CSRF_COOKIE_SECURE = False
+if DEBUG:
+    CSRF_COOKIE_SAMESITE = 'Lax'  # Match session cookie setting for development
+    CSRF_COOKIE_SECURE = False  # Keep False for HTTP in development
+else:
+    CSRF_COOKIE_SAMESITE = 'None'  # Match session cookie setting for production
+    CSRF_COOKIE_SECURE = True  # Must be True when SameSite=None
 CSRF_COOKIE_DOMAIN = None  # Allow all domains
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_AGE = 31449600
