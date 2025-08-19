@@ -115,17 +115,29 @@ if os.environ.get('DATABASE_URL'):
         'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
     }
 else:
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'kebede_pos_db',
-            'USER': 'postgres',
-            'PASSWORD': 'kokeb',
-            'HOST': '127.0.0.1',
+            'NAME': 'kebede_pos_db_ityc',
+            'USER': 'kebede_pos_db_ityc_user',
+            'PASSWORD': '28zie5aakU4mchzGDkaauZ0R4e0crThO',
+            'HOST': 'dpg-d2hvqmruibrs73dnnhpg-a.oregon-postgres.render.com',
             'PORT': '5432',
         }
     }
 
+    """    DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': 'kebede_pos_db',
+                'USER': 'postgres',
+                'PASSWORD': 'kokeb',
+                'HOST': '127.0.0.1',
+                'PORT': '5432',
+            }
+        }
+    """
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
