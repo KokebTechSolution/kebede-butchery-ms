@@ -1,26 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { API_BASE_URL } from '../../api/config';
 
-// Helper to get CSRF token from cookies
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let c of cookies) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
+// CSRF token is handled automatically by axiosInstance
 
 const initialFormData = {
   name: '',
@@ -64,8 +50,8 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes, productRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(),
-          axios.get('/inventory/productunits/', { withCredentials: true }),
-          axios.get('/inventory/products/', { withCredentials: true }),
+          axiosInstance.get('inventory/productunits/'),
+          axiosInstance.get('inventory/products/'),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -136,7 +122,7 @@ const AddProductForm = () => {
   // Helper to reload products after adding
   const reloadProducts = async () => {
     try {
-      const productRes = await axios.get('/inventory/products/', { withCredentials: true });
+              const productRes = await axiosInstance.get('inventory/products/');
       setProducts(productRes.data);
       console.log('Products reloaded from /api/inventory/products/', productRes.data);
     } catch (error) {
@@ -237,7 +223,6 @@ const AddProductForm = () => {
     setIsSubmitting(true);
     setSubmitMessage('');
     setSubmitError('');
-    const csrfToken = getCookie('csrftoken');
     try {
       const productsPayload = batchProducts.map((p) => ({
         name: p.name,
@@ -269,13 +254,9 @@ const AddProductForm = () => {
       });
       
       console.log('Submitting batch products:', productsPayload);
-      const response = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/products/bulk_create/',
-        { products: productsPayload },
-        {
-          withCredentials: true,
-          headers: { 'X-CSRFToken': csrfToken },
-        }
+      const response = await axiosInstance.post(
+        'inventory/products/bulk_create/',
+        { products: productsPayload }
       );
       console.log('Batch submit response:', response.data);
       
@@ -397,7 +378,6 @@ const AddProductForm = () => {
   // Actual API submission logic, extracted from handleSubmit
   const handleConfirmedSubmit = async () => {
     setIsSubmitting(true);
-    const csrfToken = getCookie('csrftoken');
     try {
       // Create Product
       const productFormData = new FormData();
@@ -409,14 +389,12 @@ const AddProductForm = () => {
       if (formData.receipt_image) {
         productFormData.append('receipt_image', formData.receipt_image);
       }
-      const productResponse = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/products/',
+      const productResponse = await axiosInstance.post(
+        'inventory/products/',
         productFormData,
         {
-          withCredentials: true,
           headers: {
             'Content-Type': 'multipart/form-data',
-            'X-CSRFToken': csrfToken,
           },
         }
       );
@@ -451,15 +429,9 @@ const AddProductForm = () => {
         return;
       }
       // Create ProductMeasurement (conversion)
-      await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/productmeasurements/',
-        measurementPayload,
-        {
-          withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      await axiosInstance.post(
+        'inventory/productmeasurements/',
+        measurementPayload
       );
       // Create Stock with initial quantity if provided
       const stockData = {
@@ -476,15 +448,9 @@ const AddProductForm = () => {
         stockData.conversion_amount = formData.conversion_amount;
       }
       
-      await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/stocks/',
-        stockData,
-        {
-          withCredentials: true,
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      await axiosInstance.post(
+        'inventory/stocks/',
+        stockData
       );
       alert(t('submit_success'));
       setSubmitMessage(t('submit_success'));

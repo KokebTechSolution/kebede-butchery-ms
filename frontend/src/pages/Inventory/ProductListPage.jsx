@@ -11,7 +11,6 @@ import {
 import AddInventoryForm from './ProductForm';
 import NewProduct from './NewProduct';
 import EditInventoryForm from './EditInventoryForm';
-import axios from 'axios';
 import axiosInstance from '../../api/axiosInstance';
 import { FaSearch, FaTimes, FaEdit, FaPlus, FaBoxes } from 'react-icons/fa';
 
@@ -186,8 +185,8 @@ const ProductListPage = () => {
     if (!window.confirm(t('confirm_delete_product'))) return;
 
     try {
-      await axios.delete(`/api/inventory/products/${productId}/`);
-      await axios.delete(`/api/inventory/stocks/${stockId}/`);
+              await axiosInstance.delete(`inventory/products/${productId}/`);
+        await axiosInstance.delete(`inventory/stocks/${stockId}/`);
       loadData();
     } catch (err) {
       alert('Delete failed: ' + (err.response?.data?.detail || err.message));

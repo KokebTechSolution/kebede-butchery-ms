@@ -1,24 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// CSRF token helper
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let c of cookies) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
+import axiosInstance from '../../api/axiosInstance';
 
 const NewItemPage = ({ onClose }) => {
-  const csrfToken = getCookie('csrftoken');
 
   const [itemTypes, setItemTypes] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -34,8 +17,8 @@ const NewItemPage = ({ onClose }) => {
     const loadData = async () => {
       try {
         const [itemTypeRes, categoryRes] = await Promise.all([
-          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/itemtypes/', { withCredentials: true }),
-          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/categories/', { withCredentials: true }),
+          axiosInstance.get('inventory/itemtypes/'),
+          axiosInstance.get('inventory/categories/'),
         ]);
         setItemTypes(itemTypeRes.data);
         setCategories(categoryRes.data);
@@ -53,13 +36,9 @@ const NewItemPage = ({ onClose }) => {
   const handleAddItemType = async () => {
     if (!newItemType.trim()) return alert('Please enter an item type name');
     try {
-      const res = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/itemtypes/',
-        { type_name: newItemType },
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
-        }
+      const res = await axiosInstance.post(
+        'inventory/itemtypes/',
+        { type_name: newItemType }
       );
       setItemTypes([...itemTypes, res.data]);
       setSelectedItemType(res.data.id.toString());
@@ -74,15 +53,11 @@ const NewItemPage = ({ onClose }) => {
     if (!newCategory.trim()) return alert('Please enter a category name');
     if (!selectedItemType) return alert('Select an item type first');
     try {
-      const res = await axios.post(
-        'https://kebede-butchery-ms.onrender.com/api/inventory/categories/',
+      const res = await axiosInstance.post(
+        'inventory/categories/',
         {
           category_name: newCategory,
           item_type_id: parseInt(selectedItemType),
-        },
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
         }
       );
       setCategories([...categories, res.data]);

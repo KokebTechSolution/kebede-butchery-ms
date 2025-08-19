@@ -18,7 +18,7 @@ import Inventory from "./Inventory/InventoryRequests";
 import ReachedRequests from "./Inventory/ReachedRequests";
 import Reports from "./screens/Reports";
 import { useAuth } from "../../context/AuthContext";
-import axios from "axios";
+import axiosInstance from "../../api/axiosInstance";
 import { useTranslation } from "react-i18next";
 
 export default function BartenderDashboard() {
@@ -46,9 +46,7 @@ export default function BartenderDashboard() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await axios.get("https://kebede-butchery-ms.onrender.com/api/inventory/requests/", {
-          withCredentials: true,
-        });
+              const res = await axiosInstance.get("inventory/requests/");
         setInventoryRequests(
           res.data.filter(req => String(req.branch_id) === String(branchId))
         );
