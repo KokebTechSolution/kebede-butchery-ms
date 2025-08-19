@@ -116,18 +116,9 @@ if os.environ.get('DATABASE_URL'):
     }
 else:
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'kebede_pos_db_ityc',
-            'USER': 'kebede_pos_db_ityc_user',
-            'PASSWORD': '28zie5aakU4mchzGDkaauZ0R4e0crThO',
-            'HOST': 'dpg-d2hvqmruibrs73dnnhpg-a.oregon-postgres.render.com',
-            'PORT': '5432',
-        }
-    }
 
-    """    DATABASES = {
+
+    DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.postgresql',
                 'NAME': 'kebede_pos_db',
@@ -137,7 +128,7 @@ else:
                 'PORT': '5432',
             }
         }
-    """
+    
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

@@ -1,8 +1,15 @@
-#!/usr/bin/env bash
-# exit on error
-set -o errexit
+#!/bin/bash
+# Build script for Vercel deployment
 
-pip install -r requirements.txt
+echo "🚀 Starting Vercel build process..."
 
-python manage.py collectstatic --no-input
-python manage.py migrate 
+# Install dependencies
+pip install -r requirements-vercel.txt
+
+# Collect static files
+python manage.py collectstatic --noinput --settings=kebede_pos.vercel_settings
+
+# Run migrations
+python manage.py migrate --settings=kebede_pos.vercel_settings
+
+echo "✅ Build completed successfully!" 

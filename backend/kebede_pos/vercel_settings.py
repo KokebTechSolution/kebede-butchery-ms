@@ -21,6 +21,18 @@ SECURE_HSTS_PRELOAD = True
 CORS_ALLOWED_ORIGINS = deployment_settings.CORS_ALLOWED_ORIGINS
 CSRF_TRUSTED_ORIGINS = deployment_settings.CSRF_TRUSTED_ORIGINS
 
+# Additional CORS settings for Vercel deployment
+CORS_ALLOW_ALL_ORIGINS = False  # Keep this False for security
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 # Cookie settings for Vercel
 CSRF_COOKIE_DOMAIN = None  # Allow all Vercel subdomains
 SESSION_COOKIE_DOMAIN = None  # Allow all Vercel subdomains

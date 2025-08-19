@@ -27,7 +27,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.7:3001",  # Current network IP
     "http://localhost:3001",
     "http://127.0.0.1:3001",
-    "https://kebede-butchery-ms.onrender.com"
+    "https://kebede-butchery-ms.onrender.com",
+    # Add wildcard for Vercel subdomains
+    "https://*.vercel.app",
+    "https://*.onrender.com"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -44,7 +47,10 @@ CSRF_TRUSTED_ORIGINS = [
     "http://192.168.1.120:3001",
     "http://192.168.100.122:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:1",
+    # Add wildcard for Vercel subdomains
+    "https://*.vercel.app",
+    "https://*.onrender.com"
 ]
 
 EXTRA_CSRF_ORIGINS = [
