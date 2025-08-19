@@ -5,9 +5,7 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build",
-        "installCommand": "npm ci --only=production",
-        "buildCommand": "npm run build"
+        "distDir": "build"
       }
     }
   ],
@@ -39,11 +37,6 @@
     "env": {
       "CI": "false",
       "GENERATE_SOURCEMAP": "false"
-    }
-  },
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
     }
   },
   "headers": [
