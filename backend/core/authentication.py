@@ -16,11 +16,13 @@ class SessionAuthenticationBackend(ModelBackend):
         # First try the standard authentication
         user = super().authenticate(request, username, password, **kwargs)
         if user:
+            print(f"[DEBUG] SessionAuthenticationBackend: Standard auth successful for {user.username}")
             return user
         
         # If no user found, try session-based authentication
         if request and hasattr(request, 'session'):
             session_key = request.session.session_key
+            print(f"[DEBUG] SessionAuthenticationBackend: Session key: {session_key}")
             if session_key:
                 try:
                     # Get the session from database
@@ -31,14 +33,22 @@ class SessionAuthenticationBackend(ModelBackend):
                     
                     # Get user ID from session
                     user_id = session.get_decoded().get('_auth_user_id')
+                    print(f"[DEBUG] SessionAuthenticationBackend: User ID from session: {user_id}")
                     if user_id:
                         try:
                             user = User.objects.get(id=user_id)
+                            print(f"[DEBUG] SessionAuthenticationBackend: Session auth successful for {user.username}")
                             return user
                         except User.DoesNotExist:
+                            print(f"[DEBUG] SessionAuthenticationBackend: User {user_id} not found in database")
                             return None
                 except Session.DoesNotExist:
+                    print(f"[DEBUG] SessionAuthenticationBackend: Session {session_key} not found in database")
                     return None
+            else:
+                print(f"[DEBUG] SessionAuthenticationBackend: No session key in request")
+        else:
+            print(f"[DEBUG] SessionAuthenticationBackend: No session in request")
         
         return None
 

@@ -230,7 +230,7 @@ SESSION_COOKIE_USE_HTTPS = False
 SESSION_COOKIE_SAMESITE_FORCE_ALL = False
 
 # Prevent anonymous sessions from being created
-SESSION_SAVE_EVERY_REQUEST = False
+# SESSION_SAVE_EVERY_REQUEST is already set above
 
 # Only create sessions for authenticated users
 SESSION_CREATE_ANONYMOUS = False

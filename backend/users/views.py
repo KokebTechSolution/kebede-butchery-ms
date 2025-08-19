@@ -542,6 +542,11 @@ class AuthTestView(APIView):
             "is_authenticated": request.user.is_authenticated,
             "cookies": dict(request.COOKIES),
             "session_data": dict(request.session),
+            "headers": dict(request.headers),
+            "method": request.method,
+            "path": request.path,
+            "sessionid_cookie": request.COOKIES.get('sessionid'),
+            "csrftoken_cookie": request.COOKIES.get('csrftoken'),
         })
     
     def post(self, request):

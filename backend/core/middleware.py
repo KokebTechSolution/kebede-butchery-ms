@@ -11,12 +11,13 @@ class CSRFMiddleware(MiddlewareMixin):
         if 'csrftoken' not in request.COOKIES:
             csrf_token = get_token(request)
             if csrf_token:
+                from django.conf import settings
                 response.set_cookie(
                     'csrftoken',
                     csrf_token,
                     max_age=31449600,  # 1 year
-                    secure=False,  # Allow HTTP for local development
-                    samesite='Lax',  # Match Django session settings
+                    secure=not settings.DEBUG,  # Secure in production, not in development
+                    samesite='None' if not settings.DEBUG else 'Lax',  # None for production, Lax for development
                     httponly=False,
                     path='/',
                     domain=None
@@ -59,27 +60,11 @@ class CORSMiddleware(MiddlewareMixin):
 
 class SessionMiddleware(MiddlewareMixin):
     """
-    Custom session middleware to prevent anonymous sessions and ensure proper user authentication
+    Custom session middleware to ensure proper user authentication
     """
     
     def process_request(self, request):
-        # Only create sessions for authenticated users or when explicitly needed
-        if not hasattr(request, 'session'):
-            return None
-        
-        # If this is a session creation request (like CSRF), allow it
-        if request.path in ['/api/users/csrf/', '/api/users/session-debug/']:
-            return None
-        
-        # For other requests, only create sessions if user is authenticated
-        if request.user and request.user.is_authenticated:
-            return None
-        
-        # Don't create anonymous sessions for other requests
-        if not request.session.session_key:
-            print(f"[DEBUG] SessionMiddleware: Preventing anonymous session for {request.path}")
-            return None
-        
+        # Allow all session operations - let Django handle it
         return None
     
     def process_response(self, request, response):
@@ -88,8 +73,5 @@ class SessionMiddleware(MiddlewareMixin):
             if request.user and request.user.is_authenticated:
                 request.session.save()
                 print(f"[DEBUG] SessionMiddleware: Saved session for user {request.user.username}")
-            else:
-                # Don't save anonymous sessions
-                print(f"[DEBUG] SessionMiddleware: Not saving anonymous session")
         
         return response 
