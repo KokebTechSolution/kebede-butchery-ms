@@ -29,10 +29,9 @@ const getApiBaseUrl = () => {
     console.log('🌐 Current port:', port);
     
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // Network access - use the same hostname with port 8000
-      const networkApiUrl = `http://${hostname}:8000`;
-      console.log('🌐 Network access detected, using:', networkApiUrl);
-      return networkApiUrl;
+      // Network access - use production backend for network access
+      console.log('🌐 Network access detected, using production backend');
+      return 'https://kebede-butchery-ms.onrender.com';
     } else {
       // Local access
       console.log('🏠 Local access detected, using localhost:8000');
