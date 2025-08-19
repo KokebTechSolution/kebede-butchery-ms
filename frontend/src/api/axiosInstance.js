@@ -3,7 +3,7 @@ import { API_BASE_URL } from './config';
 import { ensureCSRFToken } from '../utils/csrfManager';
 
 const axiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/api/`,
+  baseURL: 'https://kebede-butchery-ms.onrender.com/api/',
   withCredentials: true, // IMPORTANT: send cookies on cross-origin requests
   headers: {
     'Content-Type': 'application/json',

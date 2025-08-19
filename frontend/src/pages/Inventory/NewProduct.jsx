@@ -34,8 +34,8 @@ const NewItemPage = ({ onClose }) => {
     const loadData = async () => {
       try {
         const [itemTypeRes, categoryRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/inventory/itemtypes/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/categories/', { withCredentials: true }),
+          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/itemtypes/', { withCredentials: true }),
+          axios.get('https://kebede-butchery-ms.onrender.com/api/inventory/categories/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeRes.data);
         setCategories(categoryRes.data);
@@ -54,7 +54,7 @@ const NewItemPage = ({ onClose }) => {
     if (!newItemType.trim()) return alert('Please enter an item type name');
     try {
       const res = await axios.post(
-        'http://localhost:8000/api/inventory/itemtypes/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/itemtypes/',
         { type_name: newItemType },
         {
           headers: { 'X-CSRFToken': csrfToken },
@@ -75,7 +75,7 @@ const NewItemPage = ({ onClose }) => {
     if (!selectedItemType) return alert('Select an item type first');
     try {
       const res = await axios.post(
-        'http://localhost:8000/api/inventory/categories/',
+        'https://kebede-butchery-ms.onrender.com/api/inventory/categories/',
         {
           category_name: newCategory,
           item_type_id: parseInt(selectedItemType),
