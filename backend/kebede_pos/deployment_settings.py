@@ -21,7 +21,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.7:3000",  # Current network IP
     "http://192.168.100.122:3000",
     'http://10.240.69.22:3000',
-    'https://kebede-butchery-ms-09x4.vercel.app',  # Updated Vercel domain
+    'https://kebede-butchery-ms-w3l3.vercel.app/',  # Updated Vercel domain
     'https://kebede-butchery-ms-o9x4.vercel.app',
     "http://192.168.1.8:3001",
     "http://192.168.1.7:3001",  # Current network IP
@@ -39,7 +39,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://192.168.1.6:3000",
     "http://192.168.1.7:3000",  # Current network IP
     'http://10.240.69.22:3000',
-    'https://kebede-butchery-ms-09x4.vercel.app',  # Updated Vercel domain
+    'https://kebede-butchery-ms-w3l3.vercel.app/',  # Updated Vercel domain
     'https://kebede-butchery-ms-o9x4.vercel.app',
     'https://kebede-butchery-ms.onrender.com',
     "http://192.168.1.8:3001",
