@@ -29,7 +29,7 @@
   ],
   "env": {
     "REACT_APP_API_URL": "https://kebede-butchery-ms.onrender.com",
-    "REACT_APP_VERCEL_URL": "https://kebede-butchery-ms-w3l3.vercel.app/",
+    "REACT_APP_VERCEL_URL": "https://kebede-butchery-ms-w3l3.vercel.app",
     "NODE_ENV": "production",
     "CI": "false",
     "GENERATE_SOURCEMAP": "false"

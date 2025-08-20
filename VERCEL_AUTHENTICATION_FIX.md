@@ -58,12 +58,12 @@ When deploying the frontend to Vercel, the `me/` API endpoint returns a 401 "Aut
 ```python
 CORS_ALLOWED_ORIGINS = [
     # ... existing origins ...
-    'https://kebede-butchery-ms-w3l3.vercel.app/',  # Your Vercel domain
+    'https://kebede-butchery-ms-w3l3.vercel.app',  # Your Vercel domain
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     # ... existing origins ...
-    'https://kebede-butchery-ms-w3l3.vercel.app/',  # Your Vercel domain
+    'https://kebede-butchery-ms-w3l3.vercel.app',  # Your Vercel domain
 ]
 ```
 
