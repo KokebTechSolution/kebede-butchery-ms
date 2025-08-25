@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from channels.layers import get_channel_layer
+# from channels.layers import get_channel_layer  # Temporarily commented for deployment
 from asgiref.sync import async_to_sync
 from inventory.models import Product  
 class Order(models.Model):
