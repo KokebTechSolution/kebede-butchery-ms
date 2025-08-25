@@ -49,9 +49,10 @@ class OrderListView(generics.ListCreateAPIView):
             queryset = queryset.filter(created_at__date=parsed_date)
         if cashier_status:
             if cashier_status == 'pending':
-                # For 'pending' filter, show both 'pending' and 'ready_for_payment' orders
-                queryset = queryset.filter(cashier_status__in=['pending', 'ready_for_payment'])
-                print(f"DEBUG: Applied pending filter (pending + ready_for_payment)")
+                # For 'pending' filter, show only 'pending' orders
+                # 'ready_for_payment' status is no longer automatically set
+                queryset = queryset.filter(cashier_status='pending')
+                print(f"DEBUG: Applied pending filter (pending only)")
             else:
                 queryset = queryset.filter(cashier_status=cashier_status)
                 print(f"DEBUG: Applied cashier_status filter: {cashier_status}")
@@ -106,7 +107,7 @@ class FoodOrderListView(generics.ListAPIView):
         # Show all orders that are not paid and have at least one item
         queryset = Order.objects.filter(
             food_status__in=['pending', 'preparing', 'completed'],
-            cashier_status__in=['pending', 'ready_for_payment', 'printed'],
+            cashier_status__in=['pending', 'printed'],  # Removed 'ready_for_payment'
             items__isnull=False
         ).distinct()
         date = self.request.query_params.get('date')
@@ -288,8 +289,8 @@ class WaiterStatsView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'Waiter not found'}, status=404)
 
-        # Only consider orders that are printed or ready for payment
-        orders = Order.objects.filter(created_by=waiter, cashier_status__in=['printed', 'ready_for_payment'])
+        # Only consider orders that are printed (sent to cashier)
+        orders = Order.objects.filter(created_by=waiter, cashier_status='printed')
         total_orders = orders.count()
         total_sales = sum(order.total_money or 0 for order in orders if order.total_money)
 
@@ -303,6 +304,257 @@ class WaiterStatsView(APIView):
             'average_rating': average_rating,
             'active_tables': active_tables,
         })
+
+
+class WaiterEarningsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        date = request.query_params.get('date')
+        if not date:
+            return Response({'error': 'Date is required'}, status=400)
+        
+        try:
+            parsed_date = parse_date(date)
+            if not parsed_date:
+                return Response({'error': 'Invalid date format'}, status=400)
+        except Exception as e:
+            return Response({'error': f'Date parsing error: {str(e)}'}, status=400)
+
+        try:
+            # Get all orders for the specified date
+            orders = Order.objects.filter(created_at__date=parsed_date).select_related('created_by')
+            
+            # Group orders by waiter and calculate earnings
+            waiter_earnings = {}
+            
+            for order in orders:
+                try:
+                    # Only count orders that are completed/paid (printed status)
+                    if order.cashier_status == 'printed':
+                        waiter_name = order.created_by.username if order.created_by else 'Unknown Waiter'
+                        
+                        # Calculate order total
+                        order_total = 0
+                        if order.total_money:
+                            order_total = float(order.total_money)
+                        elif order.items.exists():
+                            order_total = sum(
+                                float(item.price) * int(item.quantity) 
+                                for item in order.items.all() 
+                                if item.status in ['accepted', 'completed', 'served']
+                            )
+                        
+                        if order_total > 0:
+                            if waiter_name not in waiter_earnings:
+                                waiter_earnings[waiter_name] = {
+                                    'name': waiter_name,
+                                    'totalEarnings': 0,
+                                    'ordersCount': 0,
+                                    'avgOrderValue': 0
+                                }
+                            
+                            waiter_earnings[waiter_name]['totalEarnings'] += order_total
+                            waiter_earnings[waiter_name]['ordersCount'] += 1
+                except Exception as order_error:
+                    print(f"Error processing order {order.id}: {order_error}")
+                    continue
+            
+            # Calculate averages and convert to list
+            earnings_list = []
+            for waiter_data in waiter_earnings.values():
+                waiter_data['avgOrderValue'] = (
+                    waiter_data['totalEarnings'] / waiter_data['ordersCount'] 
+                    if waiter_data['ordersCount'] > 0 else 0
+                )
+                earnings_list.append(waiter_data)
+            
+            # Sort by total earnings (highest first)
+            earnings_list.sort(key=lambda x: x['totalEarnings'], reverse=True)
+            
+            return Response({
+                'waiter_earnings': earnings_list,
+                'date': date,
+                'total_waiters': len(earnings_list)
+            })
+            
+        except Exception as e:
+            print(f"Error in WaiterEarningsView: {str(e)}")
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+
+
+class TopSellingItemsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        date = request.query_params.get('date')
+        if not date:
+            return Response({'error': 'Date is required'}, status=400)
+        
+        try:
+            parsed_date = parse_date(date)
+            if not parsed_date:
+                return Response({'error': 'Invalid date format'}, status=400)
+        except Exception as e:
+            return Response({'error': f'Date parsing error: {str(e)}'}, status=400)
+
+        # Get all orders for the specified date
+        orders = Order.objects.filter(created_at__date=parsed_date)
+        
+        # Get all order items from these orders
+        all_items = []
+        for order in orders:
+            # Only count items from completed/paid orders (printed status)
+            if order.cashier_status == 'printed':
+                if order.items.exists():
+                    for item in order.items.all():
+                        # Only count accepted/completed items
+                        if item.status in ['accepted', 'completed', 'served']:
+                            all_items.append({
+                                'name': item.name,
+                                'quantity': int(item.quantity),
+                                'price': float(item.price),
+                                'revenue': float(item.price) * int(item.quantity)
+                            })
+
+        # Group items by name and calculate totals
+        item_sales = {}
+        for item in all_items:
+            item_name = item['name']
+            if item_name not in item_sales:
+                item_sales[item_name] = {
+                    'name': item_name,
+                    'totalQuantity': 0,
+                    'totalRevenue': 0,
+                    'orderCount': 0,
+                    'avgPrice': 0
+                }
+            
+            item_sales[item_name]['totalQuantity'] += item['quantity']
+            item_sales[item_name]['totalRevenue'] += item['revenue']
+            item_sales[item_name]['orderCount'] += 1
+
+        # Calculate averages and convert to list
+        items_list = []
+        for item_data in item_sales.values():
+            item_data['avgPrice'] = (
+                item_data['totalRevenue'] / item_data['totalQuantity'] 
+                if item_data['totalQuantity'] > 0 else 0
+            )
+            items_list.append(item_data)
+
+        # Sort by total revenue (highest first) and take top 10
+        items_list.sort(key=lambda x: x['totalRevenue'], reverse=True)
+        top_items = items_list[:10]
+
+        return Response({
+            'top_selling_items': top_items,
+            'date': date,
+            'total_items': len(top_items)
+        })
+
+
+class ManagerOrdersView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        date = request.query_params.get('date')
+        if not date:
+            return Response({'error': 'Date is required'}, status=400)
+        
+        try:
+            parsed_date = parse_date(date)
+            if not parsed_date:
+                return Response({'error': 'Invalid date format'}, status=400)
+            
+            # Check if the date is in the future
+            from datetime import date as today_date
+            today = today_date.today()
+            if parsed_date > today:
+                print(f"ManagerOrdersView - Date {parsed_date} is in the future, using today's date {today}")
+                parsed_date = today
+        except Exception as e:
+            return Response({'error': f'Date parsing error: {str(e)}'}, status=400)
+
+        try:
+            # Get all orders for the specified date (manager can see all orders)
+            print(f"ManagerOrdersView - Looking for orders on date: {parsed_date}")
+            print(f"ManagerOrdersView - Date type: {type(parsed_date)}")
+            
+            # First, let's see all orders to debug
+            all_orders = Order.objects.all().order_by('-created_at')[:10]
+            print(f"ManagerOrdersView - Last 10 orders in system:")
+            for o in all_orders:
+                print(f"  Order {o.order_number}: created_at={o.created_at}, date={o.created_at.date()}")
+            
+            orders = Order.objects.filter(created_at__date=parsed_date).select_related(
+                'created_by', 'branch'
+            ).prefetch_related('items')
+            
+            print(f"ManagerOrdersView - Found {orders.count()} orders for date {parsed_date}")
+            
+            # If no orders found for the specific date, try to find orders from the last few days
+            if orders.count() == 0:
+                print(f"ManagerOrdersView - No orders found for {parsed_date}, checking last 7 days...")
+                from datetime import timedelta
+                last_week_orders = Order.objects.filter(
+                    created_at__date__gte=parsed_date - timedelta(days=7)
+                ).order_by('-created_at')[:5]
+                print(f"ManagerOrdersView - Found {last_week_orders.count()} orders in last 7 days:")
+                for o in last_week_orders:
+                    print(f"  Order {o.order_number}: created_at={o.created_at}, date={o.created_at.date()}")
+            
+            # Serialize the orders
+            orders_data = []
+            for order in orders:
+                try:
+                    order_data = {
+                        'id': order.id,
+                        'order_number': order.order_number,
+                        'table_number': order.table.table_number if order.table else None,
+                        'created_by': order.created_by.username if order.created_by else 'Unknown',
+                        'waiterName': order.created_by.username if order.created_by else 'Unknown',
+                        'branch': order.branch.name if order.branch else 'Unknown',
+                        'created_at': order.created_at,
+                        'total_money': float(order.total_money) if order.total_money else 0,
+                        'cashier_status': order.cashier_status,
+                        'has_payment': order.cashier_status == 'printed',
+                        'food_status': order.food_status,
+                        'beverage_status': order.beverage_status,
+                        'items': []
+                    }
+                    
+                    # Add order items safely
+                    if order.items.exists():
+                        for item in order.items.all():
+                            try:
+                                item_data = {
+                                    'id': item.id,
+                                    'name': item.name,
+                                    'price': float(item.price) if item.price else 0,
+                                    'quantity': int(item.quantity) if item.quantity else 0,
+                                    'status': item.status,
+                                    'item_type': item.item_type
+                                }
+                                order_data['items'].append(item_data)
+                            except Exception as item_error:
+                                print(f"Error processing item {item.id}: {item_error}")
+                                continue
+                    
+                    orders_data.append(order_data)
+                except Exception as order_error:
+                    print(f"Error processing order {order.id}: {order_error}")
+                    continue
+
+            return Response({
+                'orders': orders_data,
+                'date': date,
+                'total_orders': len(orders_data)
+            })
+            
+        except Exception as e:
+            print(f"Error in ManagerOrdersView: {str(e)}")
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -414,12 +666,9 @@ class OrderItemStatusUpdateView(APIView):
             else:
                 order.beverage_status = 'pending'
 
-        # Update order cashier status
-        all_statuses = list(order.items.values_list('status', flat=True))
-        if all(s in ['accepted', 'rejected'] for s in all_statuses):
-            order.cashier_status = 'ready_for_payment'
-        else:
-            order.cashier_status = 'pending'
+        # DO NOT automatically change cashier_status - let waiter control this
+        # order.cashier_status should only change when waiter explicitly prints
+        # This prevents orders from appearing in cashier system prematurely
 
         order.save()
 

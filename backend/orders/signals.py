@@ -38,18 +38,36 @@ def handle_order_stock_and_logs(sender, instance, created, **kwargs):
                     transaction_unit = ProductUnit.objects.first()
 
             # Deduct from stock based on product type
+            print(f"[DEBUG] Order signal - Product: {product.name}, Order quantity: {quantity}, Uses carton: {hasattr(product, 'uses_carton') and product.uses_carton}")
+            print(f"[DEBUG] Order signal - Stock calculated_base_units: {stock.calculated_base_units}, Stock input_quantity: {stock.input_quantity}")
+            
             if hasattr(product, 'uses_carton') and product.uses_carton:
+                # For carton-based products, check if we have enough in cartons
+                bottles_per_carton = getattr(product, 'bottles_per_carton', 1)
+                print(f"[DEBUG] Order signal - Bottles per carton: {bottles_per_carton}")
+                
                 if hasattr(stock, 'carton_quantity') and stock.carton_quantity >= quantity:
                     stock.carton_quantity -= quantity
                     deducted = True
-                elif stock.quantity_in_base_units >= quantity * getattr(product, 'bottles_per_carton', 1):
+                    quantity_in_base_units = quantity * bottles_per_carton
+                    print(f"[DEBUG] Order signal - Deducted from carton_quantity: {quantity} cartons = {quantity_in_base_units} bottles")
+                elif stock.calculated_base_units >= quantity * bottles_per_carton:
                     # Calculate quantity in base units
-                    quantity_in_base_units = quantity * getattr(product, 'bottles_per_carton', 1)
+                    quantity_in_base_units = quantity * bottles_per_carton
                     deducted = True
+                    print(f"[DEBUG] Order signal - Deducted from calculated_base_units: {quantity} cartons = {quantity_in_base_units} bottles")
+                else:
+                    print(f"[DEBUG] Order signal - Not enough stock: {stock.calculated_base_units} < {quantity * bottles_per_carton}")
             else:
-                if stock.quantity_in_base_units >= quantity:
+                # For non-carton products, check base units directly
+                if stock.calculated_base_units >= quantity:
                     quantity_in_base_units = quantity
                     deducted = True
+                    print(f"[DEBUG] Order signal - Deducted from calculated_base_units: {quantity} units")
+                else:
+                    print(f"[DEBUG] Order signal - Not enough stock: {stock.calculated_base_units} < {quantity}")
+            
+            print(f"[DEBUG] Order signal - Final deducted: {deducted}, quantity_in_base_units: {quantity_in_base_units}")
 
             if deducted:
                 # Create InventoryTransaction to handle stock adjustment properly

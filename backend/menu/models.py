@@ -4,10 +4,22 @@ from django.db import models
 from inventory.models import Product, Stock  
 
 class MenuCategory(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-
+    FOOD = 'food'
+    BEVERAGE = 'beverage'
+    
+    ITEM_TYPE_CHOICES = [
+        (FOOD, 'Food'),
+        (BEVERAGE, 'Beverage'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES, null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['name', 'item_type']  # Same name can exist for different types
+    
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_item_type_display() if self.item_type else 'Uncategorized'})"
 
 
 class Menu(models.Model):

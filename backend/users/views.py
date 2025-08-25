@@ -174,18 +174,28 @@ class WaiterUnsettledTablesView(APIView):
         waiters = User.objects.filter(role='waiter')
         result = []
         for waiter in waiters:
-            # Find orders for this waiter in the required state
+            # Find orders for this waiter that are ready for printing
+            # (have payment option, all items processed, but not yet printed)
             orders = Order.objects.filter(
                 created_by=waiter,
-                cashier_status='ready_for_payment'
+                cashier_status='pending',  # Still pending (not printed)
+                payment_option__isnull=False  # Has payment method selected
             ).select_related('table')
-            table_numbers = list({o.table.number for o in orders if o.table})
-            total_amount = sum([o.total_money or 0 for o in orders])
-            result.append({
-                'name': waiter.get_full_name() or waiter.username,
-                'tables': table_numbers,
-                'amount': float(total_amount),
-                'orders': orders.count(),
-            })
+            
+            # Filter orders where all items are processed (accepted/rejected)
+            ready_orders = []
+            for order in orders:
+                if order.items.exists() and all(item.status in ['accepted', 'rejected'] for item in order.items.all()):
+                    ready_orders.append(order)
+            
+            if ready_orders:
+                table_numbers = list({o.table.number for o in ready_orders if o.table})
+                total_amount = sum([o.total_money or 0 for o in ready_orders])
+                result.append({
+                    'name': waiter.get_full_name() or waiter.username,
+                    'tables': table_numbers,
+                    'amount': float(total_amount),
+                    'orders': len(ready_orders),
+                })
         return Response(result)
 # ✅ Custom User Login Serializer

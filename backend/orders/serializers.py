@@ -62,7 +62,27 @@ class OrderSerializer(serializers.ModelSerializer):
 
         order = Order.objects.create(**validated_data)
         total = 0
+        
+        # Group items by name, price, and type to avoid duplicates
+        grouped_items = {}
         for item_data in items_data:
+            item_key = (item_data.get('name'), item_data.get('price'), item_data.get('item_type', 'food'))
+            
+            if item_key in grouped_items:
+                # Add quantities for same item
+                grouped_items[item_key]['quantity'] += item_data.get('quantity', 1)
+            else:
+                # Create new grouped item
+                grouped_items[item_key] = {
+                    'name': item_data.get('name'),
+                    'price': item_data.get('price'),
+                    'item_type': item_data.get('item_type', 'food'),
+                    'quantity': item_data.get('quantity', 1),
+                    'status': item_data.get('status', 'pending')
+                }
+        
+        # Create OrderItems from grouped data
+        for item_data in grouped_items.values():
             try:
                 item = OrderItem.objects.create(order=order, **item_data)
                 if item.status == 'accepted':
@@ -91,20 +111,68 @@ class OrderSerializer(serializers.ModelSerializer):
         items_data = validated_data.get('items')
         if items_data is not None:
             print('DEBUG PATCH items_data:', items_data)  # <-- debug log
-            # Only delete and recreate items of the same type as the update (beverage or food)
-            item_types = set(item['item_type'] for item in items_data if 'item_type' in item)
-            if not item_types:
-                item_types = set(['beverage'])  # fallback for beverage serializer
-            instance.items.filter(item_type__in=item_types).delete()
-
+            
+            # Smart item updating: preserve statuses and merge quantities intelligently
+            existing_items = {item.id: item for item in instance.items.all()}
+            updated_items = []
             new_total = 0
             new_beverage_item_added = False
             new_food_item_added = False
 
+            print(f'DEBUG: Existing items before update: {[(item.name, item.quantity, item.status) for item in existing_items.values()]}')
+
             for item_data in items_data:
-                if 'status' not in item_data:
-                    item_data['status'] = 'pending'
-                item = OrderItem.objects.create(order=instance, **item_data)
+                item_name = item_data.get('name')
+                item_price = item_data.get('price')
+                item_type = item_data.get('item_type', 'food')
+                new_quantity = item_data.get('quantity', 1)
+                
+                print(f'DEBUG: Processing item: {item_name} x{new_quantity} (${item_price}) - {item_type}')
+                
+                # Try to find existing item with same name, price, and type
+                existing_item = None
+                for existing in existing_items.values():
+                    if (existing.name == item_name and 
+                        existing.price == item_price and 
+                        existing.item_type == item_type):
+                        existing_item = existing
+                        break
+                
+                if existing_item:
+                    print(f'DEBUG: Found existing item: {existing_item.name} x{existing_item.quantity} (status: {existing_item.status})')
+                    
+                    # Update the quantity of existing item
+                    existing_item.quantity = new_quantity
+                    existing_item.save()
+                    print(f'DEBUG: Updated existing item quantity: {existing_item.name} → {new_quantity}')
+                    
+                    updated_items.append(existing_item)
+                    
+                    # Remove from existing items dict to avoid duplicates
+                    if existing_item.id in existing_items:
+                        del existing_items[existing_item.id]
+                else:
+                    # Create new item with pending status
+                    new_item = OrderItem.objects.create(
+                        order=instance,
+                        **item_data
+                    )
+                    if 'status' not in item_data:
+                        new_item.status = 'pending'
+                        new_item.save()
+                    print(f'DEBUG: Created new item: {new_item.name} x{new_item.quantity} (status: {new_item.status})')
+                    updated_items.append(new_item)
+
+            # Delete any remaining existing items that weren't updated
+            for item_id in list(existing_items.keys()):
+                item_to_delete = existing_items[item_id]
+                print(f'DEBUG: Deleting unused item: {item_to_delete.name} x{item_to_delete.quantity}')
+                item_to_delete.delete()
+
+            print(f'DEBUG: Final updated items: {[(item.name, item.quantity, item.status) for item in updated_items]}')
+
+            # Calculate new total and update statuses
+            for item in updated_items:
                 if item.status == 'accepted':
                     new_total += item.price * item.quantity
                 if item.item_type == 'beverage':
