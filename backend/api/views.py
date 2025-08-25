@@ -1,13 +1,17 @@
 from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from .jwt_views import CustomTokenObtainPairView
 
 from rest_framework import viewsets, permissions
 from orders.models import Order
 from inventory.models import InventoryItem, InventoryRequest
 from .serializers import OrderSerializer, InventoryItemSerializer, InventoryRequestSerializer
-from users.models import User
 
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer
 
 class IsWaiter(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -48,5 +52,17 @@ class InventoryRequestViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
 
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    user = authenticate(username=username, password=password)
+
+    if user:
+        token = CustomTokenObtainPairView.as_view()(request._request).data
+        return JsonResponse({'token': token})
+    else:
+        return JsonResponse({'error': 'Invalid credentials'}, status=401)
