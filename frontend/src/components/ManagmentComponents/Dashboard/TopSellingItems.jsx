@@ -7,55 +7,42 @@ export default function TopSellingItems({ filterDate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Note: This component now uses the new backend TopSellingItemsView endpoint
+  // which fetches real top selling items data for a specific date from all orders.
+
   useEffect(() => {
     const fetchTopSellingItems = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch orders for the selected date
-        const response = await axiosInstance.get(`orders/food/?date=${filterDate}`);
-        const orders = response.data;
+        // Use the new backend endpoint for top selling items
+        const response = await axiosInstance.get(`/orders/top-selling-items/?date=${filterDate}`);
+        const data = response.data;
 
-        // Calculate item sales
-        const itemSales = {};
-        orders.forEach(order => {
-          if (order.has_payment) {
-            order.items.forEach(item => {
-              if (item.status === 'accepted') {
-                const itemName = item.name || item.product_name || 'Unknown Item';
-                const itemPrice = item.price || 0;
-                const itemQuantity = item.quantity || 0;
-                const totalValue = itemPrice * itemQuantity;
+        console.log("TopSellingItems - Backend data:", data); // Debug log
 
-                if (!itemSales[itemName]) {
-                  itemSales[itemName] = {
-                    name: itemName,
-                    totalQuantity: 0,
-                    totalRevenue: 0,
-                    orderCount: 0,
-                    avgPrice: 0
-                  };
-                }
+        if (data.top_selling_items && data.top_selling_items.length > 0) {
+          // Transform the backend data to match our component's expected format
+          const transformedItems = data.top_selling_items.map(item => ({
+            name: item.name,
+            totalQuantity: item.totalQuantity,
+            totalRevenue: item.totalRevenue,
+            orderCount: item.orderCount,
+            avgPrice: item.avgPrice
+          }));
+          
+          setTopItems(transformedItems);
+          console.log("Transformed top selling items:", transformedItems); // Debug log
+        } else {
+          // No top selling items data for this date
+          setTopItems([]);
+          console.log("No top selling items data found"); // Debug log
+        }
 
-                itemSales[itemName].totalQuantity += itemQuantity;
-                itemSales[itemName].totalRevenue += totalValue;
-                itemSales[itemName].orderCount += 1;
-              }
-            });
-          }
-        });
-
-        // Calculate averages and sort by total revenue
-        const itemsArray = Object.values(itemSales).map(item => ({
-          ...item,
-          avgPrice: item.totalQuantity > 0 ? item.totalRevenue / item.totalQuantity : 0
-        }));
-
-        itemsArray.sort((a, b) => b.totalRevenue - a.totalRevenue);
-        setTopItems(itemsArray.slice(0, 5)); // Top 5 items
       } catch (error) {
         console.error("Error fetching top selling items:", error);
         setError("Failed to load item data");
+        setTopItems([]);
       } finally {
         setLoading(false);
       }
@@ -91,6 +78,12 @@ export default function TopSellingItems({ filterDate }) {
       <div className="text-center text-gray-500 py-4">
         <FaUtensils className="mx-auto text-3xl text-gray-300 mb-2" />
         <p className="text-sm">No sales data for this date</p>
+        <p className="text-xs text-gray-400">This could mean:</p>
+        <ul className="text-xs text-gray-400 mt-1 space-y-1">
+          <li>• No orders were completed on this date</li>
+          <li>• No items have been accepted/served yet</li>
+          <li>• All orders are still pending</li>
+        </ul>
       </div>
     );
   }

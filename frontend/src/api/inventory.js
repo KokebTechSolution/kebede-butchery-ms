@@ -177,3 +177,17 @@ export const fetchProductMeasurements = async (productId) => {
   const response = await axios.get(`${BASE_URL}productmeasurements/?product=${productId}`, getConfig);
   return response.data;
 };
+
+// Reduce bartender inventory when order is printed
+export const reduceBartenderInventory = async (orderId) => {
+  const response = await axios.post(`${BASE_URL}reduce-bartender-inventory/`, {
+    order_id: orderId
+  }, modifyConfig);
+  return response.data;
+};
+
+// Fetch barman stock for beverages
+export const fetchBarmanStock = async () => {
+  const response = await axios.get(`${BASE_URL}barman-stock/`, getConfig);
+  return response.data;
+};

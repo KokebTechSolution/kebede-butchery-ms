@@ -3,7 +3,6 @@ import {
   createMenuItem,
   updateMenuItem,
   fetchMenuCategories,
-  syncMenuCategoriesWithInventory,
   fetchMenuItems,
 } from '../../api/menu';
 import { fetchAvailableProducts } from '../../api/stock';
@@ -34,10 +33,14 @@ const MenuForm = ({
   // Calculate isBeverage early so it can be used in useEffect
   const isBeverage = forcebeverageOnly || formData.item_type?.toLowerCase() === 'beverage';
 
+  // Filter categories based on selected item type
+  const filteredCategories = categories.filter(cat => 
+    !formData.item_type || cat.item_type === formData.item_type
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        await syncMenuCategoriesWithInventory();
         const [categories, products, menuItems] = await Promise.all([
           fetchMenuCategories(),
           fetchAvailableProducts(),
@@ -244,16 +247,31 @@ const MenuForm = ({
           className="w-full p-2 border rounded"
         >
           <option value="">-- Select Category --</option>
-          {categories.length === 0 ? (
-            <option disabled>No categories available</option>
+          {filteredCategories.length === 0 ? (
+            <option disabled>
+              {formData.item_type ? `No ${formData.item_type} categories available` : 'No categories available'}
+            </option>
           ) : (
-            categories.map((cat) => (
+            filteredCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name || cat.category_name}
               </option>
             ))
           )}
         </select>
+        {formData.item_type && filteredCategories.length === 0 && (
+          <div className="text-sm text-orange-600 mt-1 p-3 bg-orange-50 border border-orange-200 rounded">
+            <div className="flex items-center gap-2">
+              <span>💡</span>
+              <div>
+                <p className="font-medium">No {formData.item_type} categories available</p>
+                <p className="text-xs text-orange-500 mt-1">
+                  Go to "📂 Category Management" tab to create a {formData.item_type} category first!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {/* Product */}
       <div>

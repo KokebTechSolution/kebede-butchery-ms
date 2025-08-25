@@ -30,6 +30,11 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
     ? Number(order.total_money)
     : acceptedTotal;
 
+  // --- SHOW ITEMS SEPARATELY (NO MERGING) ---
+  // We want to show each item separately to preserve their individual statuses
+  // No merging - each item maintains its own quantity and status
+  const displayItems = order.items;
+
   return (
     <>
       <Card className="w-full max-w-4xl rounded-xl border border-gray-200 shadow-sm mb-4 transition-all duration-300 ease-in-out bg-white">
@@ -57,20 +62,7 @@ export const OrderCard = ({ order, onAcceptOrder, onRejectOrder, onAcceptItem, o
           <div className="mt-4">
             {/* --- MERGE ITEMS FOR DISPLAY --- */}
             {(() => {
-              function mergeDisplayItems(items) {
-                const merged = [];
-                items.forEach(item => {
-                  const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food') && i.status === item.status);
-                  if (found) {
-                    found.quantity += item.quantity;
-                  } else {
-                    merged.push({ ...item });
-                  }
-                });
-                return merged;
-              }
-              const mergedItems = mergeDisplayItems(order.items);
-              return mergedItems.map((item, index) => (
+              return displayItems.map((item, index) => (
                 <div key={index} className="w-full flex flex-wrap justify-between items-center gap-3 text-[13px] sm:text-sm py-3 border-t first:border-t-0">
                   <span className="min-w-0 flex-1 break-words text-sm sm:text-base">{item.name} × {item.quantity}</span>
                   <span className="font-medium flex-shrink-0 text-sm sm:text-base">${(item.price * item.quantity).toFixed(2)}</span>

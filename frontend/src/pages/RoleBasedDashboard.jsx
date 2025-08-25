@@ -1,9 +1,9 @@
 // src/pages/RoleBasedDashboard.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
-import BranchManagerDashboard from './BranchManager/BranchManagerDashboard';
 import OwnerDashboard from './Owner/OwnerDashboard';
 import CashierDashboard from './Cashier/CashierDashboard';
 import MeatDashboard from './Meat/MeatDashboard';
@@ -15,6 +15,15 @@ import './../i18n';
 const RoleBasedDashboard = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect managers to their dedicated route for a cleaner experience
+    if (user?.role === 'manager') {
+      navigate('/branch-manager');
+      return;
+    }
+  }, [user, navigate]);
 
   if (!user) {
     return (
@@ -31,13 +40,6 @@ const RoleBasedDashboard = () => {
         <div>
           <h1>{t('owner_dashboard')}</h1>
           <OwnerDashboard />
-        </div>
-      );
-    case 'manager':
-      return (
-        <div>
-          <h1>{t('manager_dashboard')}</h1>
-          <BranchManagerDashboard />
         </div>
       );
     case 'waiter':

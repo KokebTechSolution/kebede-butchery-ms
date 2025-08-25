@@ -16,13 +16,16 @@ const InventoryRequestList = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [products, setProducts] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [productMeasurements, setProductMeasurements] = useState({});
   const [formData, setFormData] = useState({
     product: '',
     quantity: '',
-    unit_type: 'unit',
+    request_unit_id: '',
     status: 'pending',
     branch: '',
   });
@@ -30,10 +33,30 @@ const InventoryRequestList = () => {
 
   const { user } = useAuth();
 
+  // Filter requests based on user role and branch
+  const filteredRequests = requests.filter(req => {
+    // If user is a manager, show only requests from their branch
+    if (user?.role === 'manager' && user?.branch) {
+      return req.branch?.id === user.branch;
+    }
+    // If user is a bartender, show only their own requests
+    if (user?.role === 'bartender') {
+      return req.requested_by === user.id;
+    }
+    // For other roles, show all requests
+    return true;
+  }).filter(req => {
+    // Apply status filter
+    if (statusFilter === 'all') return true;
+    return req.status === statusFilter;
+  });
+
   useEffect(() => {
     loadRequests();
     loadProducts();
     loadBranches();
+    loadUnits();
+    loadProductMeasurements();
   }, []);
 
   const loadRequests = async () => {
@@ -71,6 +94,38 @@ const InventoryRequestList = () => {
     }
   };
 
+  const loadUnits = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/inventory/productunits/', {
+        withCredentials: true,
+      });
+      setUnits(res.data);
+    } catch (err) {
+      console.error('Error loading units:', err);
+    }
+  };
+
+  const loadProductMeasurements = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/inventory/productmeasurements/', {
+        withCredentials: true,
+      });
+      
+      // Group measurements by product
+      const measurementsByProduct = {};
+      res.data.forEach(measurement => {
+        if (!measurementsByProduct[measurement.product_id]) {
+          measurementsByProduct[measurement.product_id] = [];
+        }
+        measurementsByProduct[measurement.product_id].push(measurement);
+      });
+      
+      setProductMeasurements(measurementsByProduct);
+    } catch (err) {
+      console.error('Error loading product measurements:', err);
+    }
+  };
+
   // Accept and Reject handlers
   const handleAccept = async (id) => {
     setProcessingId(id);
@@ -98,57 +153,81 @@ const InventoryRequestList = () => {
     }
   };
 
-  const handleEdit = async (id) => {
-    setProcessingId(id);
-    try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/edit/`, {}, { withCredentials: true });
-      await loadRequests();
-      setFormMessage('Request edited!');
-    } catch (err) {
-      setFormMessage('Failed to edit request.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleCancel = async (id) => {
-    setProcessingId(id);
-    try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/cancel/`, {}, { withCredentials: true });
-      await loadRequests();
-      setFormMessage('Request cancelled!');
-    } catch (err) {
-      setFormMessage('Failed to cancel request.');
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
+  // Handle reaching the request (bartender marks as received)
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, { withCredentials: true });
+      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, {
+        withCredentials: true,
+        headers: {
+          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+        }
+      });
       await loadRequests();
-      setFormMessage('Request reached!');
+      setFormMessage(t('request_marked_as_reached'));
     } catch (err) {
-      setFormMessage('Failed to mark as reached.');
+      setFormMessage(t('failed_to_mark_reached'));
     } finally {
       setProcessingId(null);
     }
   };
 
+  // Handle not reaching the request
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, { withCredentials: true });
+      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, {
+        withCredentials: true,
+        headers: {
+          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+        }
+      });
       await loadRequests();
-      setFormMessage('Request not reached!');
+      setFormMessage(t('request_marked_as_not_reached'));
     } catch (err) {
-      setFormMessage('Failed to mark as not reached.');
+      setFormMessage(t('failed_to_mark_not_reached'));
     } finally {
       setProcessingId(null);
     }
   };
+
+  // Handle editing request (only for pending requests by the requester)
+  const handleEdit = async (id) => {
+    // This would open an edit modal or form
+    // For now, just show a message
+    setFormMessage(t('edit_functionality_coming_soon'));
+  };
+
+  // Handle canceling request (only for pending requests by the requester)
+  const handleCancel = async (id) => {
+    if (window.confirm(t('confirm_cancel_request'))) {
+      setProcessingId(id);
+      try {
+        const response = await axios.patch(`http://localhost:8000/api/inventory/requests/${id}/`, {
+          status: 'cancelled'
+        }, {
+          withCredentials: true,
+          headers: {
+            'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+          }
+        });
+        await loadRequests();
+        setFormMessage(t('request_cancelled'));
+      } catch (err) {
+        setFormMessage(t('failed_to_cancel_request'));
+      } finally {
+        setProcessingId(null);
+      }
+    }
+  };
+
+
+
+
+
+
+
+
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -161,35 +240,47 @@ const InventoryRequestList = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.product || !formData.branch || !formData.quantity || Number(formData.quantity) <= 0) {
-      setFormMessage(t('form_validation_error'));
-      return;
-    }
+         if (!formData.product || !formData.branch || !formData.quantity || !formData.request_unit_id || Number(formData.quantity) <= 0) {
+       setFormMessage('Please fill in all required fields: Product, Branch, Quantity, and Unit.');
+       return;
+     }
 
-    try {
-      await axios.post(
-        'http://localhost:8000/api/inventory/requests/',
-        {
-          product_id: parseInt(formData.product),
-          quantity: parseFloat(formData.quantity),
-          unit_type: formData.unit_type,
-          status: 'pending',
-          branch_id: parseInt(formData.branch),
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          withCredentials: true,
-        }
-      );
+         try {
+       console.log('Submitting request with data:', formData);
+       
+       // Get conversion info for logging
+       const conversion = productMeasurements[formData.product]?.find(m => m.from_unit_id === parseInt(formData.request_unit_id));
+       if (conversion) {
+         const totalIndividualUnits = parseFloat(formData.quantity) * conversion.amount_per;
+         console.log(`Conversion: ${formData.quantity} ${conversion.from_unit_name} = ${totalIndividualUnits} ${conversion.to_unit_id}`);
+       }
+       
+       const requestData = {
+         product_id: parseInt(formData.product),
+         quantity: parseFloat(formData.quantity),
+         request_unit_id: parseInt(formData.request_unit_id),
+         status: 'pending',
+         branch_id: parseInt(formData.branch),
+       };
+       console.log('Sending to backend:', requestData);
+       
+       await axios.post(
+         'http://localhost:8000/api/inventory/requests/',
+         requestData,
+         {
+           headers: { 'Content-Type': 'application/json' },
+           withCredentials: true,
+         }
+       );
 
       setFormMessage(t('request_submitted_successfully'));
-      setFormData({
-        product: '',
-        quantity: '',
-        unit_type: 'unit',
-        status: 'pending',
-        branch: formData.branch,
-      });
+             setFormData({
+         product: '',
+         quantity: '',
+         request_unit_id: '',
+         status: 'pending',
+         branch: formData.branch,
+       });
       setShowModal(false);
       await loadRequests();
     } catch (err) {
@@ -215,48 +306,133 @@ const InventoryRequestList = () => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">{t('inventory_requests_title')}</h1>
+        <div className="flex items-center gap-4">
+          {/* New Request Button - Only for Bartenders */}
+          {user?.role === 'bartender' && (
+            <button
+              onClick={() => {
+                setFormMessage('');
+                setShowModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+            >
+              + {t('new_request')}
+            </button>
+          )}
+          
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="fulfilled">Fulfilled</option>
+          </select>
+          
+          {/* Refresh Button */}
+          <button
+            onClick={loadRequests}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+          >
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
-      <NewRequest
-        showModal={showModal}
-        setShowModal={setShowModal}
-        formData={formData}
-        formMessage={formMessage}
-        products={products}
-        branches={branches}
-        handleFormChange={handleFormChange}
-        handleFormSubmit={handleFormSubmit}
-      />
+             <NewRequest
+         showModal={showModal}
+         setShowModal={setShowModal}
+         formData={formData}
+         formMessage={formMessage}
+         products={products}
+         branches={branches}
+         units={units}
+         productMeasurements={productMeasurements}
+         handleFormChange={handleFormChange}
+         handleFormSubmit={handleFormSubmit}
+       />
 
       {loading ? (
         <p>{t('loading_requests')}</p>
-      ) : requests.length === 0 ? (
-        <p className="text-gray-600 italic">{t('no_requests_found')}</p>
+      ) : filteredRequests.length === 0 ? (
+        <p className="text-gray-600 italic">
+          {requests.length === 0 ? t('no_requests_found') : `No requests found with status: ${statusFilter}`}
+        </p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+          {/* Status Summary */}
+          <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {requests.filter(r => r.status === 'pending').length}
+              </div>
+              <div className="text-sm text-yellow-700">Pending</div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {requests.filter(r => r.status === 'accepted').length}
+              </div>
+              <div className="text-sm text-blue-700">Accepted</div>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {requests.filter(r => r.status === 'fulfilled').length}
+              </div>
+              <div className="text-sm text-green-700">Fulfilled</div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {requests.filter(r => r.status === 'rejected').length}
+              </div>
+              <div className="text-sm text-red-700">Rejected</div>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-gray-600">
+                {filteredRequests.length}
+              </div>
+              <div className="text-sm text-gray-700">Filtered</div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
           <table className="min-w-full border text-sm">
             <thead className="bg-gray-100">
               <tr className="text-center">
                 <th className="border px-4 py-2">{t('product')}</th>
                 <th className="border px-4 py-2">{t('category')}</th>
                 <th className="border px-4 py-2">{t('item_type')}</th>
-                <th className="border px-4 py-2">{t('quantity')}</th>
-                <th className="border px-4 py-2">{t('unit_type')}</th>
-                <th className="border px-4 py-2">{t('branch')}</th>
+                                 <th className="border px-4 py-2">{t('quantity')}</th>
+                 <th className="border px-4 py-2">{t('input_unit')}</th>
+                 <th className="border px-4 py-2">{t('total_units')}</th>
+                 <th className="border px-4 py-2">{t('branch')}</th>
                 <th className="border px-4 py-2">{t('requested_at')}</th>
                 <th className="border px-4 py-2">{t('status')}</th>
                 <th className="border px-4 py-2">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {requests.map((req) => (
+              {filteredRequests.map((req) => (
                 <tr key={req.id} className="text-center hover:bg-gray-50 transition">
                   <td className="border px-4 py-2">{req.product?.name || t('na')}</td>
                   <td className="border px-4 py-2">{req.product?.category?.category_name || t('na')}</td>
                   <td className="border px-4 py-2">{req.product?.category?.item_type?.type_name || t('na')}</td>
-                  <td className="border px-4 py-2">{req.quantity}</td>
-                  <td className="border px-4 py-2">{req.unit_type}</td>
-                  <td className="border px-4 py-2">{req.branch?.name || t('na')}</td>
+                                     <td className="border px-4 py-2">{req.quantity}</td>
+                   <td className="border px-4 py-2">{req.request_unit?.unit_name || t('na')}</td>
+                   <td className="border px-4 py-2">
+                     {(() => {
+                       const conversion = productMeasurements[req.product?.id]?.find(m => m.from_unit_id === req.request_unit?.id);
+                       if (conversion) {
+                         const totalUnits = parseFloat(req.quantity) * conversion.amount_per;
+                         return `${totalUnits} ${conversion.to_unit_id}`;
+                       }
+                       return t('na');
+                     })()}
+                   </td>
+                   <td className="border px-4 py-2">{req.branch?.name || t('na')}</td>
                   <td className="border px-4 py-2">{new Date(req.created_at).toLocaleString()}</td>
                   <td className="border px-4 py-2">
                     <span
@@ -346,6 +522,7 @@ const InventoryRequestList = () => {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

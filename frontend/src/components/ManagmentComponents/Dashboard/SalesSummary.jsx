@@ -13,51 +13,30 @@ export default function SalesSummary({ filterDate }) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all orders for the selected date (not just food)
-        const response = await axiosInstance.get(`orders/?date=${filterDate}`);
-        const orders = response.data;
+        // Use the correct backend endpoint for sales summary
+        const response = await axiosInstance.get(`/orders/sales-summary/?date=${filterDate}`);
+        const data = response.data;
 
-        console.log("Sales Summary - All orders:", orders); // Debug log
+        console.log("Sales Summary - Backend data:", data); // Debug log
 
-        // Calculate metrics from all paid orders
-        const completedOrders = orders.filter(order => 
-          order.has_payment || order.payment_status === 'completed' || order.status === 'completed'
-        );
-
-        const totalRev = completedOrders.reduce((sum, order) => {
-          let orderTotal = 0;
-          
-          if (order.total_amount) {
-            // If total_amount is available, use it
-            orderTotal = parseFloat(order.total_amount) || 0;
-          } else if (order.items && Array.isArray(order.items)) {
-            // Calculate from individual items
-            orderTotal = order.items
-              .filter(item => item.status === 'accepted' || item.status === 'completed' || item.status === 'served')
-              .reduce((itemSum, item) => {
-                const price = parseFloat(item.price) || 0;
-                const quantity = parseInt(item.quantity) || 0;
-                return itemSum + (price * quantity);
-              }, 0);
-          }
-          
-          return sum + orderTotal;
-        }, 0);
-
-        const avgOrder = completedOrders.length > 0 ? totalRev / completedOrders.length : 0;
+        // Use the data from backend
+        setTotalRevenue(data.total_sales || 0);
+        setAvgOrderValue(data.total_orders > 0 ? (data.total_sales / data.total_orders) : 0);
+        setOrdersCount(data.total_orders || 0);
 
         console.log("Sales Summary - Calculated:", {
-          totalRevenue: totalRev,
-          avgOrderValue: avgOrder,
-          ordersCount: completedOrders.length
+          totalRevenue: data.total_sales || 0,
+          avgOrderValue: data.total_orders > 0 ? (data.total_sales / data.total_orders) : 0,
+          ordersCount: data.total_orders || 0
         }); // Debug log
 
-        setTotalRevenue(totalRev);
-        setAvgOrderValue(avgOrder);
-        setOrdersCount(completedOrders.length);
       } catch (error) {
         console.error("Error fetching sales summary:", error);
         setError("Failed to load sales data");
+        // Set default values on error
+        setTotalRevenue(0);
+        setAvgOrderValue(0);
+        setOrdersCount(0);
       } finally {
         setLoading(false);
       }

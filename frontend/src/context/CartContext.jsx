@@ -105,30 +105,34 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
     const { icon, ...rest } = item;
     setTableCarts((prevTableCarts) => {
       const currentTableCart = prevTableCarts[activeTableId] || [];
-      let found = false;
-      const updatedTableCart = currentTableCart.map((cartItem) => {
-        if (
-          cartItem.name === rest.name &&
-          cartItem.price === rest.price &&
-          (cartItem.item_type || 'food') === (rest.item_type || 'food')
-        ) {
-          found = true;
-          // If the item is accepted/rejected, revert status to pending when adding more
-          return {
-            ...cartItem,
-            quantity: cartItem.quantity + 1,
-            status: (cartItem.status === 'accepted' || cartItem.status === 'rejected') ? 'pending' : cartItem.status,
-          };
-        }
-        return cartItem;
-      });
-      if (!found) {
-        updatedTableCart.push({ ...rest, quantity: 1, status: rest.status || 'pending' });
+      
+      // Check if item with same name/price/type already exists in cart
+      const existingItem = currentTableCart.find(cartItem => 
+        cartItem.name === rest.name && 
+        cartItem.price === rest.price && 
+        (cartItem.item_type || 'food') === (rest.item_type || 'food') &&
+        cartItem.status === 'pending' // Only merge with pending items
+      );
+      
+      if (existingItem) {
+        // Increase quantity of existing pending item
+        const updatedTableCart = currentTableCart.map(cartItem => 
+          cartItem === existingItem 
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+        return {
+          ...prevTableCarts,
+          [activeTableId]: updatedTableCart,
+        };
+      } else {
+        // Create new item
+        const updatedTableCart = [...currentTableCart, { ...rest, quantity: 1, status: 'pending' }];
+        return {
+          ...prevTableCarts,
+          [activeTableId]: updatedTableCart,
+        };
       }
-      return {
-        ...prevTableCarts,
-        [activeTableId]: updatedTableCart,
-      };
     });
   };
 
@@ -213,13 +217,20 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
 
   const updateOrder = async (orderId, updatedItems) => {
     try {
-      // Build payload with all items and their current status
+      // Ensure all items have the correct item_type and status
+      const processedItems = updatedItems.map(item => ({
+        ...item,
+        item_type: item.item_type || 'food', // Default to food if not specified
+        status: item.status || 'pending', // Default to pending if not set
+      }));
+
+      // Build payload with all items
       const payload = {
-        items: updatedItems.map(item => ({
-          ...item,
-          status: item.status || 'pending', // Default to pending if not set
-        })),
+        items: processedItems
       };
+      
+      console.log('Updating order with payload:', payload);
+      
       const response = await axiosInstance.patch(`/orders/order-list/${orderId}/`, payload);
       const updatedOrder = response.data;
 
@@ -228,10 +239,11 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
           order.id === orderId ? updatedOrder : order
         )
       );
-      console.log(`CartContext: Updated order ${orderId}. New items:`, updatedItems);
-      clearCart();
+      console.log(`CartContext: Updated order ${orderId}. New items:`, processedItems);
+      // Don't clear cart here - keep it available for continued editing
     } catch (error) {
       console.error('Failed to update order:', error);
+      throw error; // Re-throw to handle in the calling component
     }
   };
 
@@ -241,6 +253,9 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
   };
 
   const loadCartForEditing = (tableId, items) => {
+    console.log(`CartContext: Loading cart for editing table ${tableId}. Items:`, items);
+    console.log(`CartContext: Items status breakdown:`, items.map(item => ({ name: item.name, status: item.status, quantity: item.quantity })));
+    
     setActiveTableId(tableId);
 
     setTableCarts(prev => ({

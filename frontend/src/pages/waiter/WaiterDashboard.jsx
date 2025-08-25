@@ -13,38 +13,18 @@ import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
 
 function mergeOrderItems(existingItems, cartItems) {
-  const normalize = name => name.trim().toLowerCase();
-  const mergedMap = {};
-
-  // First, add all existing items to the map
-  for (const existingItem of existingItems) {
-    const normName = normalize(existingItem.name);
-    mergedMap[normName] = { ...existingItem };
-  }
-
-  // Then, merge cart items
-  for (const cartItem of cartItems) {
-    const normName = normalize(cartItem.name);
-    if (mergedMap[normName]) {
-      // If exists, sum quantities and set status to pending
-      mergedMap[normName] = {
-        ...mergedMap[normName],
-        quantity: mergedMap[normName].quantity + cartItem.quantity,
-        price: cartItem.price || mergedMap[normName].price,
-        item_type: cartItem.item_type || mergedMap[normName].item_type,
-        status: 'pending',
-      };
-    } else {
-      // If not exists, add as new (pending)
-      mergedMap[normName] = {
-        ...cartItem,
-        status: 'pending',
-      };
-    }
-  }
-
-  // Return as array
-  return Object.values(mergedMap);
+  // Keep all existing items (don't merge by name)
+  const result = [...existingItems];
+  
+  // Add all cart items as separate items (don't merge quantities)
+  cartItems.forEach(cartItem => {
+    result.push({
+      ...cartItem,
+      status: 'pending'
+    });
+  });
+  
+  return result;
 }
 
 const WaiterDashboard = () => {
@@ -59,12 +39,21 @@ const WaiterDashboard = () => {
       localStorage.removeItem('waiterCurrentPage'); // Clear it after use
       return savedPage;
     }
+    
+    // Check if we're coming from a print action
+    const isFromPrint = sessionStorage.getItem('orderPrinted');
+    if (isFromPrint) {
+      sessionStorage.removeItem('orderPrinted'); // Clear it after use
+      return 'orderDetails'; // Navigate to order list
+    }
+    
     return startPage;
   }); // 'tables', 'menu', or 'orderDetails'
   const [selectedTable, setSelectedTable] = useState(null);
   const [message, setMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [editingOrderId, setEditingOrderId] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const { 
     activeTableId, 
@@ -79,6 +68,18 @@ const WaiterDashboard = () => {
     orders
   } = useCart();
   const { tokens } = useAuth();
+
+  // Detect mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleNavigate = (page) => {
     if (page === 'order') {
@@ -98,6 +99,8 @@ const WaiterDashboard = () => {
     
     setCurrentPage(page);
     if (page === 'tables') setSelectedTable(null);
+    
+
   };
 
   const handleTableSelect = async (table) => {
@@ -109,20 +112,22 @@ const WaiterDashboard = () => {
     setEditingOrderId(null);
 
     // Always check for open order for this table (not printed)
+    // Check both table.id and table_number for consistency
     const tableOrders = (orders || []).filter(
-      o => (o.table === table.id || o.table_number === table.number)
+      o => (o.table === table.id || o.table_number === table.number || o.table_number === table.id)
     );
     const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
     const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
+    
     if (openOrder) {
       // Fetch the latest order from backend before editing
       try {
-        const response = await axiosInstance.get(`/orders/${openOrder.id}/`);
+        const response = await axiosInstance.get(`/orders/order-list/${openOrder.id}/`);
         const latestOrder = response.data;
         clearCart();
         loadCartForEditing(table.id, latestOrder.items);
         setEditingOrderId(openOrder.id);
-        console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status);
+        console.log('[DEBUG] Editing open order:', openOrder.id, 'Status:', openOrder.cashier_status, 'Table:', table.id);
       } catch (error) {
         console.error('Failed to fetch latest order for editing:', error);
         // Fallback to cached items if fetch fails
@@ -154,7 +159,7 @@ const WaiterDashboard = () => {
     if (cartItems.length === 0) {
       if (editingOrderId) {
         try {
-          await axiosInstance.delete(`/orders/${editingOrderId}/`);
+          await axiosInstance.delete(`/orders/order-list/${editingOrderId}/`);
           deleteOrder(editingOrderId);
           setMessage('Order cancelled and deleted.');
         } catch (error) {
@@ -171,7 +176,7 @@ const WaiterDashboard = () => {
 
     // Always check for open order before editing
     const tableOrders = (orders || []).filter(
-      o => (o.table === selectedTable.id || o.table_number === selectedTable.number)
+      o => (o.table === selectedTable.id || o.table_number === selectedTable.number || o.table_number === selectedTable.id)
     );
     const openOrder = tableOrders.find(o => o.cashier_status !== 'printed');
     const lastOrder = tableOrders.length > 0 ? tableOrders[tableOrders.length - 1] : null;
@@ -186,18 +191,10 @@ const WaiterDashboard = () => {
       }
     }
 
-    // --- MERGE CART ITEMS BEFORE SENDING TO BACKEND ---
+    // --- DON'T MERGE CART ITEMS - KEEP THEM SEPARATE ---
     function mergeCartItems(items) {
-      const merged = [];
-      items.forEach(item => {
-        const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-        if (found) {
-          found.quantity += item.quantity;
-        } else {
-          merged.push({ ...item });
-        }
-      });
-      return merged;
+      // Don't merge quantities - keep items separate
+      return items;
     }
     const mergedCartItems = mergeCartItems(cartItems);
     // --------------------------------------------------
@@ -259,7 +256,7 @@ const WaiterDashboard = () => {
       };
       console.log('PATCH payload (merged):', updatedOrderData);
       try {
-        const response = await axiosInstance.patch(`/orders/${editingOrderId}/`, updatedOrderData);
+        const response = await axiosInstance.patch(`/orders/order-list/${editingOrderId}/`, updatedOrderData);
         const updatedOrder = response.data;
         updateOrder(editingOrderId, updatedOrder.items);
         setSelectedOrderId(editingOrderId);
@@ -343,17 +340,28 @@ const WaiterDashboard = () => {
   };
 
   const handleOrderDeleted = () => {
-    setCurrentPage('tables');
-    setSelectedTable(null);
-    setActiveTable(null);
+    // Only clear the selected order, stay in orders section
     setSelectedOrderId(null);
     setEditingOrderId(null);
     setMessage('Order deleted successfully.');
+    // Don't change currentPage - stay in orderDetails
+    // Don't clear selectedTable or activeTable - keep them
+  };
+
+  const handleCloseOrderDetails = () => {
+    // Just close the order details view, stay in orders section
+    setSelectedOrderId(null);
+    setEditingOrderId(null);
+    setMessage('');
   };
 
   return (
     <div className="app-container">
-      <Navbar onNavigate={handleNavigate} />
+      {/* Sidebar Navigation */}
+      <div className="sidebar">
+        <Navbar onNavigate={handleNavigate} />
+      </div>
+      
       <div className="main-content white-bg">
         {message && (
           <div className="app-message" style={{ color: 'red', textAlign: 'center', padding: '10px' }}>
@@ -383,6 +391,7 @@ const WaiterDashboard = () => {
               onEditOrder={handleEditOrder}
               selectedOrderId={selectedOrderId}
               onOrderDeleted={handleOrderDeleted}
+              onClose={handleCloseOrderDetails}
             />
           </div>
         )}
@@ -390,6 +399,8 @@ const WaiterDashboard = () => {
           <WaiterProfile onBack={() => handleNavigate('tables')} />
         )}
       </div>
+      
+
     </div>
   );
 };
