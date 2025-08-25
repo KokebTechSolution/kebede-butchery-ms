@@ -1,12 +1,13 @@
 Django==4.2.7
 djangorestframework==3.14.0
-django-cors-headers==4.3.1
 djangorestframework-simplejwt==5.3.0
+django-cors-headers==4.3.1
+channels==4.0.0
+channels-redis==4.2.0
+asgiref==3.9.1
 psycopg2-binary==2.9.9
 gunicorn==21.2.0
 whitenoise==6.6.0
 python-decouple==3.8
 dj-database-url==2.1.0
-channels==4.0.0
-channels-redis==4.2.0
-asgiref==3.9.1
+Pillow==10.0.1
