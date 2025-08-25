@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .jwt_views import CustomTokenObtainPairView, CustomTokenRefreshView
 from core.views import index
 from django.conf import settings
 from django.conf.urls.static import static
@@ -24,8 +24,8 @@ urlpatterns = [
     path('api/reports/', include('reports.urls')),
 
     # JWT Auth
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
 
     # React frontend catch-all route
    #re_path(r'^(?:.*)/?$', index, name='index'),
