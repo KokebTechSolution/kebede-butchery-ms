@@ -1,6 +1,6 @@
 // Production Configuration
 export const PRODUCTION_CONFIG = {
-  API_BASE_URL: 'https://your-backend-name.onrender.com',
+  API_BASE_URL: 'https://kebede-butchery-ms-2.onrender.com',
   ENVIRONMENT: 'production'
 };
 

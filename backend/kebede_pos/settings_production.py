@@ -145,7 +145,8 @@ REST_FRAMEWORK = {
 
 # CORS settings for production
 CORS_ALLOWED_ORIGINS = [
-    "https://your-frontend-name.vercel.app",  # Update with your Vercel URL
+    "https://kebede-butchery-ms-frontend.vercel.app",  # Update with your actual Vercel URL
+    "https://kebede-butchery-ms.vercel.app",  # Alternative Vercel URL format
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
