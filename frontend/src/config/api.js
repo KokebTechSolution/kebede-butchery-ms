@@ -12,9 +12,8 @@ const API_CONFIG = {
   }
 };
 
-// Get current environment
-const isDevelopment = process.env.NODE_ENV === 'development';
-const currentConfig = isDevelopment ? API_CONFIG.development : API_CONFIG.production;
+// Force production URLs for now (since we're deployed)
+const currentConfig = API_CONFIG.production;
 
 export const API_BASE_URL = currentConfig.baseURL;
 export const WS_BASE_URL = currentConfig.wsURL;

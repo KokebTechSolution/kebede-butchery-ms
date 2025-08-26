@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api/products/products/';
+import { API_BASE_URL } from '../config/api';
+const PRODUCTS_API_URL = `${API_BASE_URL}/api/products/products/`;
 
 // Helper to get CSRF token from cookie
 function getCSRFToken() {
