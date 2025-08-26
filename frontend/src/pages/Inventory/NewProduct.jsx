@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config/api';
+
 import axios from 'axios';
 
 // CSRF token helper
@@ -39,9 +41,9 @@ const NewItemPage = ({ onClose, onSuccess }) => {
     const loadData = async () => {
       try {
         const [itemTypeRes, categoryRes, unitsRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/inventory/itemtypes/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/categories/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
+          axios.get('`${API_BASE_URL}/api/inventory/itemtypes/`', { withCredentials: true }),
+          axios.get('`${API_BASE_URL}/api/inventory/categories/`', { withCredentials: true }),
+          axios.get('`${API_BASE_URL}/api/inventory/productunits/`', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeRes.data);
         setCategories(categoryRes.data);
@@ -66,7 +68,7 @@ const NewItemPage = ({ onClose, onSuccess }) => {
     if (!newItemType.trim()) return alert('Please enter an item type name');
     try {
       const res = await axios.post(
-        'http://localhost:8000/api/inventory/itemtypes/',
+        '`${API_BASE_URL}/api/inventory/itemtypes/`',
         { type_name: newItemType },
         {
           headers: { 'X-CSRFToken': csrfToken },
@@ -87,7 +89,7 @@ const NewItemPage = ({ onClose, onSuccess }) => {
     if (!selectedItemType) return alert('Select an item type first');
     try {
       const res = await axios.post(
-        'http://localhost:8000/api/inventory/categories/',
+        '`${API_BASE_URL}/api/inventory/categories/`',
         {
           category_name: newCategory,
           item_type_id: parseInt(selectedItemType),
@@ -157,7 +159,7 @@ const NewItemPage = ({ onClose, onSuccess }) => {
       console.log('📤 Creating product with:', productData);
       
       const productResponse = await axios.post(
-        'http://localhost:8000/api/inventory/products/',
+        '`${API_BASE_URL}/api/inventory/products/`',
         productData,
         {
           headers: { 'X-CSRFToken': csrfToken },
@@ -180,7 +182,7 @@ const NewItemPage = ({ onClose, onSuccess }) => {
       console.log('📤 Creating stock with:', stockData);
       
       const stockResponse = await axios.post(
-        'http://localhost:8000/api/inventory/stocks/',
+        '`${API_BASE_URL}/api/inventory/stocks/`',
         stockData,
         {
           headers: { 'X-CSRFToken': csrfToken },

@@ -74,7 +74,7 @@ export const deleteProduct = async (id) => {
 
 export const fetchItemTypes = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/products/item-types/', axiosConfig());
+    const response = await axios.get('`${API_BASE_URL}/api/products/item-types/`', axiosConfig());
     return response.data;
   } catch (error) {
     console.error('Error fetching item types:', error);

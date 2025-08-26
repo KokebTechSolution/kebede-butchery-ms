@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config/api';
+
 import axios from 'axios';
 import AddProductsForm from './AddProductsForm';
 
@@ -43,7 +45,7 @@ function ProductListPage() {
     // Use the correct inventory API endpoint
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/inventory/products/', {
+        const response = await axios.get('`${API_BASE_URL}/api/inventory/products/`', {
           withCredentials: true,
         });
         console.log('[DEBUG] Products API response:', response.data);
@@ -93,12 +95,12 @@ function ProductListPage() {
   const handleEditSubmit = async () => {
     try {
       const response = await axios.patch(
-        `http://localhost:8000/api/inventory/products/${editProduct.id}/`,
+        ``${API_BASE_URL}/api/inventory/products/${editProduct.id}/`,
         formData,
         {
           withCredentials: true,
           headers: {
-            'Content-Type': 'application/json',
+            `'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken'),
           },
         }
@@ -118,10 +120,10 @@ function ProductListPage() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${deleteProductId}/`, {
+      await axios.delete(``${API_BASE_URL}/api/inventory/products/${deleteProductId}/`, {
         withCredentials: true,
         headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
+          `'X-CSRFToken': getCookie('csrftoken'),
         },
       });
       setProductList(prev => prev.filter(product => product.id !== deleteProductId));
@@ -204,13 +206,13 @@ function ProductListPage() {
                       <button
                         onClick={async () => {
                           try {
-                            const response = await axios.get(`http://localhost:8000/api/inventory/products/${product.id}/debug_values/`, {
+                            const response = await axios.get(``${API_BASE_URL}/api/inventory/products/${product.id}/debug_values/`, {
                               withCredentials: true,
                             });
                             console.log(`[DEBUG] Product ${product.name} debug values:`, response.data);
                             alert(`Debug data logged to console for ${product.name}`);
                           } catch (err) {
-                            console.error('Debug request failed:', err);
+                            console.error(`'Debug request failed:', err);
                             alert('Debug request failed');
                           }
                         }}

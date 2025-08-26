@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { API_BASE_URL } from '../../config/api';
+
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -278,12 +280,12 @@ const ProductListPage = () => {
       }
       
       await axios.post(
-        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        ``${API_BASE_URL}/api/inventory/stocks/${restockingStock.id}/restock/`,
         formData,
         {
           withCredentials: true,
           headers: { 
-            'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+            `'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
             'Content-Type': 'multipart/form-data'
           },
         }
@@ -312,14 +314,14 @@ const ProductListPage = () => {
   const handleDelete = async (productId, stockId) => {
     if (!window.confirm(t('confirm_delete_product'))) return;
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
+      await axios.delete(``${API_BASE_URL}/api/inventory/products/${productId}/`, { withCredentials: true });
       if (stockId) {
         await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
       }
       await loadData(); // Wait for data to load
       setLastRefresh(new Date()); // Update refresh timestamp
     } catch (err) {
-      alert('Delete failed: ' + (err.response?.data?.detail || err.message));
+      alert(`'Delete failed: ' + (err.response?.data?.detail || err.message));
     }
   };
 

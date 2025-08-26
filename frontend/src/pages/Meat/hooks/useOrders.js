@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../../config/api';
+
 import axios from 'axios';
 import axiosInstance from '../../../api/axiosInstance';
 export const useOrders = (filterDate) => {
@@ -6,7 +8,7 @@ export const useOrders = (filterDate) => {
 
   const fetchOrders = async (date) => {
     try {
-      let url = 'http://localhost:8000/api/orders/food/';
+      let url = '`${API_BASE_URL}/api/orders/food/`';
       if (date) url += `?date=${date}`;
       const response = await axios.get(url, { withCredentials: true });
       setOrders(response.data);
@@ -26,7 +28,7 @@ export const useOrders = (filterDate) => {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
       await axiosInstance.patch(
-        `http://localhost:8000/api/orders/order-list/${orderId}/`,
+        ``${API_BASE_URL}/api/orders/order-list/${orderId}/`,
         payload,
         { withCredentials: true }
       );
@@ -40,7 +42,7 @@ export const useOrders = (filterDate) => {
     }
   };
 
-  const isFood = item => !item.item_type || item.item_type === 'food';
+  const isFood = item => !item.item_type || item.item_type === `'food';
 
   const getClosedOrders = () =>
     orders.filter(order =>
@@ -70,7 +72,7 @@ export const useOrders = (filterDate) => {
   const updateOrderItemStatus = async (itemId, status) => {
     try {
       const response = await axiosInstance.patch(
-        `http://localhost:8000/api/orders/order-item/${itemId}/update-status/`,
+        ``${API_BASE_URL}/api/orders/order-item/${itemId}/update-status/`,
         { status },
         { withCredentials: true }
       );
@@ -83,7 +85,7 @@ export const useOrders = (filterDate) => {
         }))
       );
     } catch (error) {
-      console.error('Failed to update item status', error);
+      console.error(`'Failed to update item status', error);
     }
   };
 
@@ -93,7 +95,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axiosInstance.patch(`http://localhost:8000/api/orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axiosInstance.patch(``${API_BASE_URL}/api/orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: `'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../config/api';
+
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -65,7 +67,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     setLoadingValidUnits(true);
     try {
       // Use the new valid_units endpoint
-      const res = await axios.get(`http://localhost:8000/api/inventory/products/${product.id}/valid_units/`, {
+      const res = await axios.get(``${API_BASE_URL}/api/inventory/products/${product.id}/valid_units/`, {
         withCredentials: true,
       });
       
@@ -77,7 +79,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
         }
       } else {
         // Fallback to common units if no valid units found
-        setValidRestockUnits(['carton', 'bottle', 'unit']);
+        setValidRestockUnits([`'carton', 'bottle', 'unit']);
         if (!restockData.restock_type) {
           setRestockData(prev => ({ ...prev, restock_type: 'carton' }));
         }
@@ -97,7 +99,7 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
   useEffect(() => {
     const fetchStock = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/inventory/stocks/', {
+        const res = await axios.get('`${API_BASE_URL}/api/inventory/stocks/`', {
           withCredentials: true,
         });
         const branchStock = res.data.find(
@@ -240,11 +242,11 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     const csrfToken = getCookie('csrftoken');
     try {
       await axios.put(
-        `http://localhost:8000/api/inventory/products/${product.id}/`,
+        ``${API_BASE_URL}/api/inventory/products/${product.id}/`,
         updatedProduct,
         {
           withCredentials: true,
-          headers: { 'X-CSRFToken': csrfToken },
+          headers: { `'X-CSRFToken': csrfToken },
         }
       );
       alert(t('inventory_updated'));
@@ -300,12 +302,12 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
       }
 
       await axios.post(
-        `http://localhost:8000/api/inventory/stocks/${stockId}/restock/`,
+        ``${API_BASE_URL}/api/inventory/stocks/${stockId}/restock/`,
         formDataToSend,
         {
           withCredentials: true,
           headers: { 
-            'X-CSRFToken': getCookie('csrftoken'),
+            `'X-CSRFToken': getCookie('csrftoken'),
             'Content-Type': 'multipart/form-data'
           },
         }
@@ -340,14 +342,14 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
     if (!window.confirm('Are you sure you want to delete this product and its stock?')) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${product.id}/`, {
+      await axios.delete(``${API_BASE_URL}/api/inventory/products/${product.id}/`, {
         withCredentials: true,
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        headers: { `'X-CSRFToken': getCookie('csrftoken') },
       });
       if (stockId) {
-        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, {
+        await axios.delete(``${API_BASE_URL}/api/inventory/stocks/${stockId}/`, {
           withCredentials: true,
-          headers: { 'X-CSRFToken': getCookie('csrftoken') },
+          headers: { `'X-CSRFToken': getCookie('csrftoken') },
         });
       }
       alert('Product and stock deleted.');
@@ -766,12 +768,12 @@ const EditInventoryForm = ({ product, itemTypes, categories, onClose, onSuccess 
                     
                     try {
                       await axios.post(
-                        `http://localhost:8000/api/inventory/stocks/${stockId}/restock/`,
+                        ``${API_BASE_URL}/api/inventory/stocks/${stockId}/restock/`,
                         testFormData,
                         {
                           withCredentials: true,
                           headers: { 
-                            'X-CSRFToken': getCookie('csrftoken'),
+                            `'X-CSRFToken': getCookie('csrftoken'),
                             'Content-Type': 'multipart/form-data'
                           },
                         }
