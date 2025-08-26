@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
+
       const res = await fetch(API_ENDPOINTS.me, {
         credentials: 'include', // important to send cookies
       });
