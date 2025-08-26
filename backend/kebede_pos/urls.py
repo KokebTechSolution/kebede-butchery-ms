@@ -6,10 +6,33 @@ from django.conf import settings
 from django.conf.urls.static import static
 from pathlib import Path
 import os
+from django.http import JsonResponse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 urlpatterns = [
+    # API Welcome Page
+    path('', lambda request: JsonResponse({
+        'message': 'Welcome to Kebede Butchery Management System API',
+        'status': 'running',
+        'version': '1.0.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'api': '/api/',
+            'products': '/api/products/',
+            'users': '/api/users/',
+            'orders': '/api/orders/',
+            'inventory': '/api/inventory/',
+            'payments': '/api/payments/',
+            'branches': '/api/branches/',
+            'reports': '/api/reports/',
+            'auth': {
+                'token': '/api/token/',
+                'refresh': '/api/token/refresh/'
+            }
+        }
+    }), name='api_welcome'),
+
     path('admin/', admin.site.urls),
 
     # APIs
