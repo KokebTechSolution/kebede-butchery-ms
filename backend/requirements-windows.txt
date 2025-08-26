@@ -3,7 +3,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.0
 django-cors-headers==4.3.1
 PyJWT==2.10.1
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9  # Commented out for Windows compatibility
 gunicorn==21.2.0
 whitenoise==6.6.0
 python-decouple==3.8

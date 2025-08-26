@@ -32,7 +32,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'channels',
     'users',
+    'products',
     'menu',
     'orders',
     'inventory',
@@ -43,7 +45,10 @@ INSTALLED_APPS = [
     'api',
     'owner',
     'notifications',
+    'core',
 ]
+
+AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -113,7 +118,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    # Only include static directories that actually exist
+    # os.path.join(BASE_DIR, 'static'),  # Commented out as directory doesn't exist
 ]
 
 # Media files
@@ -169,4 +175,20 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+}
+
+# Channels configuration
+ASGI_APPLICATION = 'kebede_pos.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
+# JWT settings for custom implementation
+from datetime import timedelta
+JWT_SETTINGS = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
