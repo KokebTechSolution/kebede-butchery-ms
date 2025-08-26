@@ -17,9 +17,10 @@ DEBUG = False
 
 # Allowed hosts for production
 ALLOWED_HOSTS = [
-    'your-backend-name.onrender.com',  # Update this with your Render URL
+    'kebede-butchery-ms-2.onrender.com',  # Your actual Render URL
     'localhost',
     '127.0.0.1',
+    '*',  # Allow all hosts for now (you can restrict this later)
 ]
 
 # Application definition
