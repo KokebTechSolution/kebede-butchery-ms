@@ -1,13 +1,8 @@
 import axios from 'axios';
-import { getApiBaseUrl } from '../config/production';
-
-// Use production URL in production, localhost in development
-const baseURL = process.env.NODE_ENV === 'production' 
-  ? getApiBaseUrl() 
-  : 'http://127.0.0.1:8000';
+import { API_BASE_URL } from '../config/api';
 
 const axiosInstance = axios.create({
-  baseURL: baseURL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
