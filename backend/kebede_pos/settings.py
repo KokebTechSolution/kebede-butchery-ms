@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # Add back for fallback CORS handling
     'branches',
     'rest_framework.authtoken',
     'rest_framework',
@@ -79,6 +80,7 @@ JWT_SETTINGS = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware as fallback
     'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,6 +88,36 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# CORS Configuration - Fallback approach
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://kebede-butchery-ms-1.onrender.com",
+    "http://localhost:3000",
+]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.onrender\.com$",
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 ROOT_URLCONF = 'kebede_pos.urls'
 
