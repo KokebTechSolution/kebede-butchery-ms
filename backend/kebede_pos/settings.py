@@ -184,11 +184,13 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168
 
 """
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
+    "http://localhost:3000",  # React frontend (development)
+    "https://kebede-butchery-ms-1.onrender.com",  # React frontend (production)
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",  # Important!
+    "http://localhost:3000",  # Development
+    "https://kebede-butchery-ms-1.onrender.com",  # Production
 ]
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  # For local dev
