@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS } from '../../config/api';
 
 const LoginPage = () => {
   const { login, user, logout } = useAuth();
@@ -18,7 +17,7 @@ const LoginPage = () => {
     // Optionally, if setUser is available:
     // setUser && setUser(null);
     // Fetch CSRF cookie
-    fetch(API_ENDPOINTS.csrf, {
+    fetch('http://localhost:8000/api/users/csrf/', {
       credentials: 'include',
     });
   }, []);
@@ -40,7 +39,7 @@ const LoginPage = () => {
     const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch(API_ENDPOINTS.login, {
+      const res = await fetch('http://localhost:8000/api/users/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

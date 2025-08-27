@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../../config/api';
-
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import {
@@ -76,7 +74,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('`${API_BASE_URL}/api/inventory/products/`', {
+      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
         withCredentials: true,
       });
       setProducts(res.data);
@@ -87,7 +85,7 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const res = await axios.get('`${API_BASE_URL}/api/inventory/branches/`', {
+      const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
         withCredentials: true,
       });
       setBranches(res.data);
@@ -98,7 +96,7 @@ const InventoryRequestList = () => {
 
   const loadUnits = async () => {
     try {
-      const res = await axios.get('`${API_BASE_URL}/api/inventory/productunits/`', {
+      const res = await axios.get('http://localhost:8000/api/inventory/productunits/', {
         withCredentials: true,
       });
       setUnits(res.data);
@@ -109,7 +107,7 @@ const InventoryRequestList = () => {
 
   const loadProductMeasurements = async () => {
     try {
-      const res = await axios.get('`${API_BASE_URL}/api/inventory/productmeasurements/`', {
+      const res = await axios.get('http://localhost:8000/api/inventory/productmeasurements/', {
         withCredentials: true,
       });
       
@@ -159,10 +157,10 @@ const InventoryRequestList = () => {
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      const response = await axios.post(``${API_BASE_URL}/api/inventory/requests/${id}/reach/`, {}, {
+      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, {
         withCredentials: true,
         headers: {
-          `'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
         }
       });
       await loadRequests();
@@ -178,10 +176,10 @@ const InventoryRequestList = () => {
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      const response = await axios.post(``${API_BASE_URL}/api/inventory/requests/${id}/not_reach/`, {}, {
+      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, {
         withCredentials: true,
         headers: {
-          `'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
+          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
         }
       });
       await loadRequests();
@@ -205,8 +203,8 @@ const InventoryRequestList = () => {
     if (window.confirm(t('confirm_cancel_request'))) {
       setProcessingId(id);
       try {
-        const response = await axios.patch(``${API_BASE_URL}/api/inventory/requests/${id}/`, {
-          status: `'cancelled'
+        const response = await axios.patch(`http://localhost:8000/api/inventory/requests/${id}/`, {
+          status: 'cancelled'
         }, {
           withCredentials: true,
           headers: {
@@ -267,7 +265,7 @@ const InventoryRequestList = () => {
        console.log('Sending to backend:', requestData);
        
        await axios.post(
-         '`${API_BASE_URL}/api/inventory/requests/`',
+         'http://localhost:8000/api/inventory/requests/',
          requestData,
          {
            headers: { 'Content-Type': 'application/json' },

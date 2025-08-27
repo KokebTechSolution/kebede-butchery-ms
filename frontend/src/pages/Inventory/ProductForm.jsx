@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config/api';
-
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
@@ -64,7 +62,7 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(), // Use inventory categories for inventory form
-          axios.get('`${API_BASE_URL}/api/inventory/productunits/`', { withCredentials: true }),
+          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -224,7 +222,7 @@ const AddProductForm = () => {
       console.log('🔍 DEBUG: CSRF Token:', csrfToken);
 
       const productResponse = await axios.post(
-        '`${API_BASE_URL}/api/inventory/products/`',
+        'http://localhost:8000/api/inventory/products/',
         productData,
         {
           withCredentials: true,
@@ -329,7 +327,7 @@ const AddProductForm = () => {
       };
 
       const response = await axios.post(
-        '`${API_BASE_URL}/api/inventory/categories/`',
+        'http://localhost:8000/api/inventory/categories/',
         categoryData,
         {
           withCredentials: true,
@@ -385,7 +383,7 @@ const AddProductForm = () => {
 
   const reloadUnits = async () => {
     try {
-      const unitData = await axios.get('`${API_BASE_URL}/api/inventory/productunits/`', { withCredentials: true });
+      const unitData = await axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true });
       setUnits(unitData.data);
     } catch (error) {
       console.error('Error reloading units:', error);
@@ -410,7 +408,7 @@ const AddProductForm = () => {
       };
 
       const response = await axios.post(
-        '`${API_BASE_URL}/api/inventory/productunits/`',
+        'http://localhost:8000/api/inventory/productunits/',
         unitData,
         {
           withCredentials: true,
@@ -489,7 +487,7 @@ const AddProductForm = () => {
       };
 
       const response = await axios.post(
-        '`${API_BASE_URL}/api/inventory/itemtypes/`',
+        'http://localhost:8000/api/inventory/itemtypes/',
         itemTypeData,
         {
           withCredentials: true,

@@ -1,7 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS } from '../config/api';
 
 // Create the context
 const AuthContext = createContext();
@@ -22,8 +21,7 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
-
-      const res = await fetch(API_ENDPOINTS.me, {
+      const res = await fetch('http://localhost:8000/api/users/me/', {
         credentials: 'include', // important to send cookies
       });
       if (!res.ok) throw new Error('Not authenticated');
@@ -52,7 +50,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch(API_ENDPOINTS.logout, {
+      await fetch('http://localhost:8000/api/users/logout/', {
         method: 'POST',
         credentials: 'include',
       });

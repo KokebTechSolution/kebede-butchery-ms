@@ -1,24 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../../config/api';
-
-import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import AddProductsForm from './AddProductsForm';
-
-// Helper to get CSRF token from cookies
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let c of cookies) {
-      const cookie = c.trim();
-      if (cookie.startsWith(name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
 
 function ProductListPage() {
   const [productList, setProductList] = useState([]);
@@ -45,9 +27,7 @@ function ProductListPage() {
     // Use the correct inventory API endpoint
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('`${API_BASE_URL}/api/inventory/products/`', {
-          withCredentials: true,
-        });
+        const response = await axiosInstance.get('inventory/products/');
         console.log('[DEBUG] Products API response:', response.data);
         // Log the first product to see the structure
         if (response.data.length > 0) {
@@ -94,16 +74,9 @@ function ProductListPage() {
 
   const handleEditSubmit = async () => {
     try {
-      const response = await axios.patch(
-        ``${API_BASE_URL}/api/inventory/products/${editProduct.id}/`,
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            `'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
-          },
-        }
+      const response = await axiosInstance.patch(
+        `inventory/products/${editProduct.id}/`,
+        formData
       );
       setProductList(prev => prev.map(product => product.id === response.data.id ? response.data : product));
       setEditProduct(null);
@@ -120,12 +93,7 @@ function ProductListPage() {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(``${API_BASE_URL}/api/inventory/products/${deleteProductId}/`, {
-        withCredentials: true,
-        headers: {
-          `'X-CSRFToken': getCookie('csrftoken'),
-        },
-      });
+      await axiosInstance.delete(`inventory/products/${deleteProductId}/`);
       setProductList(prev => prev.filter(product => product.id !== deleteProductId));
       setDeleteProductId(null);
       setDeleteProductName('');
@@ -206,13 +174,11 @@ function ProductListPage() {
                       <button
                         onClick={async () => {
                           try {
-                            const response = await axios.get(``${API_BASE_URL}/api/inventory/products/${product.id}/debug_values/`, {
-                              withCredentials: true,
-                            });
+                            const response = await axiosInstance.get(`inventory/products/${product.id}/debug_values/`);
                             console.log(`[DEBUG] Product ${product.name} debug values:`, response.data);
                             alert(`Debug data logged to console for ${product.name}`);
                           } catch (err) {
-                            console.error(`'Debug request failed:', err);
+                            console.error('Debug request failed:', err);
                             alert('Debug request failed');
                           }
                         }}

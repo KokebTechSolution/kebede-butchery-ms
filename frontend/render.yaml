@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kebede-butchery-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+             - key: REACT_APP_API_BASE_URL
+         value: https://kebede-butchery-ms-2.onrender.com/api
+       - key: REACT_APP_BACKEND_URL
+         value: https://kebede-butchery-ms-2.onrender.com

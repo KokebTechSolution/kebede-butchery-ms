@@ -1,8 +1,7 @@
 import axios from 'axios';
 import axiosInstance from './axiosInstance';
 // Base URL for inventory API
-import { API_BASE_URL } from '../config/api';
-const BASE_URL = `${API_BASE_URL}/api/inventory/`;
+const BASE_URL = 'http://localhost:8000/api/inventory/';
 
 // Utility to read cookie by name (for CSRF token)
 function getCookie(name) {

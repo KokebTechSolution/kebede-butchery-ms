@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-import { API_BASE_URL } from '../config/api';
-const PRODUCTS_API_URL = `${API_BASE_URL}/api/products/products/`;
+const API_BASE_URL = 'http://localhost:8000/api/products/products/';
 
 // Helper to get CSRF token from cookie
 function getCSRFToken() {
@@ -74,7 +73,7 @@ export const deleteProduct = async (id) => {
 
 export const fetchItemTypes = async () => {
   try {
-    const response = await axios.get('`${API_BASE_URL}/api/products/item-types/`', axiosConfig());
+    const response = await axios.get('http://localhost:8000/api/products/item-types/', axiosConfig());
     return response.data;
   } catch (error) {
     console.error('Error fetching item types:', error);

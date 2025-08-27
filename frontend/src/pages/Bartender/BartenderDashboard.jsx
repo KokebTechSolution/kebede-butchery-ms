@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { API_BASE_URL } from '../../config/api';
-
 import { FaBeer, FaClipboardList, FaBoxes, FaChartBar, FaLock, FaBars } from "react-icons/fa";
 import { useNotifications } from "../../context/NotificationContext";
 import ClosedOrders from "./screens/Pending/ClosedOrders";
@@ -44,7 +42,7 @@ export default function BartenderDashboard() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await axios.get("`${API_BASE_URL}/api/inventory/requests/`", {
+        const res = await axios.get("http://localhost:8000/api/inventory/requests/", {
           withCredentials: true,  // send session cookies
         });
         setInventoryRequests(

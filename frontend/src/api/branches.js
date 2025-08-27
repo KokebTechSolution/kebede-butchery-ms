@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-import { API_BASE_URL } from '../config/api';
-const BRANCHES_API_URL = `${API_BASE_URL}/api/inventory/branches/`;
+const API_BASE_URL = 'http://localhost:8000/api/inventory/branches/';
 
 // ✅ Helper to get CSRF token from cookies
 const getCookie = (name) => {

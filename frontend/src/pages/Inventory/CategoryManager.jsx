@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config/api';
-
 import axios from 'axios';
 
 // CSRF token helper
@@ -38,8 +36,8 @@ const CategoryManager = ({ onClose, onSuccess }) => {
   const loadData = async () => {
     try {
       const [itemTypeRes, categoryRes] = await Promise.all([
-        axios.get('`${API_BASE_URL}/api/inventory/itemtypes/`', { withCredentials: true }),
-        axios.get('`${API_BASE_URL}/api/inventory/categories/`', { withCredentials: true }),
+        axios.get('http://localhost:8000/api/inventory/itemtypes/', { withCredentials: true }),
+        axios.get('http://localhost:8000/api/inventory/categories/', { withCredentials: true }),
       ]);
       setItemTypes(itemTypeRes.data);
       setCategories(categoryRes.data);
@@ -58,7 +56,7 @@ const CategoryManager = ({ onClose, onSuccess }) => {
     setIsSubmitting(true);
     try {
       const res = await axios.post(
-        '`${API_BASE_URL}/api/inventory/categories/`',
+        'http://localhost:8000/api/inventory/categories/',
         {
           category_name: newCategoryName.trim(),
           item_type_id: parseInt(selectedItemType),
@@ -94,7 +92,7 @@ const CategoryManager = ({ onClose, onSuccess }) => {
 
     try {
       const res = await axios.patch(
-        ``${API_BASE_URL}/api/inventory/categories/${category.id}/`,
+        `http://localhost:8000/api/inventory/categories/${category.id}/`,
         {
           category_name: editingCategory.category_name,
           description: editingCategory.description,
@@ -102,7 +100,7 @@ const CategoryManager = ({ onClose, onSuccess }) => {
           sort_order: editingCategory.sort_order
         },
         {
-          headers: { `'X-CSRFToken': csrfToken },
+          headers: { 'X-CSRFToken': csrfToken },
           withCredentials: true,
         }
       );
@@ -122,9 +120,9 @@ const CategoryManager = ({ onClose, onSuccess }) => {
     
     try {
       await axios.delete(
-        ``${API_BASE_URL}/api/inventory/categories/${categoryId}/`,
+        `http://localhost:8000/api/inventory/categories/${categoryId}/`,
         {
-          headers: { `'X-CSRFToken': csrfToken },
+          headers: { 'X-CSRFToken': csrfToken },
           withCredentials: true,
         }
       );
@@ -141,12 +139,12 @@ const CategoryManager = ({ onClose, onSuccess }) => {
   const toggleCategoryStatus = async (category) => {
     try {
       const res = await axios.patch(
-        ``${API_BASE_URL}/api/inventory/categories/${category.id}/`,
+        `http://localhost:8000/api/inventory/categories/${category.id}/`,
         {
           is_active: !category.is_active
         },
         {
-          headers: { `'X-CSRFToken': csrfToken },
+          headers: { 'X-CSRFToken': csrfToken },
           withCredentials: true,
         }
       );

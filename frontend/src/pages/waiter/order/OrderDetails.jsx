@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../../../config/api';
-
 import './OrderDetails.css'; // We will create this file next
 import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
@@ -200,8 +198,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
       console.log('Sending order to cashier...');
       
       // Update cashier status to 'printed' (sent to cashier)
-      const response = await fetch(``${API_BASE_URL}/api/orders/order-list/${currentOrder.id}/update-cashier-status/`, {
-        method: `'PATCH',
+      const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/update-cashier-status/`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cashier_status: 'printed' })
       });
@@ -333,8 +331,8 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
             onClick={async () => {
               try {
                 console.log('Force reset order status to pending');
-                const response = await fetch(``${API_BASE_URL}/api/orders/order-list/${currentOrder.id}/`, {
-                  method: `'PATCH',
+                const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/`, {
+                  method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ cashier_status: 'pending' })
                 });
