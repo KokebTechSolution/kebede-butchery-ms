@@ -113,6 +113,40 @@ def get_csrf(request):
     
     return response
 
+@csrf_exempt
+def simple_login(request):
+    """Simple login endpoint with explicit CORS handling"""
+    if request.method == 'OPTIONS':
+        response = JsonResponse({})
+        response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+        response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+        response['Access-Control-Max-Age'] = '3600'
+        return response
+    
+    if request.method == 'POST':
+        username = request.POST.get("username") or request.data.get("username")
+        password = request.POST.get("password") or request.data.get("password")
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user:
+            login(request, user)
+            response = JsonResponse(UserLoginSerializer(user).data)
+        else:
+            response = JsonResponse({"error": "Invalid credentials"}, status=401)
+    else:
+        response = JsonResponse({"error": "Method not allowed"}, status=405)
+    
+    # Add CORS headers to ALL responses
+    response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+    response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+    
+    return response
+
 
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
