@@ -80,7 +80,7 @@ JWT_SETTINGS = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # CORS must be first
+    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -171,48 +171,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = False  # Disable this to use specific origins
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend (development)
-    "https://kebede-butchery-ms-1.onrender.com",  # React frontend (production)
-]
-
-# Additional CORS headers
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-# CORS methods
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-# CORS preflight max age
-CORS_PREFLIGHT_MAX_AGE = 86400
-
-# Additional CORS settings
-CORS_EXPOSE_HEADERS = [
-    'Content-Type',
-    'X-CSRFToken',
-]
-
-# Ensure CORS headers are always sent
-CORS_ALLOW_PRIVATE_NETWORK = True
+# CORS is now handled by our custom middleware
+# All CORS settings are configured in custom_cors_middleware.py
 
 SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
