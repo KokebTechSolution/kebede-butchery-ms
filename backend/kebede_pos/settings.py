@@ -79,9 +79,9 @@ JWT_SETTINGS = {
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware FIRST
+    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware SECOND
     'django.middleware.security.SecurityMiddleware',
-    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware FIRST
-    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware as backup
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
