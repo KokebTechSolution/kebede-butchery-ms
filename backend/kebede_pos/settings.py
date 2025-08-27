@@ -171,34 +171,41 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
-SIMPLE_JWT = {
-    'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
-}
-
-CORS_ALLOW_CREDENTIALS = True
-"""
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.2', '192.168.1.3','192.168.1.8', '*']
-
-"""
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React frontend (development)
     "https://kebede-butchery-ms-1.onrender.com",  # React frontend (production)
 ]
 
+# Additional CORS headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+SIMPLE_JWT = {
+    'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
+}
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",  # Development
     "https://kebede-butchery-ms-1.onrender.com",  # Production
 ]
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # For local dev
+# Session and CSRF settings for production
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True  # For production with HTTPS
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'  # Or 'None' if cross-site
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Use True in production
-CSRF_COOKIE_SECURE = False 
+CSRF_COOKIE_SAMESITE = 'None'  # For cross-site requests
+CSRF_COOKIE_SECURE = True  # For production with HTTPS 
 
 """
 from pathlib import Path
