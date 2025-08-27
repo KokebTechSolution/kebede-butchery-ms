@@ -97,6 +97,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -171,7 +172,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Disable this to use specific origins
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React frontend (development)
@@ -204,6 +205,15 @@ CORS_ALLOW_METHODS = [
 # CORS preflight max age
 CORS_PREFLIGHT_MAX_AGE = 86400
 
+# Additional CORS settings
+CORS_EXPOSE_HEADERS = [
+    'Content-Type',
+    'X-CSRFToken',
+]
+
+# Ensure CORS headers are always sent
+CORS_ALLOW_PRIVATE_NETWORK = True
+
 SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'kebede_pos.views.MyTokenObtainPairSerializer',
 }
@@ -226,25 +236,8 @@ import os
 # BASE_DIR points to backend folder, e.g. D:/Kokeb/kebede-butchery-ms/backend
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# React build folder is frontend/build relative to project root
+# React build folder configuration
 REACT_BUILD_DIR = BASE_DIR.parent / "frontend" / "build"
-
-# Templates config to load React's index.html
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.fspath(REACT_BUILD_DIR)],  # <-- React build folder with index.html
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",    # needed for admin etc
-                "django.contrib.auth.context_processors.auth",  # needed for admin etc
-                "django.contrib.messages.context_processors.messages",
-            ],
-        },
-    },
-]
 
 # URL prefix for static files
 STATIC_URL = '/static/'
