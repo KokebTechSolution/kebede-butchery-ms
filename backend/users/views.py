@@ -73,12 +73,14 @@ class SessionLoginView(APIView):
 
     def options(self, request, *args, **kwargs):
         """Handle preflight OPTIONS requests"""
-        response = Response()
+        from django.http import HttpResponse
+        response = HttpResponse()
         response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
         response['Access-Control-Allow-Credentials'] = 'true'
         response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
         response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
         response['Access-Control-Max-Age'] = '3600'
+        response.status_code = 200
         return response
 
     def post(self, request):
