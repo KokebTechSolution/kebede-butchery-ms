@@ -3,6 +3,8 @@ Custom CORS Middleware - Bulletproof CORS solution
 This middleware ensures CORS headers are always sent correctly
 """
 
+from django.http import HttpResponse
+
 class CustomCorsMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -21,10 +23,15 @@ class CustomCorsMiddleware:
             print(f"[CORS DEBUG] OPTIONS response headers: {dict(response.items())}")
             return response
 
-        # Process the request
-        response = self.get_response(request)
+        try:
+            # Process the request
+            response = self.get_response(request)
+        except Exception as e:
+            print(f"[CORS DEBUG] Exception occurred: {e}")
+            # Create a basic response even if there's an error
+            response = HttpResponse("Internal Server Error", status=500)
 
-        # Add CORS headers to all responses
+        # Add CORS headers to ALL responses (including error responses)
         self.add_cors_headers(response, request)
         
         # Debug logging for response

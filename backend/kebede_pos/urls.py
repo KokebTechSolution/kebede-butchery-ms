@@ -10,7 +10,19 @@ from django.http import JsonResponse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+def cors_test_view(request):
+    """Test endpoint to verify CORS middleware is working"""
+    return JsonResponse({
+        'message': 'CORS test endpoint',
+        'method': request.method,
+        'origin': request.META.get('HTTP_ORIGIN', 'No Origin'),
+        'cors_working': True
+    })
+
 urlpatterns = [
+    # CORS Test Endpoint
+    path('cors-test/', cors_test_view, name='cors_test'),
+    
     # API Welcome Page
     path('', lambda request: JsonResponse({
         'message': 'Welcome to Kebede Butchery Management System API',
