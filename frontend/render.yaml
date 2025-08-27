@@ -2,7 +2,7 @@ services:
   - type: web
     name: kebede-butchery-frontend
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     staticPublishPath: ./build
     envVars:
              - key: REACT_APP_API_BASE_URL
