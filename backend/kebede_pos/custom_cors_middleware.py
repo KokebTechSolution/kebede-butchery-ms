@@ -9,13 +9,16 @@ class CustomCorsMiddleware:
 
     def __call__(self, request):
         # Debug logging
+        print(f"[CORS DEBUG] ===== CORS MIDDLEWARE ACTIVE =====")
         print(f"[CORS DEBUG] Request: {request.method} {request.path}")
         print(f"[CORS DEBUG] Origin: {request.META.get('HTTP_ORIGIN', 'No Origin')}")
+        print(f"[CORS DEBUG] User-Agent: {request.META.get('HTTP_USER_AGENT', 'No User-Agent')}")
         
         # Handle preflight OPTIONS requests
         if request.method == 'OPTIONS':
             print("[CORS DEBUG] Handling OPTIONS preflight request")
             response = self.create_cors_response()
+            print(f"[CORS DEBUG] OPTIONS response headers: {dict(response.items())}")
             return response
 
         # Process the request
@@ -27,6 +30,8 @@ class CustomCorsMiddleware:
         # Debug logging for response
         print(f"[CORS DEBUG] Response status: {response.status_code}")
         print(f"[CORS DEBUG] CORS Origin header: {response.get('Access-Control-Allow-Origin', 'NOT SET')}")
+        print(f"[CORS DEBUG] All CORS headers: {[(k, v) for k, v in response.items() if 'access-control' in k.lower()]}")
+        print(f"[CORS DEBUG] ===== END CORS MIDDLEWARE =====")
         
         return response
 
@@ -39,8 +44,11 @@ class CustomCorsMiddleware:
 
     def add_cors_headers(self, response, request):
         """Add CORS headers to the response"""
+        print(f"[CORS DEBUG] Adding CORS headers to response")
+        
         # Get the origin from the request
         origin = request.META.get('HTTP_ORIGIN', '') if request else ''
+        print(f"[CORS DEBUG] Request origin: '{origin}'")
         
         # Allow specific origins
         allowed_origins = [
@@ -51,9 +59,11 @@ class CustomCorsMiddleware:
         # Set the origin if it's allowed
         if origin in allowed_origins:
             response['Access-Control-Allow-Origin'] = origin
+            print(f"[CORS DEBUG] Set origin to: {origin}")
         else:
             # Default to production frontend
             response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+            print(f"[CORS DEBUG] Set default origin to: https://kebede-butchery-ms-1.onrender.com")
         
         # Allow credentials (cookies, authorization headers)
         response['Access-Control-Allow-Credentials'] = 'true'
@@ -74,3 +84,5 @@ class CustomCorsMiddleware:
         
         # Cache preflight for 1 hour
         response['Access-Control-Max-Age'] = '3600'
+        
+        print(f"[CORS DEBUG] CORS headers added successfully")
