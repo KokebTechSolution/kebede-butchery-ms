@@ -24,6 +24,17 @@ class OrderListView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        
+        # Add CORS headers directly
+        response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+        response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+        
+        return response
+
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
