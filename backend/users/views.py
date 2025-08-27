@@ -71,6 +71,16 @@ User = get_user_model()
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
 
+    def options(self, request, *args, **kwargs):
+        """Handle preflight OPTIONS requests"""
+        response = Response()
+        response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+        response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+        response['Access-Control-Max-Age'] = '3600'
+        return response
+
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
@@ -78,11 +88,28 @@ class SessionLoginView(APIView):
 
         if user:
             login(request, user)  # sets session
-            return Response(UserLoginSerializer(user).data)
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            response = Response(UserLoginSerializer(user).data)
+        else:
+            response = Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Add CORS headers to ALL responses
+        response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+        response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+        
+        return response
 @ensure_csrf_cookie
 def get_csrf(request):
-    return JsonResponse({"message": "CSRF cookie set"})
+    response = JsonResponse({"message": "CSRF cookie set"})
+    
+    # Add CORS headers
+    response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+    response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+    
+    return response
 
 
 class UserViewSet(ModelViewSet):
