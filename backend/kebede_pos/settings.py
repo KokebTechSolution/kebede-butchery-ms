@@ -80,8 +80,8 @@ JWT_SETTINGS = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware as fallback
-    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware
+    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware FIRST
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware as backup
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -93,6 +93,8 @@ MIDDLEWARE = [
 # CORS Configuration - Fallback approach
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_ALL_METHODS = True
 CORS_ALLOWED_ORIGINS = [
     "https://kebede-butchery-ms-1.onrender.com",
     "http://localhost:3000",
