@@ -158,6 +158,16 @@ class UserViewSet(ModelViewSet):
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def options(self, request, *args, **kwargs):
+        """Handle preflight OPTIONS requests"""
+        response = Response()
+        response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+        response['Access-Control-Allow-Credentials'] = 'true'
+        response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+        response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+        response['Access-Control-Max-Age'] = '3600'
+        return response
+
     def get(self, request):
         print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
         serializer = UserLoginSerializer(request.user)
