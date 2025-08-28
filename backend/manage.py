@@ -6,8 +6,8 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    # Use production settings on Render
-    if os.environ.get('RENDER'):
+    # Use production settings on Render or when explicitly set
+    if os.environ.get('RENDER') or os.environ.get('DJANGO_SETTINGS_MODULE') == 'kebede_pos.settings_prod':
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'kebede_pos.settings_prod')
     else:
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'kebede_pos.settings')

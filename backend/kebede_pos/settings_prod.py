@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'products',
     'orders',
     'inventory',
+    'django_extensions',
     'payments',
     'activity',
     'menu',
@@ -108,13 +109,21 @@ CHANNEL_LAYERS = {
 }
 
 # Database - Use Render PostgreSQL
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
+if os.environ.get('RENDER'):
+    # Production database configuration with SSL
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True,
+            options={
+                'sslmode': 'require',
+            }
+        )
     }
 else:
-    # Fallback for development
+    # Local development fallback
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -155,9 +164,9 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Include React build static files
-STATICFILES_DIRS = [
-    REACT_BUILD_DIR / 'static',  # React build static files
-]
+STATICFILES_DIRS = []
+if (REACT_BUILD_DIR / 'static').exists():
+    STATICFILES_DIRS.append(REACT_BUILD_DIR / 'static')
 
 # Static files storage with compression
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

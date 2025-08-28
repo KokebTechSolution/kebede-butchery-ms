@@ -22,6 +22,7 @@ cd backend
 pip install -r requirements.txt
 
 echo "📊 Collecting static files..."
+export DJANGO_SETTINGS_MODULE=kebede_pos.settings_prod
 python manage.py collectstatic --noinput
 
 echo "🎉 Build process complete!"
