@@ -6,7 +6,7 @@ echo "🚀 Starting build process..."
 # Install Node.js dependencies and build React
 echo "📦 Installing frontend dependencies..."
 cd frontend
-npm install
+npm install --legacy-peer-deps
 
 echo "🔨 Building React production bundle..."
 npm run build
