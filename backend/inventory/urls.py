@@ -1,7 +1,7 @@
 # inventory/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductViewSet, StockViewSet, InventoryRequestViewSet, BranchViewSet, BarmanStockViewSet, ItemTypeViewSet, CategoryViewSet, ProductUnitViewSet, ProductMeasurementViewSet, InventoryTransactionViewSet
+from .views import ProductViewSet, StockViewSet, InventoryRequestViewSet, BranchViewSet, BarmanStockViewSet, ItemTypeViewSet, CategoryViewSet, ProductUnitViewSet, ProductMeasurementViewSet, InventoryTransactionViewSet, reduce_bartender_inventory
 
 router = DefaultRouter()
 router.register(r'products', ProductViewSet)
@@ -18,5 +18,6 @@ router.register(r'transactions', InventoryTransactionViewSet, basename='transact
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('reduce-bartender-inventory/', reduce_bartender_inventory, name='reduce_bartender_inventory'),
 ]
 

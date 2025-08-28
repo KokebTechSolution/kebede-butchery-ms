@@ -5,7 +5,10 @@ class IsWaiter(BasePermission):
         return request.user.role == 'waiter'
 class IsManager(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role == 'manager'
+        print(f"[DEBUG] IsManager permission check - User: {request.user.username}, Role: {getattr(request.user, 'role', 'None')}, Authenticated: {request.user.is_authenticated}")
+        result = request.user.role == 'manager'
+        print(f"[DEBUG] IsManager permission result: {result}")
+        return result
 class IsBartender(BasePermission):
     def has_permission(self, request, view):
         return request.user.role == 'bartender'

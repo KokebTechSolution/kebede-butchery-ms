@@ -7,71 +7,33 @@ export default function WaiterEarnings({ filterDate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Note: This component now uses the new backend WaiterEarningsView endpoint
+  // which fetches real waiter earnings data for a specific date.
+
   useEffect(() => {
     const fetchWaiterEarnings = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all orders for the selected date (not just food)
-        const response = await axiosInstance.get(`orders/?date=${filterDate}`);
-        const orders = response.data;
+        // Use the new backend endpoint for waiter earnings
+        const response = await axiosInstance.get(`/orders/waiter-earnings/?date=${filterDate}`);
+        const data = response.data;
+        
+        console.log("Waiter earnings data from backend:", data); // Debug log
 
-        console.log("All orders data:", orders); // Debug log
+        if (data.waiter_earnings && data.waiter_earnings.length > 0) {
+          setWaiterEarnings(data.waiter_earnings);
+          console.log("Set waiter earnings:", data.waiter_earnings); // Debug log
+        } else {
+          // No waiter earnings data for this date
+          setWaiterEarnings([]);
+          console.log("No waiter earnings data found"); // Debug log
+        }
 
-        // Calculate waiter earnings from all paid orders
-        const earnings = {};
-        orders.forEach(order => {
-          // Check if order has payment (completed transaction)
-          if (order.has_payment || order.payment_status === 'completed' || order.status === 'completed') {
-            // Try different possible waiter field names
-            const waiterName = order.waiter_name || order.waiter || order.staff_name || order.cashier_name || 'Unknown Waiter';
-            
-            // Calculate order total from items or total_amount
-            let orderTotal = 0;
-            
-            if (order.total_amount) {
-              // If total_amount is available, use it
-              orderTotal = parseFloat(order.total_amount) || 0;
-            } else if (order.items && Array.isArray(order.items)) {
-              // Calculate from individual items
-              orderTotal = order.items
-                .filter(item => item.status === 'accepted' || item.status === 'completed' || item.status === 'served')
-                .reduce((sum, item) => {
-                  const price = parseFloat(item.price) || 0;
-                  const quantity = parseInt(item.quantity) || 0;
-                  return sum + (price * quantity);
-                }, 0);
-            }
-
-            if (orderTotal > 0) {
-              if (!earnings[waiterName]) {
-                earnings[waiterName] = {
-                  name: waiterName,
-                  totalEarnings: 0,
-                  ordersCount: 0,
-                  avgOrderValue: 0
-                };
-              }
-
-              earnings[waiterName].totalEarnings += orderTotal;
-              earnings[waiterName].ordersCount += 1;
-            }
-          }
-        });
-
-        console.log("Calculated waiter earnings:", earnings); // Debug log
-
-        // Calculate averages and sort by total earnings
-        const earningsArray = Object.values(earnings).map(waiter => ({
-          ...waiter,
-          avgOrderValue: waiter.ordersCount > 0 ? waiter.totalEarnings / waiter.ordersCount : 0
-        }));
-
-        earningsArray.sort((a, b) => b.totalEarnings - a.totalEarnings);
-        setWaiterEarnings(earningsArray);
       } catch (error) {
         console.error("Error fetching waiter earnings:", error);
         setError("Failed to load waiter data");
+        setWaiterEarnings([]);
       } finally {
         setLoading(false);
       }
@@ -107,13 +69,52 @@ export default function WaiterEarnings({ filterDate }) {
       <div className="text-center text-gray-500 py-4">
         <FaUserTie className="mx-auto text-3xl text-gray-300 mb-2" />
         <p className="text-sm">No waiter earnings for this date</p>
-        <p className="text-xs text-gray-400">Try selecting a different date</p>
+        <p className="text-xs text-gray-400">This could mean:</p>
+        <ul className="text-xs text-gray-400 mt-1 space-y-1">
+          <li>• No orders were completed on this date</li>
+          <li>• No orders have been printed/sent to cashier</li>
+          <li>• All orders are still pending</li>
+        </ul>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      {/* Header with Refresh Button */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-gray-700">Waiter Earnings</h3>
+        <button
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            const fetchWaiterEarnings = async () => {
+              try {
+                const response = await axiosInstance.get(`/orders/waiter-earnings/?date=${filterDate}`);
+                const data = response.data;
+                
+                if (data.waiter_earnings && data.waiter_earnings.length > 0) {
+                  setWaiterEarnings(data.waiter_earnings);
+                } else {
+                  setWaiterEarnings([]);
+                }
+              } catch (error) {
+                console.error("Error refreshing waiter earnings:", error);
+                setError("Failed to refresh waiter data");
+                setWaiterEarnings([]);
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchWaiterEarnings();
+          }}
+          className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition"
+          disabled={loading}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
       {/* Top Waiter */}
       {waiterEarnings.length > 0 && (
         <div className="text-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3">

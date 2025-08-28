@@ -3,10 +3,15 @@ import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
 import { fetchMenuItems } from '../../../api/menu'; // Updated import
+import { fetchBarmanStock } from '../../../api/inventory'; // Add this import
 import './MenuPage.css';
+import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'; // Added import for icons
 
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const [menuItems, setMenuItems] = useState([]);
+    const [barmanStock, setBarmanStock] = useState([]);
+    const [stockLoading, setStockLoading] = useState(false);
+    const [stockError, setStockError] = useState(null);
     const [activeTab, setActiveTab] = useState('food');
     const [isOrdering, setIsOrdering] = useState(false); // <-- add this
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
@@ -29,6 +34,39 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         loadMenuItems();
     }, []);
 
+    // Fetch barman stock for beverages
+    useEffect(() => {
+        const loadBarmanStock = async () => {
+            setStockLoading(true);
+            setStockError(null);
+            try {
+                const stock = await fetchBarmanStock();
+                setBarmanStock(stock);
+            } catch (error) {
+                console.error('❌ Error loading barman stock:', error);
+                setStockError('Failed to load stock information. Please try refreshing.');
+            } finally {
+                setStockLoading(false);
+            }
+        };
+        loadBarmanStock();
+    }, []);
+
+    // Helper function to refresh stock
+    const refreshStock = async () => {
+        setStockLoading(true);
+        setStockError(null);
+        try {
+            const stock = await fetchBarmanStock();
+            setBarmanStock(stock);
+        } catch (error) {
+            console.error('❌ Error refreshing barman stock:', error);
+            setStockError('Failed to refresh stock information. Please try again.');
+        } finally {
+            setStockLoading(false);
+        }
+    };
+
     if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
 
     // Group items by type and then by category
@@ -39,6 +77,56 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             grouped[item.category_name].push(item);
         });
         return grouped;
+    };
+
+    // Helper function to get stock status for a beverage item
+    const getStockStatus = (item) => {
+        if (item.item_type !== 'beverage') return null;
+        
+        console.log('🔍 Looking for stock for item:', item.name, 'item_type:', item.item_type, 'product_id:', item.product);
+        console.log('🔍 Available barman stock:', barmanStock);
+        
+        // First try to match by product ID if available
+        if (item.product) {
+            const stock = barmanStock.find(s => s.stock?.product?.id === item.product);
+            if (stock) {
+                console.log('🔍 Found stock by product ID for', item.name, ':', stock);
+                return stock;
+            }
+        }
+        
+        // Try to match by product name (case-insensitive, partial match)
+        const stock = barmanStock.find(s => {
+            const productName = s.stock?.product?.name;
+            const itemName = item.name;
+            
+            if (!productName || !itemName) return false;
+            
+            // Try exact match first
+            if (productName.toLowerCase() === itemName.toLowerCase()) {
+                return true;
+            }
+            
+            // Try partial match (e.g., "Black Level" might match "Black Level Beer")
+            if (productName.toLowerCase().includes(itemName.toLowerCase()) || 
+                itemName.toLowerCase().includes(productName.toLowerCase())) {
+                return true;
+            }
+            
+            // Try removing common words and matching
+            const cleanProductName = productName.toLowerCase().replace(/\b(beer|drink|beverage|soda|juice)\b/g, '').trim();
+            const cleanItemName = itemName.toLowerCase().replace(/\b(beer|drink|beverage|soda|juice)\b/g, '').trim();
+            
+            if (cleanProductName === cleanItemName) {
+                return true;
+            }
+            
+            console.log('🔍 Checking stock:', productName, 'vs item name:', itemName, 'no match');
+            return false;
+        });
+        
+        console.log('🔍 Found stock for', item.name, ':', stock);
+        return stock || null;
     };
 
     const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
@@ -90,12 +178,84 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                 )}
                 {activeTab === 'beverage' && (
                     <div className="menu-section">
+                        {/* Stock Status Summary */}
+                        <div className="stock-summary">
+                            <div>
+                                <h4 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>Beverage Stock Status</h4>
+                                {stockError ? (
+                                    <div className="stock-error">
+                                        <span>⚠️</span> {stockError}
+                                    </div>
+                                ) : null}
+                                {stockLoading && barmanStock.length === 0 ? (
+                                    <div style={{ color: '#64748b', fontSize: '14px' }}>
+                                        <span>⏳</span> Loading stock information...
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+                                        <span className="stock-count available">
+                                            <FaCheckCircle size={14} />
+                                            {beverageItems.filter(item => {
+                                                const stock = getStockStatus(item);
+                                                return stock && stock.quantity_in_base_units > 0;
+                                            }).length} Available
+                                        </span>
+                                        <span className="stock-count out-of-stock">
+                                            <FaTimesCircle size={14} />
+                                            {beverageItems.filter(item => {
+                                                const stock = getStockStatus(item);
+                                                return stock && stock.quantity_in_base_units <= 0;
+                                            }).length} Out of Stock
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <button
+                                    onClick={refreshStock}
+                                    disabled={stockLoading}
+                                    className="refresh-button"
+                                    style={{
+                                        background: stockLoading ? '#9ca3af' : '#3b82f6',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '8px 16px',
+                                        fontSize: '14px',
+                                        cursor: stockLoading ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                    onMouseOver={e => {
+                                        if (!stockLoading) {
+                                            e.currentTarget.style.background = '#2563eb';
+                                        }
+                                    }}
+                                    onMouseOut={e => {
+                                        e.currentTarget.style.background = stockLoading ? '#9ca3af' : '#3b82f6';
+                                    }}
+                                >
+                                    <span>{stockLoading ? '⏳' : '🔄'}</span>
+                                    {stockLoading ? 'Refreshing...' : 'Refresh Stock'}
+                                </button>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                    Stock status updates automatically from bartender inventory
+                                </div>
+                            </div>
+                        </div>
+                        
                         {Object.keys(beverageByCategory).map(category => (
                             <div key={category} className="menu-category-section">
                                 <h3>{category}</h3>
                                 <div className="menu-items-grid">
                                     {beverageByCategory[category].map(item => (
-                                        <MenuItem key={item.id} item={item} disabled={isPaid} />
+                                        <MenuItem 
+                                            key={item.id} 
+                                            item={item} 
+                                            stockStatus={getStockStatus(item)}
+                                            disabled={isPaid} 
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -108,16 +268,8 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                     <h3 style={{ marginBottom: 8 }}>🛒 Current Order</h3>
                     {(() => {
                         function mergeCartItems(items) {
-                            const merged = [];
-                            items.forEach(item => {
-                                const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-                                if (found) {
-                                    found.quantity += item.quantity;
-                                } else {
-                                    merged.push({ ...item });
-                                }
-                            });
-                            return merged;
+                            // Don't merge quantities - keep items separate for display
+                            return items;
                         }
                         const mergedCartItems = mergeCartItems(cartItems);
                         return mergedCartItems.length === 0 ? (

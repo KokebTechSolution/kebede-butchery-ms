@@ -1,13 +1,10 @@
 // src/pages/BranchManager/DashboardHome.jsx
 import React, { useState } from 'react';
 import SalesSummary from "../../components/ManagmentComponents/Dashboard/SalesSummary";
-import StockAlerts from "../../components/ManagmentComponents/Dashboard/StockAlerts";
 import StockLevels from "../../components/ManagmentComponents/Dashboard/StockLevels";
-import EmployeeActivity from "../../components/ManagmentComponents/Dashboard/EmployeeActivity";
-import StaffRequests from "../../components/ManagmentComponents/Dashboard/StaffRequests";
 import WaiterEarnings from "../../components/ManagmentComponents/Dashboard/WaiterEarnings";
 import TopSellingItems from "../../components/ManagmentComponents/Dashboard/TopSellingItems";
-import { FaCashRegister, FaBoxes, FaUsers, FaClipboardList, FaCalendarAlt, FaTrophy, FaUserTie } from "react-icons/fa";
+import { FaCashRegister, FaBoxes, FaCalendarAlt, FaTrophy, FaUserTie } from "react-icons/fa";
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardHome() {
@@ -55,31 +52,8 @@ export default function DashboardHome() {
           <TopSellingItems filterDate={filterDate} />
         </Card>
 
-        {/* Stock Alerts */}
-        <Card icon={<FaBoxes />} title={t('stock_alerts')} color="text-red-600">
-          <StockLevels />
-        </Card>
-
-        {/* Staff Activity */}
-        <Card icon={<FaUsers />} title={t('staff_activity')} color="text-purple-600">
-          <EmployeeActivity />
-        </Card>
-
-        {/* Stock Alerts */}
-        <Card icon={<FaBoxes />} title={t('stock_alerts')} color="text-orange-600">
-          <StockAlerts />
-        </Card>
-      </div>
-
-      {/* Full Width Components */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        {/* Staff Requests */}
-        <Card icon={<FaClipboardList />} title={t('pending_requests')} color="text-indigo-600" full>
-          <StaffRequests />
-        </Card>
-
-        {/* Enhanced Stock Overview */}
-        <Card icon={<FaBoxes />} title={t('inventory_overview')} color="text-teal-600" full>
+        {/* Stock Levels */}
+        <Card icon={<FaBoxes />} title={t('stock_levels')} color="text-red-600">
           <StockLevels />
         </Card>
       </div>

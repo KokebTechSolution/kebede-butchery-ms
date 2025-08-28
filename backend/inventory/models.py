@@ -14,29 +14,56 @@ from django.contrib import admin
 
 # --- Lookup Tables ---
 class ItemType(models.Model):
-    type_name = models.CharField(max_length=50, unique=True)
+    FOOD = 'food'
+    BEVERAGE = 'beverage'
+    
+    TYPE_CHOICES = [
+        (FOOD, 'Food'),
+        (BEVERAGE, 'Beverage'),
+    ]
+    
+    type_name = models.CharField(max_length=50, choices=TYPE_CHOICES, unique=True)
+    description = models.TextField(blank=True, null=True, help_text="Description of this item type")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         verbose_name = "Item Type"
         verbose_name_plural = "Item Types"
         ordering = ['type_name']
+    
     def __str__(self):
-        return self.type_name
+        return self.get_type_name_display()
+    
+    @property
+    def is_food(self):
+        return self.type_name == self.FOOD
+    
+    @property
+    def is_beverage(self):
+        return self.type_name == self.BEVERAGE
 
 class Category(models.Model):
     item_type = models.ForeignKey(ItemType, on_delete=models.CASCADE, related_name='categories')
     category_name = models.CharField(max_length=50)
     description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True, help_text="Is this category currently available?")
+    sort_order = models.PositiveIntegerField(default=0, help_text="Order for display purposes")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         verbose_name = "Product Category"
         verbose_name_plural = "Product Categories"
         unique_together = ('item_type', 'category_name')
-        ordering = ['item_type__type_name', 'category_name']
+        ordering = ['item_type__type_name', 'sort_order', 'category_name']
+    
     def __str__(self):
-        return f"{self.category_name} ({self.item_type.type_name})"
+        return f"{self.category_name} ({self.item_type.get_type_name_display()})"
+    
+    @property
+    def display_name(self):
+        return f"{self.category_name} ({self.item_type.get_type_name_display()})"
 
 class ProductUnit(models.Model):
     unit_name = models.CharField(max_length=50, unique=True, help_text="e.g., 'bottle', 'carton', 'liter', 'shot', 'ml', 'piece'")
@@ -56,6 +83,9 @@ class Product(models.Model):
     name = models.CharField(max_length=100, unique=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     description = models.TextField(blank=True, null=True)
+    
+    # 🔧 NEW: Essential fields from Add Product form
+    item_type = models.ForeignKey(ItemType, on_delete=models.SET_NULL, null=True, blank=True, related_name='products_by_type')
     base_unit = models.ForeignKey(
         ProductUnit,
         on_delete=models.PROTECT,
@@ -64,24 +94,73 @@ class Product(models.Model):
         null=True,
         blank=True
     )
+    input_unit = models.ForeignKey(
+        ProductUnit,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='products_as_input_unit',
+        help_text="The unit used when adding stock (e.g., 'carton', 'box')"
+    )
+    conversion_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=4, 
+        null=True, 
+        blank=True,
+        help_text="How many base units are in one input unit (e.g., 24 bottles per carton)"
+    )
     base_unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    volume_per_base_unit_ml = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                                help_text="For liquids: volume of one 'base_unit' in milliliters. E.g., 750 for a bottle of wine.")
-    receipt_image = models.ImageField(upload_to='product_receipts/', null=True, blank=True)
     is_active = models.BooleanField(default=True, help_text="Is this product currently available?")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Products"
         ordering = ['name']
+    
     def __str__(self):
         return self.name
+    
     def clean(self):
-        if self.base_unit and self.base_unit.is_liquid_unit and self.volume_per_base_unit_ml is None:
-            raise ValidationError(
-                {'volume_per_base_unit_ml': 'Volume per base unit (ml) is required for liquid products.'}
-            )
+        # 🔧 NEW: Validate conversion_amount if both units are set
+        if self.input_unit and self.base_unit and self.conversion_amount:
+            if self.conversion_amount <= 0:
+                raise ValidationError({'conversion_amount': 'Conversion amount must be positive.'})
+    
+    # 🔧 NEW: Method to get calculated base units from input quantity
+    def get_calculated_base_units(self, input_quantity):
+        """Calculate base units from input quantity using conversion_amount"""
+        if not self.conversion_amount or not input_quantity:
+            return None
+        try:
+            return (Decimal(str(input_quantity)) * self.conversion_amount).quantize(Decimal('0.01'))
+        except (InvalidOperation, TypeError):
+            return None
+    
+    # 🔧 NEW: Property to get base unit with number for display
+    @property
+    def base_unit_with_number(self):
+        """Returns base unit with a default number (1) for display purposes"""
+        if self.base_unit:
+            return f"1 {self.base_unit.unit_name}"
+        return "N/A"
+    
+    # 🔧 NEW: Property to get input unit with number for display
+    @property
+    def input_unit_with_number(self):
+        """Returns input unit with a default number (1) for display purposes"""
+        if self.input_unit:
+            return f"1 {self.input_unit.unit_name}"
+        return "N/A"
+    
+    # 🔧 NEW: Property to get calculated base unit with number for display
+    @property
+    def calculated_base_unit_with_number(self):
+        """Returns calculated base unit with number for display"""
+        if self.conversion_amount:
+            return f"{self.conversion_amount} {self.base_unit.unit_name if self.base_unit else 'units'}"
+        return "N/A"
     def get_conversion_factor(self, from_unit, to_unit):
         if from_unit == to_unit:
             return Decimal('1.0')
@@ -180,38 +259,48 @@ class Stock(models.Model):
         on_delete=models.CASCADE,
         related_name='product_stocks'
     )
-    quantity_in_base_units = models.DecimalField(
+    
+    # 🔧 NEW: Essential fields for display
+    input_quantity = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=Decimal("0.00"),
-        help_text="Total quantity in the product's base unit (e.g., total bottles, total liters)."
+        null=True,
+        blank=True,
+        help_text="The input quantity from the Add Product form (e.g., 10 cartons)"
     )
+    
+    calculated_base_units = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Calculated base units from input_quantity * conversion_amount"
+    )
+    
     minimum_threshold_base_units = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=Decimal("0.00"),
         help_text="Minimum stock level in base units before 'running_out' is flagged."
     )
-    running_out = models.BooleanField(
-        default=False,
-        help_text="True if stock is below the minimum threshold."
-    )
-    last_stock_update = models.DateTimeField(default=timezone.now)
-
-    original_quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal("0.00"),  # 🔧 Changed from null=True to default
-        help_text="Original quantity in its original unit (e.g. cartons)"
-    )
-    original_unit = models.ForeignKey(
-        'ProductUnit',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='stock_original_unit'
-    )
-
+    
+    # 🔧 NEW: Property to get input quantity with unit name
+    @property
+    def input_quantity_with_unit(self):
+        """Returns input quantity with unit name for display (e.g., '10 cartons')"""
+        if self.input_quantity and self.product and self.product.input_unit:
+            return f"{self.input_quantity} {self.product.input_unit.unit_name}"
+        return "N/A"
+    
+    # 🔧 NEW: Property to get calculated base units with unit name
+    @property
+    def calculated_base_units_with_unit(self):
+        """Returns calculated base units with unit name for display (e.g., '240 bottles')"""
+        calculated = self.calculated_base_units
+        if calculated and self.product and self.product.base_unit:
+            return f"{calculated} {self.product.base_unit.unit_name}"
+        return "N/A"
+    
     class Meta:
         verbose_name = "Main Store Stock"
         verbose_name_plural = "Main Store Stocks"
@@ -219,104 +308,82 @@ class Stock(models.Model):
         ordering = ['branch__name', 'product__name']
 
     def __str__(self):
-        return f"{self.product.name} @ {self.branch.name} ({self.quantity_in_base_units} {self.product.base_unit.unit_name})"
-
-    def clean(self):
-        if self.quantity_in_base_units < 0:
-            raise ValidationError({'quantity_in_base_units': 'Quantity cannot be negative.'})
-        if self.minimum_threshold_base_units < 0:
-            raise ValidationError({'minimum_threshold_base_units': 'Minimum threshold cannot be negative.'})
+        return f"{self.product.name} @ {self.branch.name}"
+    
     def adjust_quantity(self, quantity, unit, is_addition=True, original_quantity_delta=None):
         """
-        Adjust quantity_in_base_units and original_quantity by adding the delta values.
-
-        quantity: Decimal or numeric, amount in base units (positive number)
-        original_quantity_delta: Decimal or numeric, the change in original units (positive number)
-        is_addition: if False, quantities will be subtracted
+        Adjust the stock quantity - this method is called by the fallback logic
         """
+        print(f"[DEBUG] Stock.adjust_quantity() called - quantity: {quantity}, is_addition: {is_addition}, unit: {unit}, original_quantity_delta: {original_quantity_delta}")
+        print(f"[DEBUG] Before adjustment - input_quantity: {self.input_quantity}, calculated_base_units: {self.calculated_base_units}")
         
-        print(f"[DEBUG] Stock.adjust_quantity() called - quantity: {quantity}, is_addition: {is_addition}, original_quantity_delta: {original_quantity_delta}")
-
-        # Convert to Decimal and validate
-        try:
+        if not isinstance(quantity, Decimal):
             quantity = Decimal(str(quantity))
-        except (InvalidOperation, TypeError, ValueError):
-            raise ValidationError("Invalid base quantity. Must be a numeric value.")
-
-        if original_quantity_delta is None:
-            original_quantity_delta = Decimal("0.00")
-        else:
-            try:
-                original_quantity_delta = Decimal(str(original_quantity_delta))
-            except (InvalidOperation, TypeError, ValueError):
-                raise ValidationError("Invalid original quantity delta. Must be a numeric value.")
-
+        
         if not is_addition:
-            current_stock = Stock.objects.filter(id=self.id).values_list('quantity_in_base_units', flat=True).first()
-            if current_stock is None:
-                raise ValidationError("Stock record not found for adjustment.")
-            if current_stock < quantity:
-                raise ValidationError(
-                    f"Insufficient stock of {self.product.name} to remove {quantity} {self.product.base_unit.unit_name}. "
-                    f"Available: {current_stock} {self.product.base_unit.unit_name}"
-                )
-            quantity = -quantity
-            original_quantity_delta = -original_quantity_delta
-
-        # Ensure original_quantity is initialized
-        if self.original_quantity is None:
-            self.original_quantity = Decimal("0.00")
-
-        print(f"[DEBUG] Stock.adjust_quantity() - Before update - quantity_in_base_units: {self.quantity_in_base_units}, original_quantity: {self.original_quantity}")
-        print(f"[DEBUG] Stock.adjust_quantity() - Adding quantity: {quantity}, original_quantity_delta: {original_quantity_delta}")
-
-        # Update fields atomically
-        Stock.objects.filter(id=self.id).update(
-            quantity_in_base_units=F('quantity_in_base_units') + quantity,
-            original_quantity=F('original_quantity') + original_quantity_delta,
-            last_stock_update=timezone.now()
-        )
-
+            # For subtraction, check if we have enough stock
+            if self.calculated_base_units and self.calculated_base_units < quantity:
+                raise ValidationError(f"Insufficient stock of {self.product.name}. Available: {self.calculated_base_units} {self.product.base_unit.unit_name}, Required: {quantity} {self.product.base_unit.unit_name}")
+            
+            # Deduct from calculated_base_units
+            if self.calculated_base_units:
+                old_calculated = self.calculated_base_units
+                self.calculated_base_units = (self.calculated_base_units - quantity).quantize(Decimal('0.01'))
+                if self.calculated_base_units < 0:
+                    self.calculated_base_units = Decimal('0.00')
+                print(f"[DEBUG] Deducted {quantity} from calculated_base_units: {old_calculated} -> {self.calculated_base_units}")
+            else:
+                # If no calculated_base_units, set to 0
+                self.calculated_base_units = Decimal('0.00')
+                print(f"[DEBUG] Set calculated_base_units to 0.00")
+            
+            # Also deduct from input_quantity if original_quantity_delta is provided
+            if original_quantity_delta and self.input_quantity:
+                old_input = self.input_quantity
+                self.input_quantity = (self.input_quantity - original_quantity_delta).quantize(Decimal('0.01'))
+                if self.input_quantity < 0:
+                    self.input_quantity = Decimal('0.00')
+                print(f"[DEBUG] Deducted {original_quantity_delta} from input_quantity: {old_input} -> {self.input_quantity}")
+            elif original_quantity_delta:
+                # If no input_quantity but we have original_quantity_delta, set to 0
+                self.input_quantity = Decimal('0.00')
+                print(f"[DEBUG] Set input_quantity to 0.00")
+        else:
+            # For addition, add to both fields
+            if self.calculated_base_units:
+                old_calculated = self.calculated_base_units
+                self.calculated_base_units = (self.calculated_base_units + quantity).quantize(Decimal('0.01'))
+                print(f"[DEBUG] Added {quantity} to calculated_base_units: {old_calculated} -> {self.calculated_base_units}")
+            else:
+                self.calculated_base_units = quantity
+                print(f"[DEBUG] Set calculated_base_units to {quantity}")
+            
+            if original_quantity_delta and self.input_quantity:
+                old_input = self.input_quantity
+                self.input_quantity = (self.input_quantity + original_quantity_delta).quantize(Decimal('0.01'))
+                print(f"[DEBUG] Added {original_quantity_delta} to input_quantity: {old_input} -> {self.input_quantity}")
+            elif original_quantity_delta:
+                self.input_quantity = original_quantity_delta
+                print(f"[DEBUG] Set input_quantity to {original_quantity_delta}")
+        
+        print(f"[DEBUG] About to save stock with input_quantity: {self.input_quantity}, calculated_base_units: {self.calculated_base_units}")
+        
+        # Ensure we never save null values - convert to 0.00
+        if self.input_quantity is None:
+            self.input_quantity = Decimal('0.00')
+            print(f"[DEBUG] Converted null input_quantity to 0.00")
+        
+        if self.calculated_base_units is None:
+            self.calculated_base_units = Decimal('0.00')
+            print(f"[DEBUG] Converted null calculated_base_units to 0.00")
+        
+        self.save()
+        print(f"[DEBUG] Stock saved successfully")
+        print(f"[DEBUG] After save - input_quantity: {self.input_quantity}, calculated_base_units: {self.calculated_base_units}")
+        
+        # 🔧 NEW: Verify the values were actually saved to the database
         self.refresh_from_db()
-        print(f"[DEBUG] Stock.adjust_quantity() - After update - quantity_in_base_units: {self.quantity_in_base_units}, original_quantity: {self.original_quantity}")
-        self.update_running_out_status()
-
-    def update_running_out_status(self):
-        from django.db.models.expressions import CombinedExpression
-
-        if isinstance(self.quantity_in_base_units, (CombinedExpression, F)) or isinstance(self.minimum_threshold_base_units, (CombinedExpression, F)):
-            return
-
-        new_status = self.quantity_in_base_units <= self.minimum_threshold_base_units
-        if self.running_out != new_status:
-            Stock.objects.filter(id=self.id).update(running_out=new_status)
-            self.running_out = new_status
-
-    def save(self, *args, **kwargs):
-        do_clean = kwargs.pop('clean', True)
-        if do_clean:
-            self.full_clean()
-        is_new = self._state.adding
-        super().save(*args, **kwargs)
-        if is_new or (not kwargs.get('update_fields') or 'running_out' not in kwargs.get('update_fields', [])):
-            self.update_running_out_status()
-
-    @property
-    def original_quantity_display(self):
-        if not self.original_unit or not self.product:
-            return None
-        try:
-            # Use original_quantity directly instead of recalculating from quantity_in_base_units
-            if self.original_quantity > 0:
-                return {
-                    'full_units': int(self.original_quantity),
-                    'original_unit': self.original_unit.unit_name,
-                    'remainder': 0,
-                    'base_unit': self.product.base_unit.unit_name
-                }
-        except Exception:
-            pass
-        return None
+        print(f"[DEBUG] After refresh from database - input_quantity: {self.input_quantity}, calculated_base_units: {self.calculated_base_units}")
 
 class BarmanStock(models.Model):
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='barman_stocks')
@@ -334,7 +401,13 @@ class BarmanStock(models.Model):
         unique_together = (('stock', 'bartender'),)
         ordering = ['bartender__username', 'stock__product__name']
     def __str__(self):
-        return f"{self.bartender.username} — {self.stock.product.name} ({self.quantity_in_base_units} {self.stock.product.base_unit.unit_name})"
+        try:
+            bartender_name = self.bartender.username if self.bartender else "Unknown"
+            product_name = self.stock.product.name if self.stock and self.stock.product else "Unknown Product"
+            base_unit_name = self.stock.product.base_unit.unit_name if self.stock and self.stock.product and self.stock.product.base_unit else "units"
+            return f"{bartender_name} — {product_name} ({self.quantity_in_base_units} {base_unit_name})"
+        except Exception:
+            return f"BarmanStock {self.id}"
     def clean(self):
         if self.quantity_in_base_units < 0:
             raise ValidationError({'quantity_in_base_units': 'Quantity cannot be negative.'})
@@ -552,6 +625,14 @@ class InventoryTransaction(models.Model):
             self.quantity_in_base_units = -abs(self.quantity_in_base_units)
             if self.transaction_type == 'sale' and self.price_at_transaction is None:
                 raise ValidationError({'price_at_transaction': 'Sale price is required for sales transactions.'})
+            
+            print(f"[DEBUG] InventoryTransaction - Processing {self.transaction_type}: quantity_in_base_units={self.quantity_in_base_units}")
+            if self.from_stock_main:
+                print(f"[DEBUG] InventoryTransaction - Before deduction: calculated_base_units={self.from_stock_main.calculated_base_units}, input_quantity={self.from_stock_main.input_quantity}")
+                self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
+                print(f"[DEBUG] InventoryTransaction - After deduction: calculated_base_units={self.from_stock_main.calculated_base_units}, input_quantity={self.from_stock_main.input_quantity}")
+            elif self.from_stock_barman:
+                self.from_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
         elif self.transaction_type in ['restock', 'adjustment_in']:
             if not (self.to_stock_main or self.to_stock_barman):
                 raise ValidationError("For inbound transactions, a 'to' stock location must be specified.")
@@ -604,10 +685,10 @@ class InventoryTransaction(models.Model):
         
         if self.transaction_type in ['restock', 'adjustment_in']:
             if self.to_stock_main:
-                # Update the stock's original_unit to match the transaction unit for restock
-                if self.to_stock_main.original_unit != self.transaction_unit:
-                    self.to_stock_main.original_unit = self.transaction_unit
-                    self.to_stock_main.save(update_fields=['original_unit'])
+                # Update the stock's input_unit to match the transaction unit for restock
+                if self.to_stock_main.product.input_unit != self.transaction_unit:
+                    self.to_stock_main.product.input_unit = self.transaction_unit
+                    self.to_stock_main.product.save(update_fields=['input_unit'])
                 
                 self.to_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True, original_quantity_delta=original_quantity_delta)
             elif self.to_stock_barman:
@@ -619,7 +700,15 @@ class InventoryTransaction(models.Model):
                 self.from_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
         elif self.transaction_type == 'store_to_barman':
             if self.from_stock_main and self.to_stock_barman:
-                self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
+                # For store_to_barman, we need to update original_quantity in the source stock
+                # Calculate how many original units (boxes) are being transferred
+                try:
+                    conversion_factor = self.product.get_conversion_factor(self.transaction_unit, self.product.base_unit)
+                    original_quantity_delta = (self.quantity).quantize(Decimal('0.01'))
+                    self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False, original_quantity_delta=original_quantity_delta)
+                except ValueError:
+                    # If conversion fails, just update base units without original_quantity
+                    self.from_stock_main.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=False)
                 self.to_stock_barman.adjust_quantity(abs_quantity_in_base_units, base_unit_obj, is_addition=True)
         elif self.transaction_type == 'barman_to_store':
             if self.from_stock_barman and self.to_stock_main:
@@ -636,6 +725,9 @@ class InventoryRequest(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='requests')
     quantity = models.DecimalField(max_digits=10, decimal_places=2, help_text="Quantity requested in the specified 'request_unit'")
     request_unit = models.ForeignKey(ProductUnit, on_delete=models.PROTECT, related_name='requests_using_unit')
+    # 🔧 NEW: Store both input and base unit quantities
+    quantity_in_input_units = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Quantity in input units (e.g., cartons)")
+    quantity_in_base_units = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Quantity in base units (e.g., bottles)")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     reached_status = models.BooleanField(default=False)
     requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_inventory_requests')
@@ -653,6 +745,22 @@ class InventoryRequest(models.Model):
     def clean(self):
         if self.quantity <= 0:
             raise ValidationError({'quantity': 'Quantity must be positive.'})
+        
+        # Check if there's sufficient stock available for this request
+        if self.pk is None:  # Only check for new requests
+            try:
+                store_stock = Stock.objects.get(product=self.product, branch=self.branch)
+                
+                # Check if requested quantity exceeds available stock
+                if store_stock.input_quantity and store_stock.input_quantity < self.quantity:
+                    raise ValidationError({
+                        'quantity': f'Insufficient stock available. Requested: {self.quantity} {self.request_unit.unit_name}, Available: {store_stock.input_quantity} {self.request_unit.unit_name}'
+                    })
+            except Stock.DoesNotExist:
+                raise ValidationError({
+                    'product': f'No stock available for {self.product.name} at {self.branch.name}'
+                })
+    
     def save(self, *args, **kwargs):
         print(f"[DEBUG] InventoryRequest.save() called for id={self.pk}, status={self.status}")
         original_status = None
@@ -663,7 +771,13 @@ class InventoryRequest(models.Model):
         super().save(*args, **kwargs)
         
         # Prevent double execution by checking if we're already processing fulfillment
-        if original_status != 'fulfilled' and self.status == 'fulfilled' and not kwargs.get('_fulfilling', False):
+        if (original_status != 'fulfilled' and 
+            self.status == 'fulfilled' and 
+            not kwargs.get('_fulfilling', False) and
+            not hasattr(self, '_processing_fulfillment')):
+            
+            # Set flag to prevent recursive calls
+            self._processing_fulfillment = True
             print(f"[DEBUG] Entering transaction creation block for request id={self.pk}")
             try:
                 store_stock = Stock.objects.get(product=self.product, branch=self.branch)
@@ -671,16 +785,28 @@ class InventoryRequest(models.Model):
                 # Calculate quantity in base units
                 try:
                     conversion_factor = self.product.get_conversion_factor(self.request_unit, self.product.base_unit)
+                    print(f"[DEBUG] Conversion factor: {self.quantity} {self.request_unit.unit_name} × {conversion_factor} = {self.quantity * conversion_factor}")
                     quantity_in_base_units = (self.quantity * conversion_factor).quantize(Decimal('0.01'))
                     print(f"[DEBUG] Converting {self.quantity} {self.request_unit.unit_name} to {quantity_in_base_units} {self.product.base_unit.unit_name}")
                 except ValueError as e:
                     print(f"[ERROR] Conversion error: {e}")
                     # Fallback: assume 1:1 conversion
                     quantity_in_base_units = self.quantity
+                    print(f"[DEBUG] Using fallback conversion: {quantity_in_base_units}")
                 
-                # First, reduce main store stock using InventoryTransaction
-                if store_stock.quantity_in_base_units < quantity_in_base_units:
-                    raise ValueError(f"Insufficient stock in main store. Available: {store_stock.quantity_in_base_units}, Required: {quantity_in_base_units}")
+                # Check if there's sufficient stock before allowing fulfillment
+                # 🔧 FIXED: Use calculated_base_units instead of quantity_in_base_units
+                available_stock = store_stock.calculated_base_units or 0
+                if available_stock < quantity_in_base_units:
+                    error_msg = f"Insufficient stock in main store. Available: {available_stock} {self.product.base_unit.unit_name}, Required: {quantity_in_base_units} {self.product.base_unit.unit_name}"
+                    print(f"[ERROR] {error_msg}")
+                    raise ValueError(error_msg)
+                
+                # Also check input_quantity to prevent over-fulfillment
+                if store_stock.input_quantity and store_stock.input_quantity < self.quantity:
+                    error_msg = f"Insufficient stock in input units. Available: {store_stock.input_quantity} {self.request_unit.unit_name}, Required: {self.quantity} {self.request_unit.unit_name}"
+                    print(f"[ERROR] {error_msg}")
+                    raise ValueError(error_msg)
                 
                 # Use only unique fields for get_or_create
                 barman_stock, created = BarmanStock.objects.get_or_create(
@@ -696,8 +822,8 @@ class InventoryRequest(models.Model):
                 if barman_stock.branch != self.branch:
                     barman_stock.branch = self.branch
                 
-                # Create InventoryTransaction to handle the transfer properly
-                transaction = InventoryTransaction.objects.create(
+                # 🔧 FIXED: Create transaction without saving to avoid automatic stock adjustment
+                transaction = InventoryTransaction(
                     product=self.product,
                     transaction_type='store_to_barman',
                     quantity=self.quantity,
@@ -711,9 +837,39 @@ class InventoryRequest(models.Model):
                 # Set the quantity_in_base_units directly to avoid double calculation
                 transaction.quantity_in_base_units = quantity_in_base_units
                 transaction._skip_quantity_calculation = True
-                transaction.save(skip_stock_adjustment=False)  # Let it handle stock adjustments
+                # 🔧 FIXED: Don't save yet - save it only once later with proper stock adjustment
+                
+                # 🔧 FIXED: Only let the transaction handle stock updates - no manual updates
+                try:
+                    print(f"[DEBUG] Starting stock adjustment for request {self.pk}")
+                    print(f"[DEBUG] Before adjustment - input_quantity: {store_stock.input_quantity}, calculated_base_units: {store_stock.calculated_base_units}")
+                    print(f"[DEBUG] Request details - quantity: {self.quantity}, unit: {self.request_unit.unit_name}, base_units: {quantity_in_base_units}")
+                    
+                    # 🔧 FIXED: REMOVE direct barman stock update - let transaction handle ALL stock updates
+                    # barman_stock.adjust_quantity() - REMOVED to prevent double addition
+                    
+                    print(f"[DEBUG] Barman stock will be updated by transaction only")
+                    
+                    # 🔧 FIXED: Let the transaction handle ALL stock updates (both main store AND barman stock)
+                    # The transaction will call Stock.adjust_quantity() and BarmanStock.adjust_quantity() ONCE each
+                    transaction.save(skip_stock_adjustment=False)
+                    
+                    # Refresh to confirm changes
+                    store_stock.refresh_from_db()
+                    print(f"[DEBUG] After transaction update - input_quantity: {store_stock.input_quantity}, calculated_base_units: {store_stock.calculated_base_units}")
+                    
+                    print(f"[DEBUG] Stock adjustment completed for request id={self.pk}")
+                    print(f"[DEBUG] Final stock values - input_quantity: {store_stock.input_quantity}, calculated_base_units: {store_stock.calculated_base_units}")
+                    
+                except Exception as e:
+                    print(f"[ERROR] Stock adjustment failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Fallback to transaction-based adjustment
+                    transaction.save(skip_stock_adjustment=False)
                 
                 print(f"[DEBUG] InventoryTransaction created for request id={self.pk}")
+                print(f"[DEBUG] Stock will be automatically updated by InventoryTransaction")
                 self.responded_at = timezone.now()
                 # Use direct database update to avoid recursive save() call
                 InventoryRequest.objects.filter(pk=self.pk).update(responded_at=self.responded_at)

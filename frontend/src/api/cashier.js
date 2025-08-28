@@ -18,7 +18,7 @@ export const getPrintedOrders = async (date, start, end) => {
 export const updatePaymentOption = async (orderId, paymentOption) => {
     try {
         const response = await axiosInstance.patch(
-            `/orders/${orderId}/update-payment-option/`,
+            `/orders/order-list/${orderId}/update-payment-option/`,
             { payment_option: paymentOption }
         );
         return response.data;
@@ -30,7 +30,7 @@ export const updatePaymentOption = async (orderId, paymentOption) => {
 
 export const getOrderById = async (orderId) => {
     try {
-        const response = await axiosInstance.get(`/orders/${orderId}/`);
+        const response = await axiosInstance.get(`/orders/order-list/${orderId}/`);
         return response.data;
     } catch (error) {
         console.error('Failed to fetch order by ID:', error);

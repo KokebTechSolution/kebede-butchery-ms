@@ -3,6 +3,7 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from .models import Menu, MenuItem, MenuSection, MenuCategory
 from .serializers import (
     MenuSerializer,
@@ -17,6 +18,7 @@ from inventory.models import Stock
 class MenuViewSet(viewsets.ModelViewSet):
     queryset = Menu.objects.all()
     serializer_class = MenuSerializer
+    permission_classes = [AllowAny]
 
     @action(detail=True, methods=['get'])
     def available_items(self, request, pk=None):
@@ -63,6 +65,7 @@ class MenuViewSet(viewsets.ModelViewSet):
 class MenuItemViewSet(viewsets.ModelViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         # ✅ Ensures the product_id is saved properly
@@ -75,8 +78,10 @@ class MenuItemViewSet(viewsets.ModelViewSet):
 class MenuSectionViewSet(viewsets.ModelViewSet):
     queryset = MenuSection.objects.all()
     serializer_class = MenuSectionSerializer
+    permission_classes = [AllowAny]
 
 
 class MenuCategoryViewSet(viewsets.ModelViewSet):
     queryset = MenuCategory.objects.all()
     serializer_class = MenuCategorySerializer
+    permission_classes = [AllowAny]

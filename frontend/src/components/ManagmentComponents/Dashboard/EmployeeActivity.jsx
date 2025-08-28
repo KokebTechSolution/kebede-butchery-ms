@@ -8,8 +8,13 @@ export default function EmployeeActivity({ filterDate }) {
   const [totalStaff, setTotalStaff] = useState(0);
   const [ordersProcessed, setOrdersProcessed] = useState(0);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [roleBreakdown, setRoleBreakdown] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Note: This component shows total staff counts, breakdown by role, and recent activity
+  // It fetches user data from the backend and displays role-based statistics.
+  // For orders data, it uses the manager-orders endpoint to see all orders across the system.
 
   useEffect(() => {
     if (filterDate) {
@@ -21,15 +26,15 @@ export default function EmployeeActivity({ filterDate }) {
     setLoading(true);
     setError("");
     try {
-      // Fetch staff data
+      // Fetch staff data using the correct endpoint
       const staffResponse = await axiosInstance.get("users/users/");
       const staff = staffResponse.data;
       
       console.log("Staff data:", staff); // Debug log
       
-      // Fetch orders for the selected date
-      const ordersResponse = await axiosInstance.get(`orders/food/?date=${filterDate}`);
-      const orders = ordersResponse.data;
+      // Fetch orders for the selected date using the correct endpoint
+      const ordersResponse = await axiosInstance.get(`orders/manager-orders/?date=${filterDate}`);
+      const orders = ordersResponse.data.orders || []; // Extract orders from response
 
       console.log("Orders data:", orders); // Debug log
 
@@ -38,18 +43,25 @@ export default function EmployeeActivity({ filterDate }) {
       const inactiveStaffCount = staff.filter(user => !user.is_active).length;
       const totalStaffCount = staff.length;
       const processedOrders = orders.filter(order => 
-        order.has_payment && 
+        (order.has_payment || order.cashier_status === 'printed') && 
         order.items && 
         order.items.some(item => item.status === 'accepted' || item.status === 'completed')
       ).length;
 
+      // Calculate role breakdown
+      const roleCounts = {};
+      staff.forEach(user => {
+        const role = user.role || 'Unknown';
+        roleCounts[role] = (roleCounts[role] || 0) + 1;
+      });
+
       // Get recent activity (last 5 orders)
       const recentOrders = orders
-        .filter(order => order.has_payment)
+        .filter(order => order.has_payment || order.cashier_status === 'printed')
         .slice(0, 5)
         .map(order => ({
           id: order.id,
-          waiter: order.waiter_name || order.waiter || order.staff_name || 'Unknown',
+          waiter: order.waiterName || order.created_by?.username || 'Unknown',
           status: order.items && order.items.some(item => 
             item.status === 'accepted' || item.status === 'completed'
           ) ? 'Completed' : 'Pending',
@@ -64,16 +76,25 @@ export default function EmployeeActivity({ filterDate }) {
       setTotalStaff(totalStaffCount);
       setOrdersProcessed(processedOrders);
       setRecentActivity(recentOrders);
+      setRoleBreakdown(roleCounts);
       
       console.log("Calculated metrics:", {
         activeStaff: activeStaffCount,
         inactiveStaff: inactiveStaffCount,
         totalStaff: totalStaffCount,
-        processedOrders: processedOrders
+        processedOrders: processedOrders,
+        roleBreakdown: roleCounts
       }); // Debug log
     } catch (err) {
       console.error("Error fetching employee activity:", err);
       setError("Failed to load employee activity. Please try again.");
+      // Set default values on error
+      setActiveStaff(0);
+      setInactiveStaff(0);
+      setTotalStaff(0);
+      setOrdersProcessed(0);
+      setRecentActivity([]);
+      setRoleBreakdown({});
     } finally {
       setLoading(false);
     }
@@ -128,6 +149,21 @@ export default function EmployeeActivity({ filterDate }) {
         <p className="text-lg font-bold text-purple-600">{ordersProcessed}</p>
         <p className="text-xs text-purple-600">Orders Processed</p>
       </div>
+
+      {/* Role Breakdown */}
+      {Object.keys(roleBreakdown).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-500 text-center">Staff by Role</p>
+          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+            {Object.entries(roleBreakdown).map(([role, count]) => (
+              <div key={role} className="text-center bg-gray-50 rounded-lg p-2">
+                <p className="text-sm font-semibold text-gray-700">{count}</p>
+                <p className="text-xs text-gray-500 capitalize">{role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       {recentActivity.length > 0 && (

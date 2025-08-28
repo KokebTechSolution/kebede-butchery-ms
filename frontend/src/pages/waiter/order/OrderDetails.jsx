@@ -3,8 +3,9 @@ import './OrderDetails.css'; // We will create this file next
 import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
 import { updatePaymentOption, getOrderById } from '../../../api/cashier';
+import { reduceBartenderInventory } from '../../../api/inventory';
 
-const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
+const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose }) => {
   const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
   const [currentOrder, setCurrentOrder] = useState(null);
   const [printedOrders, setPrintedOrders] = useState(() => {
@@ -42,8 +43,17 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
   }, [selectedOrderId, orders, activeTableId, cartItems]); // Add cartItems to dependency array
 
   const getTotalPrice = (items) => {
-    return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
-    return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
+    // For pending orders, include all items (pending, accepted, rejected)
+    // For completed orders, only include accepted items
+    const isPendingOrder = items.some(item => item.status === 'pending');
+    
+    if (isPendingOrder) {
+      // Include all items for pending orders
+      return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    } else {
+      // Only include accepted items for completed orders
+      return items.filter(item => item.status === 'accepted').reduce((total, item) => total + (item.price * item.quantity), 0);
+    }
   };
 
   const handleDeleteOrder = () => {
@@ -61,20 +71,77 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
     }
   };
 
+  const handleResetPrintedStatus = () => {
+    // Clear this order from printed orders if it's incorrectly marked
+    setPrintedOrders(prev => prev.filter(id => id !== currentOrder.id));
+    console.log('Reset printed status for order:', currentOrder.id);
+  };
+
+  const handleClearAllPrintedOrders = () => {
+    // Clear all printed orders from localStorage
+    setPrintedOrders([]);
+    localStorage.removeItem('printedOrders');
+    console.log('Cleared all printed orders');
+  };
+
   const handlePaymentOptionChange = async (orderId, paymentOption) => {
+    console.log('Attempting to update payment option:', { orderId, paymentOption });
+    
+    // Check if order exists and is valid
+    if (!currentOrder || !currentOrder.id) {
+      alert('Cannot update payment option: Invalid order');
+      return;
+    }
+    
+    // Check if order is already printed
+    if (isPrinted) {
+      alert('Cannot update payment option: Order is already printed');
+      return;
+    }
+    
     try {
       // We need to refetch or update the order in the parent component's state
       // For now, let's just update the local state for immediate feedback
       const updatedOrder = await updatePaymentOption(orderId, paymentOption);
+      console.log('Payment option updated successfully:', updatedOrder);
       setCurrentOrder(updatedOrder);
     } catch (error) {
       console.error('Failed to update payment option:', error);
+      // Show user-friendly error message
+      alert(`Failed to update payment option: ${error.message || 'Unknown error'}`);
     }
   };
 
-  const isPrinted = currentOrder && printedOrders.includes(currentOrder.id);
-  // Only allow print if all items are accepted or rejected
-  const canPrint = currentOrder && currentOrder.items.length > 0 && currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected');
+  // Check if order is printed (sent to cashier)
+  const isPrinted = currentOrder?.cashier_status === 'printed';
+  
+  // Check if order is pending (default state)
+  const isPending = currentOrder?.cashier_status === 'pending';
+  
+  // Add debugging to understand the current state
+  console.log('Order Details Debug:', {
+    orderId: currentOrder?.id,
+    cashierStatus: currentOrder?.cashier_status,
+    isInPrintedOrders: currentOrder ? printedOrders.includes(currentOrder.id) : false,
+    isPrinted: isPrinted,
+    hasPaymentOption: currentOrder?.payment_option,
+    allItemsProcessed: currentOrder ? currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected') : false,
+    pendingItems: currentOrder ? currentOrder.items.filter(item => item.status === 'pending') : []
+  });
+  
+  // Debug order items to see their status
+  if (currentOrder && currentOrder.items) {
+    console.log('🔍 Order Items Debug:', currentOrder.items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      status: item.status,
+      item_type: item.item_type
+    })));
+  }
+  // Only allow print if payment method is selected AND all items are processed (accepted/rejected)
+  const canPrint = currentOrder?.payment_option && 
+    currentOrder.items.every(item => item.status === 'accepted' || item.status === 'rejected') &&
+    !isPrinted; // Can't print if already printed
 
   if (!currentOrder || currentOrder.items.length === 0) {
     return (
@@ -85,67 +152,223 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
     );
   }
 
-  // --- MERGE ITEMS FOR DISPLAY ---
-  function mergeDisplayItems(items) {
-    const merged = [];
-    items.forEach(item => {
-      const found = merged.find(i => i.name === item.name && i.price === item.price && (i.item_type || 'food') === (item.item_type || 'food'));
-      if (found) {
-        found.quantity += item.quantity;
-      } else {
-        merged.push({ ...item });
-      }
-    });
-    return merged;
-  }
-  const mergedItems = mergeDisplayItems(currentOrder.items);
+  // --- SHOW ITEMS SEPARATELY (NO MERGING) ---
+  // We want to show each item separately to preserve their individual statuses
+  // No merging - each item maintains its own quantity and status
+          // Group items by name, price, type, and status for display
+        const groupedItems = {};
+        currentOrder.items.forEach(item => {
+          const key = `${item.name}-${item.price}-${item.item_type || 'food'}-${item.status}`;
+          if (groupedItems[key]) {
+            groupedItems[key].quantity += item.quantity;
+          } else {
+            groupedItems[key] = { ...item };
+          }
+        });
+        const displayItems = Object.values(groupedItems);
   // --------------------------------
 
+  const handlePrint = async () => {
+    if (!canPrint) return;
+    
+    try {
+      console.log('Reducing bartender inventory for printed order...');
+      
+      // First, reduce bartender inventory for accepted items
+      try {
+        console.log('🔍 Calling reduceBartenderInventory for order:', currentOrder.id);
+        console.log('🔍 Order items:', currentOrder.items);
+        
+        const inventoryResponse = await reduceBartenderInventory(currentOrder.id);
+        console.log('✅ Bartender inventory reduced successfully:', inventoryResponse);
+        
+        if (inventoryResponse.errors && inventoryResponse.errors.length > 0) {
+          console.warn('⚠️ Some inventory reductions had issues:', inventoryResponse.errors);
+        }
+        
+        if (inventoryResponse.reduced_items && inventoryResponse.reduced_items.length > 0) {
+          console.log('📦 Items reduced:', inventoryResponse.reduced_items);
+        }
+      } catch (inventoryError) {
+        console.error('❌ Error reducing bartender inventory:', inventoryError);
+        console.error('❌ Error details:', inventoryError.response?.data || inventoryError.message);
+        // Continue with printing even if inventory reduction fails
+      }
+      
+      console.log('Sending order to cashier...');
+      
+      // Update cashier status to 'printed' (sent to cashier)
+      const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/update-cashier-status/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cashier_status: 'printed' })
+      });
+      
+      if (response.ok) {
+        console.log('Order sent to cashier successfully');
+        // Add to local printed orders
+        setPrintedOrders(prev => [...prev, currentOrder.id]);
+        
+        // Show success message briefly before reloading
+        alert('✅ Order printed successfully! The page will reload and navigate to the order list.');
+        
+        // Set flag to navigate to orders after reload
+        sessionStorage.setItem('orderPrinted', 'true');
+        
+        // Reload the window after a short delay to show the success message
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        
+        console.log('✅ Order printed successfully - page will reload');
+      } else {
+        console.error('Failed to send order to cashier');
+        alert('❌ Failed to print order. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending order to cashier:', error);
+      alert('❌ Error printing order. Please try again.');
+    }
+  };
+
   return (
-    <div className={`order-details-container${isPrinted ? ' order-printed' : ''}`}>
-      <div className="order-details-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+    <div className={`order-details-container${currentOrder?.cashier_status === 'printed' ? ' order-printed' : ''}`}>
+      <div className="order-details-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Close/Back Button */}
+        <button 
+          className="close-button"
+          onClick={onClose}
+          style={{
+            background: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            fontSize: '18px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold'
+          }}
+          title="Close Order Details"
+        >
+          ✕
+        </button>
+        
         <div className="icon-buttons">
           {/* Icons for edit, print, delete */}
           <span
             className="icon"
-            onClick={!isPrinted ? () => onEditOrder(currentOrder) : undefined}
-            style={{ color: isPrinted ? '#b0b0b0' : 'inherit', cursor: isPrinted ? 'not-allowed' : 'pointer' }}
+            onClick={currentOrder?.cashier_status !== 'printed' ? () => onEditOrder(currentOrder) : undefined}
+            style={{ color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer' }}
           >
             ✏️
           </span>
           <span
             className="icon"
-            onClick={!isPrinted && canPrint ? async () => {
-              if (currentOrder && !isPrinted && canPrint) {
-                if (!currentOrder.payment_option) {
-                  alert('Please select a payment method (Cash or Online) before printing.');
-                  return;
-                }
-                try {
-                  const response = await fetch(`http://localhost:8000/api/orders/${currentOrder.id}/update-cashier-status/`, {
-                    method: 'PATCH',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  });
-                  if (!response.ok) {
-                    throw new Error('Failed to update cashier status');
-                  }
-                  setPrintedOrders(prev => [...prev, currentOrder.id]);
-                  // Store the current page state before reload
-                  localStorage.setItem('waiterCurrentPage', 'orderDetails');
-                  // Force a refresh of the orders list without navigating away
-                  window.location.reload();
-                } catch (error) {
-                  console.error('Error updating cashier status:', error);
-                }
-              }
-            } : undefined}
-            style={{ color: (!isPrinted && !canPrint) ? '#b0b0b0' : isPrinted ? '#b0b0b0' : 'inherit', cursor: (!isPrinted && !canPrint) || isPrinted ? 'not-allowed' : 'pointer' }}
+            onClick={currentOrder?.cashier_status !== 'printed' && canPrint ? handlePrint : undefined}
+            style={{ color: (currentOrder?.cashier_status !== 'printed' && !canPrint) ? '#b0b0b0' : currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', cursor: (currentOrder?.cashier_status !== 'printed' && !canPrint) || currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer' }}
+            title={currentOrder?.cashier_status !== 'printed' && canPrint ? "Send to Cashier & Print" : 
+                   currentOrder?.cashier_status === 'printed' ? "Order already sent to cashier" : 
+                   !currentOrder.payment_option ? "Select payment method first" :
+                   "Wait for all items to be processed by kitchen/bar"}
           >
             🖨️
           </span>
           <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
+          {/* Debug button to reset printed status */}
+          {isPrinted && currentOrder && currentOrder.cashier_status !== 'printed' && (
+            <span 
+              className="icon" 
+              onClick={handleResetPrintedStatus}
+              style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '16px' }}
+              title="Reset printed status (debug)"
+            >
+              🔄
+            </span>
+          )}
+          {/* Debug button to clear all printed orders */}
+          <span 
+            className="icon" 
+            onClick={handleClearAllPrintedOrders}
+            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '14px' }}
+            title="Clear all printed orders (debug)"
+          >
+            🗑️
+          </span>
+          {/* Debug button to force reset printed status if order shouldn't be printed */}
+          {isPrinted && currentOrder && currentOrder.cashier_status !== 'printed' && (
+            <span 
+              className="icon" 
+              onClick={() => {
+                setPrintedOrders(prev => prev.filter(id => id !== currentOrder.id));
+                console.log('Force reset printed status for debugging');
+              }}
+              style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
+              title="Force reset printed status (debug)"
+            >
+              🔧
+            </span>
+          )}
+          {/* Force reset order status for debugging */}
+          <span 
+            className="icon" 
+            onClick={() => {
+              console.log('Force reset order status for debugging');
+              // Force refresh the order data
+              window.location.reload();
+            }}
+            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
+            title="Force refresh order (debug)"
+          >
+            ��
+          </span>
+          {/* Force reset order status to pending */}
+          <span 
+            className="icon" 
+            onClick={async () => {
+              try {
+                console.log('Force reset order status to pending');
+                const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ cashier_status: 'pending' })
+                });
+                if (response.ok) {
+                  console.log('Order status reset to pending');
+                  window.location.reload();
+                }
+              } catch (error) {
+                console.error('Failed to reset order status:', error);
+              }
+            }}
+            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
+            title="Reset order status to pending (debug)"
+          >
+            📝
+          </span>
+          
+          {/* Debug button to test inventory reduction manually */}
+          <span 
+            className="icon" 
+            onClick={async () => {
+              try {
+                console.log('🧪 Testing inventory reduction manually for order:', currentOrder.id);
+                const inventoryResponse = await reduceBartenderInventory(currentOrder.id);
+                console.log('🧪 Manual inventory reduction result:', inventoryResponse);
+                alert(`Inventory reduction test completed!\n\nReduced items: ${inventoryResponse.reduced_items?.length || 0}\nErrors: ${inventoryResponse.errors?.length || 0}`);
+              } catch (error) {
+                console.error('🧪 Manual inventory reduction failed:', error);
+                alert(`Inventory reduction test failed: ${error.message}`);
+              }
+            }}
+            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
+            title="Test inventory reduction manually (debug)"
+          >
+            🧪
+          </span>
         </div>
       </div>
 
@@ -153,61 +376,207 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted }) => {
         <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
         <div className="payment-options">
           {currentOrder.payment_option ? (
-            <p>
-              Payment Method: <strong>{currentOrder.payment_option.charAt(0).toUpperCase() + currentOrder.payment_option.slice(1)}</strong>
-            </p>
+            <div>
+              <span>Payment Method: </span>
+              <button 
+                className={`payment-button ${currentOrder.payment_option === 'cash' ? 'cash' : 'online'}`}
+                disabled={isPrinted} // Only disable when actually printed
+              >
+                {currentOrder.payment_option.charAt(0).toUpperCase() + currentOrder.payment_option.slice(1)}
+              </button>
+            </div>
           ) : (
             <div>
               <span>Select Payment Method: </span>
-              <button onClick={() => handlePaymentOptionChange(currentOrder.id, 'cash')} className="payment-button cash">Cash</button>
-              <button onClick={() => handlePaymentOptionChange(currentOrder.id, 'online')} className="payment-button online">Online</button>
+              <button 
+                onClick={() => handlePaymentOptionChange(currentOrder.id, 'cash')} 
+                className="payment-button cash"
+                disabled={isPrinted} // Only disable when actually printed
+              >
+                Cash
+              </button>
+              <button 
+                onClick={() => handlePaymentOptionChange(currentOrder.id, 'online')} 
+                className="payment-button online"
+                disabled={isPrinted} // Only disable when actually printed
+              >
+                Online
+              </button>
             </div>
+          )}
+          {currentOrder?.cashier_status === 'printed' && (
+            <p style={{ 
+              color: '#666', 
+              fontSize: '12px', 
+              marginTop: '8px', 
+              fontStyle: 'italic' 
+            }}>
+              Payment method cannot be changed after printing
+            </p>
+          )}
+          {/* Warning Messages */}
+          {!currentOrder.payment_option && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '10px', 
+              backgroundColor: '#fff3cd', 
+              border: '1px solid #ffc107', 
+              borderRadius: '5px',
+              textAlign: 'center'
+            }}>
+              ⚠️ Select a payment method to enable printing
+            </div>
+          )}
+          
+          {currentOrder.payment_option && !canPrint && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '10px', 
+              backgroundColor: '#fff3cd', 
+              border: '1px solid #ffc107', 
+              borderRadius: '5px',
+              textAlign: 'center'
+            }}>
+              ⚠️ Wait for meat man/bartender to accept/reject all items before printing
+            </div>
+          )}
+          
+          {isPrinted && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '10px', 
+              backgroundColor: '#d4edda', 
+              border: '1px solid #c3e6cb', 
+              borderRadius: '5px',
+              textAlign: 'center'
+            }}>
+              ✅ Order sent to cashier for payment processing
+            </div>
+          )}
+          {/* Order Status Indicator */}
+          <div className="order-status">
+            <span className={`status-indicator ${isPrinted ? 'printed' : isPending ? 'pending' : 'processing'}`}>
+              {isPrinted ? '✅ Sent to Cashier' : 
+               isPending ? '⏳ Processing Order' : 
+               '⏳ Processing Order'}
+            </span>
+            <div className="status-details">
+              <small>
+                Backend: {currentOrder?.cashier_status || 'undefined'} | 
+                Payment: {currentOrder?.payment_option || 'none'} | 
+                Items: {currentOrder?.items?.length || 0}
+              </small>
+            </div>
+          </div>
+        </div>
+
+        {/* Item Status Summary */}
+        <div style={{ 
+          marginTop: '15px', 
+          padding: '10px', 
+          backgroundColor: '#f8f9fa', 
+          border: '1px solid #dee2e6', 
+          borderRadius: '5px'
+        }}>
+          <strong>Item Status Summary:</strong>
+          <div style={{ marginTop: '8px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#ffc107' }}>
+              ⏳ Pending: {currentOrder.items.filter(item => item.status === 'pending').length}
+            </span>
+            <span style={{ color: '#28a745' }}>
+              ✅ Accepted: {currentOrder.items.filter(item => item.status === 'accepted').length}
+            </span>
+            <span style={{ color: '#dc3545' }}>
+              ❌ Rejected: {currentOrder.items.filter(item => item.status === 'rejected').length}
+            </span>
+          </div>
+          {currentOrder.items.some(item => item.status === 'pending') && (
+            <p style={{ 
+              color: '#856404', 
+              fontSize: '12px', 
+              marginTop: '8px', 
+              fontStyle: 'italic' 
+            }}>
+              📋 Waiting for meat man/bartender to process pending items...
+            </p>
           )}
         </div>
 
         <div className="order-items-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Table No.</th>
-                <th>Dish</th>
-                <th>Qty.</th>
-                <th>Amount</th>
-                <th>Created By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mergedItems.map((item, index) => (
-                <tr key={item.id || item.name + '-' + index}>
-                  <td>{currentOrder.table_number || 'N/A'}</td>
-                  <td>{item.name}</td>
-                  <td>{item.quantity}</td>
-                  <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
-                  <td>{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</td>
+          {/* Scrollable table indicator */}
+          {currentOrder.items.length > 5 && (
+            <div style={{ 
+              padding: '8px 12px', 
+              backgroundColor: '#e3f2fd', 
+              borderBottom: '1px solid #ddd',
+              fontSize: '12px',
+              color: '#1976d2',
+              textAlign: 'center',
+              position: 'sticky',
+              top: 0,
+              zIndex: 15
+            }}>
+              📋 Table is scrollable - Use scrollbar to see all {currentOrder.items.length} items
+            </div>
+          )}
+          <div style={{ overflow: 'auto', maxHeight: '350px' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Table No.</th>
+                  <th>Dish</th>
+                  <th>Qty.</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Created By</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayItems.map((item, index) => (
+                  <tr key={item.id || item.name + '-' + index}>
+                    <td>{currentOrder.table_number || 'N/A'}</td>
+                    <td>{item.name}</td>
+                    <td>{item.quantity}</td>
+                    <td>ETB {(item.price * item.quantity).toFixed(2)}</td>
+                    <td>
+                      <span className={`item-status ${item.status}`}>
+                        {item.status === 'pending' && '⏳ Pending'}
+                        {item.status === 'accepted' && '✅ Accepted'}
+                        {item.status === 'rejected' && '❌ Rejected'}
+                      </span>
+                      <span className="item-type-label">
+                        {item.item_type === 'food' && '🍽️ Food'}
+                        {item.item_type === 'beverage' && '🥤 Beverage'}
+                        {item.item_type === 'meat' && '🥩 Meat'}
+                      </span>
+                    </td>
+                    <td>{currentOrder.created_by || currentOrder.waiterName || 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* VAT Calculation */}
         {(() => {
-          const total = getTotalPrice(currentOrder.items);
-          const vat = total * 0.15;
-          const subtotal = total - vat;
+          // Always calculate subtotal from ALL items, not just accepted ones
+          const subtotal = displayItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+          const vat = subtotal * 0.15;
+          const total = subtotal + vat;
           return (
             <div className="order-total" style={{ textAlign: 'left', color: '#333', fontWeight: 'normal', padding: '16px 0 0 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontWeight: 600 }}>
-                <span>Subtotal&nbsp;&nbsp;-</span>
-                <span>&nbsp;&nbsp;{subtotal.toFixed(2)} ETB</span>
+                <span>Subtotal:</span>
+                <span>{subtotal.toFixed(2)} ETB</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span>VAT (15%)&nbsp;&nbsp;-</span>
-                <span>&nbsp;&nbsp;{vat.toFixed(2)} ETB</span>
+                <span>VAT (15%):</span>
+                <span>{vat.toFixed(2)} ETB</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700, fontSize: '1.5em' }}>
-                <span>Total&nbsp;&nbsp;-</span>
-                <span>&nbsp;&nbsp;{total.toFixed(2)} ETB</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700, fontSize: '1.5em', borderTop: '2px solid #ddd', paddingTop: '12px' }}>
+                <span>Total:</span>
+                <span>{total.toFixed(2)} ETB</span>
               </div>
             </div>
           );

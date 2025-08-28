@@ -11,6 +11,61 @@
   margin-bottom: 20px;
 }
 
+.close-button {
+  background: #dc3545 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3) !important;
+}
+
+.close-button:hover {
+  background: #c82333 !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4) !important;
+}
+
+.close-button:active {
+  transform: scale(0.95) !important;
+}
+
+/* Mobile responsive styles for close button */
+@media (max-width: 768px) {
+  .close-button {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 20px !important;
+    margin-right: 8px !important;
+  }
+  
+  .order-details-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .icon-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .icon-buttons .icon {
+    font-size: 20px;
+    margin-right: 8px;
+  }
+}
+
 .icon-buttons .icon {
   font-size: 24px;
   margin-right: 15px;
@@ -33,7 +88,7 @@
 }
 
 .order-summary {
-  background-color: #D3D3D3; /* Light gray from the image */
+  background-color: #D3D3D3;
   padding: 20px;
   border-radius: 8px;
 }
@@ -60,27 +115,157 @@
   color: #666;
 }
 
+/* Order Items Table Styles - FIXED SCROLLING */
+.order-items-table {
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+  /* Force scrollbar to always show */
+  scrollbar-gutter: stable;
+}
+
+/* Custom scrollbar styling */
+.order-items-table::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.order-items-table::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.order-items-table::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 8px;
+  border: 2px solid #f1f1f1;
+}
+
+.order-items-table::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Firefox scrollbar */
+.order-items-table {
+  scrollbar-width: auto;
+  scrollbar-color: #888 #f1f1f1;
+}
+
 .order-items-table table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  background: white;
+  margin: 0;
+  table-layout: fixed;
+}
+
+.order-items-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f8f9fa;
 }
 
 .order-items-table th,
 .order-items-table td {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+  padding: 12px 8px;
   text-align: left;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .order-items-table th {
-  background-color: #eee;
-  font-weight: bold;
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.order-items-table td {
+  font-size: 14px;
   color: #333;
 }
 
-.order-items-table tbody tr:last-child td {
-  border-bottom: none;
+/* Ensure the scrollable container works properly */
+.order-items-table > div {
+  border-radius: 8px;
+}
+
+/* Custom scrollbar for the inner scrollable div */
+.order-items-table > div::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.order-items-table > div::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.order-items-table > div::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+  border: 2px solid #f1f1f1;
+}
+
+.order-items-table > div::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Firefox scrollbar for the inner scrollable div */
+.order-items-table > div {
+  scrollbar-width: auto;
+  scrollbar-color: #888 #f1f1f1;
+}
+
+/* Remove the problematic display: block and table-layout that was breaking scrolling */
+.order-items-table tbody {
+  /* Remove display: block to allow proper table scrolling */
+}
+
+.order-items-table thead,
+.order-items-table tbody tr {
+  /* Remove display: table to allow proper table scrolling */
+  /* Remove table-layout: fixed to allow proper table scrolling */
+}
+
+/* Base order-printed styles */
+.order-printed {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Remove the order-printed opacity that was hiding items */
+.order-printed .order-items-table {
+  opacity: 1 !important;
+  pointer-events: auto;
+}
+
+.order-printed .order-items-table table {
+  opacity: 1 !important;
+}
+
+.order-printed .order-items-table th,
+.order-printed .order-items-table td {
+  opacity: 1 !important;
+}
+
+/* Status column specific styling */
+.order-items-table th:nth-child(5),
+.order-items-table td:nth-child(5) {
+  min-width: 120px;
+  max-width: 150px;
 }
 
 .order-note {
@@ -104,7 +289,7 @@
 .order-total .total {
   display: flex;
   justify-content: space-between;
-  width: 200px; /* Adjust as needed */
+  width: 200px;
   margin-bottom: 5px;
 }
 
@@ -112,11 +297,6 @@
   font-weight: bold;
   font-size: 1.4em;
   color: #333;
-}
-
-.order-printed {
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 .payment-options {
@@ -135,9 +315,175 @@
 }
 
 .payment-button.cash {
-  background-color: #4CAF50; /* Green */
+  background-color: #4CAF50;
 }
 
 .payment-button.online {
-  background-color: #008CBA; /* Blue */
+  background-color: #008CBA;
+}
+
+.payment-button:disabled {
+  background-color: #cccccc !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.payment-button.cash:disabled {
+  background-color: #cccccc !important;
+}
+
+.payment-button.online:disabled {
+  background-color: #cccccc !important;
+}
+
+/* Order Status Styles */
+.order-status {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.status-indicator {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.status-indicator.pending {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.status-indicator.processing {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.status-indicator.printed {
+  color: #2e7d32;
+  background-color: #e8f5e8;
+  border: 1px solid #4caf50;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.status-details {
+  font-size: 10px;
+  margin-top: 5px;
+  color: #666;
+  font-family: monospace;
+}
+
+/* Item Status Styles */
+.item-status {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 90px;
+  margin-bottom: 4px;
+}
+
+.item-status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.item-status.accepted {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.item-status.rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.item-type-label {
+  display: block;
+  color: #666;
+  font-size: 10px;
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* Responsive table styles */
+@media (max-width: 768px) {
+  .order-items-table {
+    overflow-x: auto;
+    max-height: 300px;
+  }
+  
+  .order-items-table table {
+    min-width: 600px;
+  }
+  
+  .order-items-table th,
+  .order-items-table td {
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+  
+  .item-status {
+    padding: 4px 8px;
+    font-size: 11px;
+    min-width: 80px;
+  }
+  
+  .item-type-label {
+    font-size: 9px;
+  }
+  
+  .order-items-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
+/* Ensure table columns have proper widths */
+.order-items-table th:nth-child(1),
+.order-items-table td:nth-child(1) {
+  min-width: 80px;
+}
+
+.order-items-table th:nth-child(2),
+.order-items-table td:nth-child(2) {
+  min-width: 120px;
+}
+
+.order-items-table th:nth-child(3),
+.order-items-table td:nth-child(3) {
+  min-width: 60px;
+  text-align: center;
+}
+
+.order-items-table th:nth-child(4),
+.order-items-table td:nth-child(4) {
+  min-width: 100px;
+  text-align: right;
+}
+
+.order-items-table th:nth-child(5),
+.order-items-table td:nth-child(5) {
+  min-width: 120px;
+  text-align: center;
+}
+
+.order-items-table th:nth-child(6),
+.order-items-table td:nth-child(6) {
+  min-width: 100px;
 } 

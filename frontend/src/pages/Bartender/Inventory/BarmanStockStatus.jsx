@@ -2,12 +2,21 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBox, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 
-const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
+const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId, userBranchId }) => {
   const { t } = useTranslation();
   
-  // Filter stocks by bartenderId and tab
+  // Filter stocks by branch (not bartender) and tab
+  // For requests, we need ALL stocks in the branch, not just those assigned to a specific bartender
+  console.log('BarmanStockStatus - stocks:', stocks);
+  console.log('BarmanStockStatus - userBranchId:', userBranchId);
+  
   const filteredStocks = stocks
-    .filter(stock => String(stock.bartender_id) === String(bartenderId))
+    .filter(stock => {
+      const stockBranchId = stock.branch_id || stock.branch?.id;
+      const matches = String(stockBranchId) === String(userBranchId);
+      console.log(`Stock ${stock.product_name}: branch_id=${stockBranchId}, userBranchId=${userBranchId}, matches=${matches}`);
+      return matches;
+    })
     .filter(stock => (tab === 'available' ? !stock.running_out : stock.running_out));
 
   return (
@@ -93,7 +102,7 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
                   <p className="font-semibold text-gray-900">{stock.quantity_in_base_units}</p>
                 </div>
                 <div className="bg-gray-50 rounded p-3">
-                  <p className="text-gray-500 text-xs mb-1">Input Units</p>
+                  <p className="text-gray-500 text-xs mb-1">Available in Cartons</p>
                   <p className="font-semibold text-gray-900">{stock.original_quantity_display || t('na')}</p>
                 </div>
                 <div className="bg-gray-50 rounded p-3">
@@ -123,7 +132,7 @@ const BarmanStockStatus = ({ stocks, tab, setTab, bartenderId }) => {
                   <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('product_name')}</th>
                   <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('branch')}</th>
                   <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('quantity_in_base_units')}</th>
-                  <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('quantity_with_input_unit')}</th>
+                  <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">Available in Cartons</th>
                   <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('minimum_threshold_base_units')}</th>
                   <th className="border px-4 py-3 text-left text-sm font-semibold text-gray-700">{t('status')}</th>
                 </tr>
