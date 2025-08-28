@@ -133,16 +133,17 @@ def create_user_emergency(request):
                     'message': f'User {username} already exists'
                 })
             
-            # Create user with raw SQL
+            # Create user with raw SQL including required phone field
             hashed_password = make_password(password)
+            phone = data.get('phone', '0912123557')  # Default phone if not provided
             cursor.execute("""
                 INSERT INTO users_user 
-                (username, password, first_name, last_name, email, 
+                (username, password, first_name, last_name, email, phone,
                  is_superuser, is_staff, is_active, date_joined)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, [
                 username, hashed_password, first_name, last_name,
-                f'{username}@kebede.com', False, False, True, timezone.now()
+                f'{username}@kebede.com', phone, False, False, True, timezone.now()
             ])
             
             # Get the created user ID
