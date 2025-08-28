@@ -273,22 +273,34 @@ class SessionLoginView(APIView):
                     print(f"[LOGIN DEBUG] Authentication result: {user}")
                 except Exception as auth_error:
                     print(f"[LOGIN DEBUG] Authentication failed with database error: {auth_error}")
-                    # If authentication fails due to database issues, try manual verification
+                    user = None
+                
+                # If Django authenticate failed or returned None, try manual verification
+                if not user:
+                    print(f"[LOGIN DEBUG] Django auth failed, trying manual verification...")
                     try:
                         from django.db import connection
                         from django.contrib.auth.hashers import check_password
                         
                         with connection.cursor() as cursor:
-                            cursor.execute("SELECT id, username, password, is_active FROM users_user WHERE username = %s", [username])
+                            cursor.execute("SELECT id, username, password, is_active, first_name, last_name FROM users_user WHERE username = %s", [username])
                             row = cursor.fetchone()
                             
                             if row and check_password(password, row[2]) and row[3]:  # id, username, password, is_active
-                                # Create minimal user object for login
-                                user = User(id=row[0], username=row[1], is_active=row[3])
+                                # Create user object with retrieved data
+                                user = User(
+                                    id=row[0], 
+                                    username=row[1], 
+                                    is_active=row[3],
+                                    first_name=row[4] or '',
+                                    last_name=row[5] or ''
+                                )
+                                # Set password field for Django's login function
+                                user.password = row[2]
                                 print(f"[LOGIN DEBUG] Manual authentication successful: {user}")
                             else:
                                 user = None
-                                print(f"[LOGIN DEBUG] Manual authentication failed")
+                                print(f"[LOGIN DEBUG] Manual authentication failed - user not found or inactive")
                     except Exception as manual_auth_error:
                         print(f"[LOGIN DEBUG] Manual authentication also failed: {manual_auth_error}")
                         user = None
