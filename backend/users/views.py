@@ -237,7 +237,7 @@ class UserViewSet(ModelViewSet):
         if user.role == 'owner':
             return User.objects.all()
         elif user.role == 'manager':
-            return User.objects.filter(branch_id=user.branch_id)
+            return User.objects.filter(branch=user.branch)
         return User.objects.none()
 
     def get_object(self):

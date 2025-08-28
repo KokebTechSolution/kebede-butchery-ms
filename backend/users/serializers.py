@@ -12,21 +12,35 @@ class UserLoginSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'first_name', 'last_name',
-            'phone_number', 'role', 'branch_id', 'branch_name'
+            'role', 'branch_id', 'branch_name'
         ]
+        
+    def to_representation(self, instance):
+        """Custom representation to handle missing fields gracefully"""
+        data = super().to_representation(instance)
+        
+        # Add phone_number field safely - it might not exist in older databases
+        try:
+            data['phone_number'] = getattr(instance, 'phone_number', None)
+        except AttributeError:
+            data['phone_number'] = None
+            
+        return data
 
 
 # ✅ User Create/Update Serializer (used by UserViewSet)
 class UserCreateUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
+    branch_id = serializers.IntegerField(source='branch.id', read_only=True, allow_null=True)
+    branch_name = serializers.CharField(source='branch.name', read_only=True, allow_null=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'first_name', 'last_name', 'phone_number',
-            'role', 'branch', 'is_active', 'password'
+            'role', 'branch', 'branch_id', 'branch_name', 'is_active', 'password'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'branch_id', 'branch_name']
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -48,13 +62,33 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
 # ✅ User List Serializer (read-only info for tables)
 class UserListSerializer(serializers.ModelSerializer):
+    branch_id = serializers.IntegerField(source='branch.id', read_only=True, allow_null=True)
+    branch_name = serializers.CharField(source='branch.name', read_only=True, allow_null=True)
+    
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'phone_number',
-            'role', 'branch', 'is_active', 'date_joined', 'updated_at'
+            'id', 'username', 'first_name', 'last_name',
+            'role', 'branch_id', 'branch_name', 'is_active', 'date_joined'
         ]
         read_only_fields = fields
+        
+    def to_representation(self, instance):
+        """Custom representation to handle missing fields gracefully"""
+        data = super().to_representation(instance)
+        
+        # Add optional fields safely
+        try:
+            data['phone_number'] = getattr(instance, 'phone_number', None)
+        except AttributeError:
+            data['phone_number'] = None
+            
+        try:
+            data['updated_at'] = getattr(instance, 'updated_at', None)
+        except AttributeError:
+            data['updated_at'] = None
+            
+        return data
 
 
 # ✅ Self Password Change Serializer (for logged-in users)

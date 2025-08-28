@@ -31,22 +31,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # CORS handling
     'rest_framework',
-    'corsheaders',
+    'rest_framework.authtoken',  # CRITICAL: Missing in production!
     'channels',
     'users',
     'products',
-    'menu',
     'orders',
     'inventory',
     'payments',
-    'reports',
     'branches',
     'activity',
+    'menu',
+    'reports',
+    'core',
     'api',
     'owner',
     'notifications',
-    'core',
 ]
 
 AUTH_USER_MODEL = 'users.User'
