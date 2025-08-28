@@ -105,6 +105,78 @@ def emergency_login_test(request):
     return response
 
 @csrf_exempt
+def create_user_emergency(request):
+    """Emergency user creation endpoint for production"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST allowed'}, status=405)
+        
+    print('[EMERGENCY CREATE] User creation request received')
+    
+    try:
+        import json
+        from django.db import connection
+        from django.contrib.auth.hashers import make_password
+        from django.utils import timezone
+        
+        data = json.loads(request.body.decode('utf-8'))
+        username = data.get('username', 'beki')
+        password = data.get('password', '12345678')
+        first_name = data.get('first_name', 'beki')
+        last_name = data.get('last_name', 'boss')
+        
+        with connection.cursor() as cursor:
+            # Check if user already exists
+            cursor.execute("SELECT COUNT(*) FROM users_user WHERE username = %s", [username])
+            if cursor.fetchone()[0] > 0:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'User {username} already exists'
+                })
+            
+            # Create user with raw SQL
+            hashed_password = make_password(password)
+            cursor.execute("""
+                INSERT INTO users_user 
+                (username, password, first_name, last_name, email, 
+                 is_superuser, is_staff, is_active, date_joined)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [
+                username, hashed_password, first_name, last_name,
+                f'{username}@kebede.com', False, False, True, timezone.now()
+            ])
+            
+            # Get the created user ID
+            cursor.execute("SELECT id FROM users_user WHERE username = %s", [username])
+            user_id = cursor.fetchone()[0]
+            
+            response_data = {
+                'status': 'success',
+                'message': f'User {username} created successfully',
+                'user_id': user_id,
+                'username': username,
+                'test_login_credentials': {
+                    'username': username,
+                    'password': password
+                }
+            }
+            
+    except Exception as e:
+        response_data = {
+            'status': 'error',
+            'message': f'Failed to create user: {str(e)}'
+        }
+    
+    response = JsonResponse(response_data)
+    
+    # Add CORS headers
+    response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+    response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+    
+    return response
+
+@csrf_exempt
 def session_logout(request):
     print("session_logout called, method:", request.method)
     if request.method == 'POST':

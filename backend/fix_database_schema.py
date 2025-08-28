@@ -89,6 +89,85 @@ def test_user_model():
         print(f"❌ User model test failed: {e}")
         return False
 
+def create_default_users():
+    """
+    Create default users for production
+    """
+    print("\n👤 Creating default users...")
+    
+    try:
+        from django.db import connection
+        from django.contrib.auth.hashers import make_password
+        from django.utils import timezone
+        
+        # Check if any users exist
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM users_user")
+            user_count = cursor.fetchone()[0]
+            
+            if user_count > 0:
+                print(f"✅ Users already exist ({user_count} users), skipping creation")
+                return True
+            
+            print("🔧 No users found, creating default users...")
+            
+            # Create default users
+            default_users = [
+                {
+                    'username': 'admin',
+                    'password': 'admin123',
+                    'first_name': 'Admin',
+                    'last_name': 'User',
+                    'email': 'admin@kebede.com',
+                    'is_superuser': True,
+                    'is_staff': True,
+                    'is_active': True,
+                },
+                {
+                    'username': 'beki',
+                    'password': '12345678',
+                    'first_name': 'beki',
+                    'last_name': 'boss',
+                    'email': 'beki@kebede.com',
+                    'is_superuser': False,
+                    'is_staff': False,
+                    'is_active': True,
+                }
+            ]
+            
+            for user_data in default_users:
+                hashed_password = make_password(user_data['password'])
+                
+                cursor.execute("""
+                    INSERT INTO users_user 
+                    (username, password, first_name, last_name, email, 
+                     is_superuser, is_staff, is_active, date_joined)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [
+                    user_data['username'],
+                    hashed_password,
+                    user_data['first_name'],
+                    user_data['last_name'],
+                    user_data['email'],
+                    user_data['is_superuser'],
+                    user_data['is_staff'],
+                    user_data['is_active'],
+                    timezone.now()
+                ])
+                
+                print(f"✅ Created user: {user_data['username']}")
+            
+            # Verify users were created
+            cursor.execute("SELECT COUNT(*) FROM users_user")
+            new_count = cursor.fetchone()[0]
+            print(f"✅ Total users in database: {new_count}")
+            
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error creating default users: {e}")
+        return False
+
 def main():
     print("🚀 Database Schema Fix for Production")
     print("=" * 50)
@@ -97,14 +176,19 @@ def main():
     
     if schema_fixed:
         model_works = test_user_model()
+        users_created = create_default_users()
         
-        if model_works:
-            print("\n🎉 Database schema fix completed successfully!")
+        if model_works and users_created:
+            print("\n🎉 Database setup completed successfully!")
             print("✅ All required columns are present")
-            print("✅ User model works correctly")
+            print("✅ User model works correctly") 
             print("✅ Serialization works correctly")
+            print("✅ Default users created")
+            print("\n📋 Default Users Created:")
+            print("   - admin/admin123 (superuser)")
+            print("   - beki/12345678 (regular user)")
         else:
-            print("\n⚠️  Schema fixed but model still has issues")
+            print("\n⚠️  Some setup steps failed")
     else:
         print("\n❌ Failed to fix database schema")
 
