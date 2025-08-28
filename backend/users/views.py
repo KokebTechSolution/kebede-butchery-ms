@@ -29,6 +29,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 @csrf_exempt
 def test_logout(request):
@@ -36,6 +37,72 @@ def test_logout(request):
     if request.method == 'POST':
         return JsonResponse({'ok': True})
     return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+@csrf_exempt
+def emergency_login_test(request):
+    """Emergency test endpoint that bypasses all ORM to test raw database access"""
+    print('[EMERGENCY TEST] Called with method:', request.method)
+    
+    response_data = {
+        'status': 'emergency_test_working',
+        'method': request.method,
+        'timestamp': str(timezone.now()),
+    }
+    
+    # Test database connection with raw SQL
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            # Test basic query
+            cursor.execute("SELECT COUNT(*) FROM users_user")
+            user_count = cursor.fetchone()[0]
+            response_data['database_connection'] = 'working'
+            response_data['user_count'] = user_count
+            
+            # Test user table structure
+            cursor.execute("PRAGMA table_info(users_user)")
+            columns = cursor.fetchall()
+            response_data['user_table_columns'] = [col[1] for col in columns]
+            
+            # Test authentication if POST with credentials
+            if request.method == 'POST':
+                try:
+                    import json
+                    data = json.loads(request.body.decode('utf-8'))
+                    username = data.get('username')
+                    password = data.get('password')
+                    
+                    if username and password:
+                        cursor.execute("SELECT id, username, password, is_active FROM users_user WHERE username = %s", [username])
+                        row = cursor.fetchone()
+                        
+                        if row:
+                            from django.contrib.auth.hashers import check_password
+                            if check_password(password, row[2]) and row[3]:
+                                response_data['emergency_auth'] = 'success'
+                                response_data['user_id'] = row[0]
+                            else:
+                                response_data['emergency_auth'] = 'invalid_credentials'
+                        else:
+                            response_data['emergency_auth'] = 'user_not_found'
+                    else:
+                        response_data['emergency_auth'] = 'missing_credentials'
+                        
+                except Exception as auth_error:
+                    response_data['emergency_auth'] = f'error: {str(auth_error)}'
+            
+    except Exception as db_error:
+        response_data['database_connection'] = f'error: {str(db_error)}'
+    
+    response = JsonResponse(response_data)
+    
+    # Add CORS headers
+    response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
+    response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
+    
+    return response
 
 @csrf_exempt
 def session_logout(request):
@@ -127,8 +194,30 @@ class SessionLoginView(APIView):
                 response = Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 print(f"[LOGIN DEBUG] Attempting authentication...")
-                user = authenticate(request, username=username, password=password)
-                print(f"[LOGIN DEBUG] Authentication result: {user}")
+                try:
+                    user = authenticate(request, username=username, password=password)
+                    print(f"[LOGIN DEBUG] Authentication result: {user}")
+                except Exception as auth_error:
+                    print(f"[LOGIN DEBUG] Authentication failed with database error: {auth_error}")
+                    # If authentication fails due to database issues, try manual verification
+                    try:
+                        from django.db import connection
+                        from django.contrib.auth.hashers import check_password
+                        
+                        with connection.cursor() as cursor:
+                            cursor.execute("SELECT id, username, password, is_active FROM users_user WHERE username = %s", [username])
+                            row = cursor.fetchone()
+                            
+                            if row and check_password(password, row[2]) and row[3]:  # id, username, password, is_active
+                                # Create minimal user object for login
+                                user = User(id=row[0], username=row[1], is_active=row[3])
+                                print(f"[LOGIN DEBUG] Manual authentication successful: {user}")
+                            else:
+                                user = None
+                                print(f"[LOGIN DEBUG] Manual authentication failed")
+                    except Exception as manual_auth_error:
+                        print(f"[LOGIN DEBUG] Manual authentication also failed: {manual_auth_error}")
+                        user = None
 
                 if user:
                     print(f"[LOGIN DEBUG] User authenticated, logging in...")

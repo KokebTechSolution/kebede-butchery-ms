@@ -52,6 +52,12 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'users.User'
 
+# Custom authentication backend to handle database schema mismatches
+AUTHENTICATION_BACKENDS = [
+    'users.authentication.SafeModelBackend',  # Our safe backend first
+    'django.contrib.auth.backends.ModelBackend',  # Fallback to default
+]
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware FIRST
     'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware SECOND

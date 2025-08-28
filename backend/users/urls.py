@@ -4,7 +4,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, SessionLoginView, CurrentUserView, get_csrf, test_logout, simple_login
 from .views import WaiterUnsettledTablesView
-from .views import session_logout
+from .views import session_logout, emergency_login_test
 
 # DRF router for CRUD operations
 
@@ -18,6 +18,7 @@ urlpatterns = [
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path("csrf/", get_csrf),
     path('test-logout/', test_logout),
+    path('emergency-test/', emergency_login_test, name='emergency-test'),
     path('', include(router.urls)),
     path('waiters/unsettled-tables/', WaiterUnsettledTablesView.as_view(), name='waiter-unsettled-tables'),
 ]
