@@ -11,7 +11,8 @@ class UserLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'role', 'branch_id', 'branch_name'
+            'id', 'username', 'first_name', 'last_name',
+            'role', 'branch_id', 'branch_name'
         ]
         
     def to_representation(self, instance):
@@ -20,9 +21,8 @@ class UserLoginSerializer(serializers.ModelSerializer):
         
         # Add phone_number field safely - it might not exist in older databases
         try:
-            phone_number = getattr(instance, 'phone_number', None)
-            data['phone_number'] = phone_number
-        except (AttributeError, Exception):
+            data['phone_number'] = getattr(instance, 'phone_number', None)
+        except AttributeError:
             data['phone_number'] = None
             
         return data
@@ -48,27 +48,53 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
         
         # Add phone_number field safely - it might not exist in older databases
         try:
-            phone_number = getattr(instance, 'phone_number', None)
-            data['phone_number'] = phone_number
-        except (AttributeError, Exception):
+            data['phone_number'] = getattr(instance, 'phone_number', None)
+        except AttributeError:
             data['phone_number'] = None
             
         return data
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        
+        # Handle phone_number safely - it might not exist in older database schemas
+        phone_number = validated_data.pop('phone_number', None)
+        
         user = User(**validated_data)
+        
+        # Set password if provided
         if password:
             user.set_password(password)
+            
+        # Set phone_number if the field exists on the model and value is provided
+        if phone_number and hasattr(user, 'phone_number'):
+            try:
+                user.phone_number = phone_number
+            except AttributeError:
+                pass  # Field doesn't exist in database, skip
+                
         user.save()
         return user
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        phone_number = validated_data.pop('phone_number', None)
+        
+        # Update regular fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+            
+        # Handle password update
         if password:
             instance.set_password(password)
+            
+        # Handle phone_number update safely
+        if phone_number is not None and hasattr(instance, 'phone_number'):
+            try:
+                instance.phone_number = phone_number
+            except AttributeError:
+                pass  # Field doesn't exist in database, skip
+                
         instance.save()
         return instance
 
@@ -92,15 +118,13 @@ class UserListSerializer(serializers.ModelSerializer):
         
         # Add optional fields safely
         try:
-            phone_number = getattr(instance, 'phone_number', None)
-            data['phone_number'] = phone_number
-        except (AttributeError, Exception):
+            data['phone_number'] = getattr(instance, 'phone_number', None)
+        except AttributeError:
             data['phone_number'] = None
             
         try:
-            updated_at = getattr(instance, 'updated_at', None)
-            data['updated_at'] = updated_at
-        except (AttributeError, Exception):
+            data['updated_at'] = getattr(instance, 'updated_at', None)
+        except AttributeError:
             data['updated_at'] = None
             
         return data
