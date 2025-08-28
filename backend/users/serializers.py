@@ -19,9 +19,14 @@ class UserLoginSerializer(serializers.ModelSerializer):
         """Custom representation to handle missing fields gracefully"""
         data = super().to_representation(instance)
         
-        # Add phone_number field safely - it might not exist in older databases
+        # Add phone_number field safely - handle both 'phone' and 'phone_number' column names
         try:
-            data['phone_number'] = getattr(instance, 'phone_number', None)
+            # Try phone_number first (preferred name)
+            phone = getattr(instance, 'phone_number', None)
+            if phone is None:
+                # Fallback to 'phone' column if phone_number doesn't exist
+                phone = getattr(instance, 'phone', None)
+            data['phone_number'] = phone
         except AttributeError:
             data['phone_number'] = None
             
@@ -46,9 +51,14 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
         """Custom representation to handle missing fields gracefully"""
         data = super().to_representation(instance)
         
-        # Add phone_number field safely - it might not exist in older databases
+        # Add phone_number field safely - handle both 'phone' and 'phone_number' column names
         try:
-            data['phone_number'] = getattr(instance, 'phone_number', None)
+            # Try phone_number first (preferred name)
+            phone = getattr(instance, 'phone_number', None)
+            if phone is None:
+                # Fallback to 'phone' column if phone_number doesn't exist
+                phone = getattr(instance, 'phone', None)
+            data['phone_number'] = phone
         except AttributeError:
             data['phone_number'] = None
             
