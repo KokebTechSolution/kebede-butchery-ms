@@ -11,8 +11,7 @@ class UserLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name',
-            'role', 'branch_id', 'branch_name'
+            'id', 'username', 'first_name', 'last_name', 'role', 'branch_id', 'branch_name'
         ]
         
     def to_representation(self, instance):
@@ -21,8 +20,9 @@ class UserLoginSerializer(serializers.ModelSerializer):
         
         # Add phone_number field safely - it might not exist in older databases
         try:
-            data['phone_number'] = getattr(instance, 'phone_number', None)
-        except AttributeError:
+            phone_number = getattr(instance, 'phone_number', None)
+            data['phone_number'] = phone_number
+        except (AttributeError, Exception):
             data['phone_number'] = None
             
         return data
@@ -37,10 +37,23 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'phone_number',
+            'id', 'username', 'first_name', 'last_name',
             'role', 'branch', 'branch_id', 'branch_name', 'is_active', 'password'
         ]
         read_only_fields = ['id', 'branch_id', 'branch_name']
+        
+    def to_representation(self, instance):
+        """Custom representation to handle missing fields gracefully"""
+        data = super().to_representation(instance)
+        
+        # Add phone_number field safely - it might not exist in older databases
+        try:
+            phone_number = getattr(instance, 'phone_number', None)
+            data['phone_number'] = phone_number
+        except (AttributeError, Exception):
+            data['phone_number'] = None
+            
+        return data
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -79,13 +92,15 @@ class UserListSerializer(serializers.ModelSerializer):
         
         # Add optional fields safely
         try:
-            data['phone_number'] = getattr(instance, 'phone_number', None)
-        except AttributeError:
+            phone_number = getattr(instance, 'phone_number', None)
+            data['phone_number'] = phone_number
+        except (AttributeError, Exception):
             data['phone_number'] = None
             
         try:
-            data['updated_at'] = getattr(instance, 'updated_at', None)
-        except AttributeError:
+            updated_at = getattr(instance, 'updated_at', None)
+            data['updated_at'] = updated_at
+        except (AttributeError, Exception):
             data['updated_at'] = None
             
         return data
