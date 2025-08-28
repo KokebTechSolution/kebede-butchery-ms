@@ -5,11 +5,14 @@ User = get_user_model()
 
 # ✅ Login Response Serializer (for session login)
 class UserLoginSerializer(serializers.ModelSerializer):
+    branch_id = serializers.IntegerField(source='branch.id', read_only=True, allow_null=True)
+    branch_name = serializers.CharField(source='branch.name', read_only=True, allow_null=True)
+    
     class Meta:
         model = User
         fields = [
             'id', 'username', 'first_name', 'last_name',
-            'phone_number', 'role', 'branch'
+            'phone_number', 'role', 'branch_id', 'branch_name'
         ]
 
 

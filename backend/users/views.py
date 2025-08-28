@@ -71,6 +71,10 @@ User = get_user_model()
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        """Health check endpoint"""
+        return Response({"status": "Login endpoint is working", "method": "GET"})
+
     def options(self, request, *args, **kwargs):
         """Handle preflight OPTIONS requests"""
         from django.http import HttpResponse
@@ -84,15 +88,26 @@ class SessionLoginView(APIView):
         return response
 
     def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-        user = authenticate(request, username=username, password=password)
+        try:
+            username = request.data.get("username")
+            password = request.data.get("password")
+            
+            if not username or not password:
+                response = Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                user = authenticate(request, username=username, password=password)
 
-        if user:
-            login(request, user)  # sets session
-            response = Response(UserLoginSerializer(user).data)
-        else:
-            response = Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+                if user:
+                    login(request, user)  # sets session
+                    serializer = UserLoginSerializer(user)
+                    response = Response(serializer.data)
+                else:
+                    response = Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        except Exception as e:
+            # Ensure we always return JSON, even on server errors
+            print(f"Login error: {str(e)}")
+            response = Response({"error": "Internal server error during login"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Add CORS headers to ALL responses
         response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
@@ -126,8 +141,20 @@ def simple_login(request):
         return response
     
     if request.method == 'POST':
-        username = request.POST.get("username") or request.data.get("username")
-        password = request.POST.get("password") or request.data.get("password")
+        import json
+        try:
+            # Try to parse JSON body
+            if request.content_type == 'application/json':
+                data = json.loads(request.body.decode('utf-8'))
+                username = data.get("username")
+                password = data.get("password")
+            else:
+                # Fallback to form data
+                username = request.POST.get("username")
+                password = request.POST.get("password")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            username = request.POST.get("username")
+            password = request.POST.get("password")
         
         user = authenticate(request, username=username, password=password)
         
