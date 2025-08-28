@@ -108,11 +108,23 @@ CHANNEL_LAYERS = {
 }
 
 # Database - Use Render PostgreSQL
-DATABASES = {
-    'default': dj_database_url.parse(
-        os.environ.get('DATABASE_URL', 'postgresql://localhost/kebede_pos_db')
-    )
-}
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
+    }
+else:
+    # Fallback for development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'kebede_pos_db',
+            'USER': 'kebede_user',
+            'PASSWORD': '1234',
+            'HOST': '127.0.0.1',
+            'PORT': '5433',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
