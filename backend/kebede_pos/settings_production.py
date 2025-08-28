@@ -52,7 +52,8 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware FIRST
+    'kebede_pos.custom_cors_middleware.CustomCorsMiddleware',  # Our custom CORS middleware SECOND
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # For static files
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -145,13 +146,54 @@ REST_FRAMEWORK = {
 
 # CORS settings for production
 CORS_ALLOWED_ORIGINS = [
-    "https://kebede-butchery-ms-frontend.vercel.app",  # Update with your actual Vercel URL
-    "https://kebede-butchery-ms.vercel.app",  # Alternative Vercel URL format
+    "https://kebede-butchery-ms-1.onrender.com",  # Your frontend Render URL
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Use specific origins for security
+CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_ALL_METHODS = True
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Additional CORS settings
+CORS_PREFLIGHT_MAX_AGE = 3600
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+
+# CSRF and Session settings for production
+CSRF_TRUSTED_ORIGINS = [
+    "https://kebede-butchery-ms-1.onrender.com",  # Frontend URL
+    "http://localhost:3000",  # Development
+]
+
+# Session and CSRF settings for production
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True  # For production with HTTPS
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'None'  # For cross-site requests
+CSRF_COOKIE_SECURE = True  # For production with HTTPS
 
 # Security settings for production
 SECURE_BROWSER_XSS_FILTER = True

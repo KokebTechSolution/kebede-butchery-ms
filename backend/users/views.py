@@ -219,7 +219,7 @@ class UserViewSet(ModelViewSet):
         return Response({"status": "Password reset successfully"})
 
 class CurrentUserView(APIView):
-    permission_classes = []  # Remove authentication requirement temporarily
+    permission_classes = [IsAuthenticated]  # Restore proper authentication
 
     def options(self, request, *args, **kwargs):
         """Handle preflight OPTIONS requests"""
@@ -234,22 +234,17 @@ class CurrentUserView(APIView):
     def get(self, request):
         print("CurrentUserView: session_key=", request.session.session_key, "user=", request.user, "is_authenticated=", request.user.is_authenticated)
         
-        # Check authentication manually
-        if not request.user.is_authenticated:
-            response = Response({'error': 'Not authenticated'}, status=401)
-        else:
-            serializer = UserLoginSerializer(request.user)
-            response = Response(serializer.data)
+        # With proper permission classes, this should only execute if authenticated
+        serializer = UserLoginSerializer(request.user)
+        response = Response(serializer.data)
         
-        # Add CORS headers directly to ALL responses (including 401)
+        # Add CORS headers to response
         response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'
         response['Access-Control-Allow-Credentials'] = 'true'
         response['Access-Control-Allow-Headers'] = 'accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with'
         response['Access-Control-Allow-Methods'] = 'DELETE, GET, OPTIONS, PATCH, POST, PUT'
         
         return response
-
-        return Response({'status': 'Password reset successfully'})
 
 
 class WaiterUnsettledTablesView(APIView):
