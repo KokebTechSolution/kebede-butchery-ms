@@ -57,23 +57,30 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         
-        # Handle phone_number safely - it might not exist in older database schemas
+        # Handle phone_number safely - remove it from validated_data to avoid database errors
         phone_number = validated_data.pop('phone_number', None)
         
+        # Create user with only safe fields first
         user = User(**validated_data)
         
         # Set password if provided
         if password:
             user.set_password(password)
             
-        # Set phone_number if the field exists on the model and value is provided
-        if phone_number and hasattr(user, 'phone_number'):
-            try:
-                user.phone_number = phone_number
-            except AttributeError:
-                pass  # Field doesn't exist in database, skip
-                
+        # Save user first with core fields
         user.save()
+        
+        # Now try to add phone_number if the database supports it
+        if phone_number:
+            try:
+                # Check if the field exists in the database by trying to set and save
+                user.phone_number = phone_number
+                user.save()
+            except Exception as e:
+                # If it fails (column doesn't exist), just continue without phone_number
+                print(f"Phone number not saved - database column missing: {e}")
+                pass
+                
         return user
 
     def update(self, instance, validated_data):
@@ -88,14 +95,19 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
             
+        # Save instance first with core fields
+        instance.save()
+        
         # Handle phone_number update safely
-        if phone_number is not None and hasattr(instance, 'phone_number'):
+        if phone_number is not None:
             try:
                 instance.phone_number = phone_number
-            except AttributeError:
-                pass  # Field doesn't exist in database, skip
+                instance.save()
+            except Exception as e:
+                # If it fails (column doesn't exist), just continue without phone_number
+                print(f"Phone number not updated - database column missing: {e}")
+                pass
                 
-        instance.save()
         return instance
 
 

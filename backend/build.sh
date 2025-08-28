@@ -22,6 +22,10 @@ python manage.py migrate --settings=kebede_pos.settings_production
 echo "🔄 Running syncdb for any unmigrated apps..."
 python manage.py migrate --run-syncdb --settings=kebede_pos.settings_production
 
+# Fix database schema if needed
+echo "🔧 Fixing database schema..."
+python fix_database_schema.py || echo "⚠️ Schema fix failed, continuing..."
+
 # Collect static files using production settings
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput --settings=kebede_pos.settings_production

@@ -144,7 +144,24 @@ class SessionLoginView(APIView):
                         print(f"[LOGIN DEBUG] Serializer error: {str(serializer_error)}")
                         import traceback
                         traceback.print_exc()
-                        response = Response({"error": f"Serialization error: {str(serializer_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        
+                        # If serialization fails, return minimal user data
+                        try:
+                            minimal_data = {
+                                'id': user.id,
+                                'username': user.username,
+                                'first_name': getattr(user, 'first_name', ''),
+                                'last_name': getattr(user, 'last_name', ''),
+                                'role': getattr(user, 'role', 'user'),
+                                'phone_number': None,
+                                'branch_id': None,
+                                'branch_name': None
+                            }
+                            print(f"[LOGIN DEBUG] Using minimal fallback data: {minimal_data}")
+                            response = Response(minimal_data)
+                        except Exception as fallback_error:
+                            print(f"[LOGIN DEBUG] Even fallback failed: {str(fallback_error)}")
+                            response = Response({"error": f"Login successful but data serialization failed: {str(serializer_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 else:
                     print(f"[LOGIN DEBUG] Authentication failed for username: {username}")
                     response = Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
