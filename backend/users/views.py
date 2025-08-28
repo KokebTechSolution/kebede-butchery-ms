@@ -209,6 +209,7 @@ def session_logout(request):
 User = get_user_model()
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SessionLoginView(APIView):
     permission_classes = [AllowAny]
 
