@@ -27,8 +27,8 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # React frontend catch-all route
-   #re_path(r'^(?:.*)/?$', index, name='index'),
+    # React frontend catch-all route (must be last!)
+    re_path(r'^(?:.*)/?$', index, name='index'),
 
     # Owner-specific endpoints
     path('api/owner/', include('owner.urls')),
