@@ -1,5 +1,6 @@
 # users/views.py
 
+import os
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -73,7 +74,26 @@ class SessionLoginView(APIView):
 
     def get(self, request):
         """Health check endpoint"""
-        return Response({"status": "Login endpoint is working", "method": "GET"})
+        try:
+            from users.models import User
+            user_count = User.objects.count()
+            
+            # Test serializer
+            from users.serializers import UserLoginSerializer
+            
+            return Response({
+                "status": "Login endpoint is working", 
+                "method": "GET",
+                "user_count": user_count,
+                "serializer_import": "success",
+                "django_settings": os.environ.get('DJANGO_SETTINGS_MODULE', 'not set')
+            })
+        except Exception as e:
+            return Response({
+                "status": "error in health check",
+                "error": str(e),
+                "error_type": str(type(e))
+            }, status=500)
 
     def options(self, request, *args, **kwargs):
         """Handle preflight OPTIONS requests"""
@@ -88,26 +108,54 @@ class SessionLoginView(APIView):
         return response
 
     def post(self, request):
+        print(f"[LOGIN DEBUG] Starting login request")
+        print(f"[LOGIN DEBUG] Request method: {request.method}")
+        print(f"[LOGIN DEBUG] Request content type: {request.content_type}")
+        print(f"[LOGIN DEBUG] Request headers: {dict(request.headers)}")
+        
         try:
+            # Log the request data
+            print(f"[LOGIN DEBUG] Raw request data: {request.data}")
+            
             username = request.data.get("username")
             password = request.data.get("password")
             
+            print(f"[LOGIN DEBUG] Extracted username: '{username}', password: {'[HIDDEN]' if password else 'None'}")
+            
             if not username or not password:
+                print(f"[LOGIN DEBUG] Missing credentials - username: {bool(username)}, password: {bool(password)}")
                 response = Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
             else:
+                print(f"[LOGIN DEBUG] Attempting authentication...")
                 user = authenticate(request, username=username, password=password)
+                print(f"[LOGIN DEBUG] Authentication result: {user}")
 
                 if user:
+                    print(f"[LOGIN DEBUG] User authenticated, logging in...")
                     login(request, user)  # sets session
-                    serializer = UserLoginSerializer(user)
-                    response = Response(serializer.data)
+                    print(f"[LOGIN DEBUG] Session created, serializing user data...")
+                    
+                    try:
+                        serializer = UserLoginSerializer(user)
+                        serializer_data = serializer.data
+                        print(f"[LOGIN DEBUG] Serialization successful: {serializer_data}")
+                        response = Response(serializer_data)
+                    except Exception as serializer_error:
+                        print(f"[LOGIN DEBUG] Serializer error: {str(serializer_error)}")
+                        import traceback
+                        traceback.print_exc()
+                        response = Response({"error": f"Serialization error: {str(serializer_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 else:
+                    print(f"[LOGIN DEBUG] Authentication failed for username: {username}")
                     response = Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         
         except Exception as e:
             # Ensure we always return JSON, even on server errors
-            print(f"Login error: {str(e)}")
-            response = Response({"error": "Internal server error during login"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(f"[LOGIN DEBUG] Exception occurred: {str(e)}")
+            print(f"[LOGIN DEBUG] Exception type: {type(e)}")
+            import traceback
+            traceback.print_exc()
+            response = Response({"error": f"Internal server error during login: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Add CORS headers to ALL responses
         response['Access-Control-Allow-Origin'] = 'https://kebede-butchery-ms-1.onrender.com'

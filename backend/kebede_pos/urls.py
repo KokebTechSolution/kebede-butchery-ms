@@ -6,7 +6,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from pathlib import Path
 import os
+import django
 from django.http import JsonResponse
+from django.utils import timezone
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -19,9 +21,32 @@ def cors_test_view(request):
         'cors_working': True
     })
 
+def health_check_view(request):
+    """Health check endpoint to verify API is working"""
+    try:
+        from users.models import User
+        user_count = User.objects.count()
+        
+        return JsonResponse({
+            'status': 'healthy',
+            'timestamp': str(timezone.now()),
+            'database': 'connected',
+            'users_count': user_count,
+            'django_version': django.get_version(),
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'timestamp': str(timezone.now()),
+        }, status=500)
+
 urlpatterns = [
     # CORS Test Endpoint
     path('cors-test/', cors_test_view, name='cors_test'),
+    
+    # Health Check Endpoint
+    path('health/', health_check_view, name='health_check'),
     
     # API Welcome Page
     path('', lambda request: JsonResponse({
