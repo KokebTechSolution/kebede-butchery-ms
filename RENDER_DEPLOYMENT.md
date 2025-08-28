@@ -33,7 +33,7 @@ chmod +x build.sh && ./build.sh
 
 ### Start Command:
 ```bash
-cd backend && python manage.py migrate && gunicorn kebede_pos.wsgi:application --bind 0.0.0.0:$PORT
+cd backend && python manage.py migrate --noinput && gunicorn kebede_pos.wsgi:application --bind 0.0.0.0:$PORT
 ```
 
 ## Step 4: Environment Variables
