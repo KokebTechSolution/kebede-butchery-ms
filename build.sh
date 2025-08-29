@@ -25,4 +25,7 @@ echo "📊 Collecting static files..."
 export DJANGO_SETTINGS_MODULE=kebede_pos.settings_prod
 python manage.py collectstatic --noinput
 
+echo "👥 Creating initial users..."
+python create_initial_users.py
+
 echo "🎉 Build process complete!"
