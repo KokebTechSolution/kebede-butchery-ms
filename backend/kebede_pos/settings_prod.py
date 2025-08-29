@@ -109,19 +109,11 @@ CHANNEL_LAYERS = {
 }
 
 # Database - Use Render PostgreSQL
-# Debug: Print environment info (remove after fixing)
-print(f"DEBUG: RENDER = {os.environ.get('RENDER')}")
-print(f"DEBUG: All env vars starting with 'DATABASE': {[k for k in os.environ.keys() if 'DATABASE' in k.upper()]}")
-
 if os.environ.get('RENDER'):
-    # Debug: Print DATABASE_URL (remove after fixing)
-    db_url = os.environ.get('DATABASE_URL')
-    print(f"DEBUG: DATABASE_URL = {db_url}")
-    
     # Production database configuration with SSL
     DATABASES = {
         'default': dj_database_url.config(
-            default=db_url,
+            default=os.environ.get('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
             ssl_require=True
