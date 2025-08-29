@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useTranslation } from 'react-i18next';
 import {
   fetchRequests,
@@ -74,9 +75,7 @@ const InventoryRequestList = () => {
 
   const loadProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/products/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/products/');
       setProducts(res.data);
     } catch (err) {
       console.error(t('error_loading_products'), err);
@@ -85,9 +84,7 @@ const InventoryRequestList = () => {
 
   const loadBranches = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/branches/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/branches/');
       setBranches(res.data);
     } catch (err) {
       console.error(t('error_loading_branches'), err);
@@ -96,9 +93,7 @@ const InventoryRequestList = () => {
 
   const loadUnits = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/productunits/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/productunits/');
       setUnits(res.data);
     } catch (err) {
       console.error('Error loading units:', err);
@@ -107,9 +102,7 @@ const InventoryRequestList = () => {
 
   const loadProductMeasurements = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/inventory/productmeasurements/', {
-        withCredentials: true,
-      });
+      const res = await axiosInstance.get('inventory/productmeasurements/');
       
       // Group measurements by product
       const measurementsByProduct = {};
@@ -157,12 +150,7 @@ const InventoryRequestList = () => {
   const handleReach = async (id) => {
     setProcessingId(id);
     try {
-      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/reach/`, {}, {
-        withCredentials: true,
-        headers: {
-          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
-        }
-      });
+      const response = await axiosInstance.post(`inventory/requests/${id}/reach/`, {});
       await loadRequests();
       setFormMessage(t('request_marked_as_reached'));
     } catch (err) {
@@ -176,12 +164,7 @@ const InventoryRequestList = () => {
   const handleNotReach = async (id) => {
     setProcessingId(id);
     try {
-      const response = await axios.post(`http://localhost:8000/api/inventory/requests/${id}/not_reach/`, {}, {
-        withCredentials: true,
-        headers: {
-          'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
-        }
-      });
+      const response = await axiosInstance.post(`inventory/requests/${id}/not_reach/`, {});
       await loadRequests();
       setFormMessage(t('request_marked_as_not_reached'));
     } catch (err) {
@@ -203,13 +186,8 @@ const InventoryRequestList = () => {
     if (window.confirm(t('confirm_cancel_request'))) {
       setProcessingId(id);
       try {
-        const response = await axios.patch(`http://localhost:8000/api/inventory/requests/${id}/`, {
+        const response = await axiosInstance.patch(`inventory/requests/${id}/`, {
           status: 'cancelled'
-        }, {
-          withCredentials: true,
-          headers: {
-            'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1],
-          }
         });
         await loadRequests();
         setFormMessage(t('request_cancelled'));
@@ -264,13 +242,9 @@ const InventoryRequestList = () => {
        };
        console.log('Sending to backend:', requestData);
        
-       await axios.post(
-         'http://localhost:8000/api/inventory/requests/',
-         requestData,
-         {
-           headers: { 'Content-Type': 'application/json' },
-           withCredentials: true,
-         }
+       await axiosInstance.post(
+         'inventory/requests/',
+         requestData
        );
 
       setFormMessage(t('request_submitted_successfully'));
