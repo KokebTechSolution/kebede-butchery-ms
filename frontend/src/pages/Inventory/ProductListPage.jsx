@@ -278,7 +278,7 @@ const ProductListPage = () => {
       }
       
       await axios.post(
-        `http://localhost:8000/api/inventory/stocks/${restockingStock.id}/restock/`,
+        `/api/inventory/stocks/${restockingStock.id}/restock/`,
         formData,
         {
           withCredentials: true,
@@ -312,9 +312,9 @@ const ProductListPage = () => {
   const handleDelete = async (productId, stockId) => {
     if (!window.confirm(t('confirm_delete_product'))) return;
     try {
-      await axios.delete(`http://localhost:8000/api/inventory/products/${productId}/`, { withCredentials: true });
+      await axios.delete(`/api/inventory/products/${productId}/`, { withCredentials: true });
       if (stockId) {
-        await axios.delete(`http://localhost:8000/api/inventory/stocks/${stockId}/`, { withCredentials: true });
+        await axios.delete(`/api/inventory/stocks/${stockId}/`, { withCredentials: true });
       }
       await loadData(); // Wait for data to load
       setLastRefresh(new Date()); // Update refresh timestamp
