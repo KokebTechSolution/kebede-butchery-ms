@@ -17,7 +17,8 @@ const LoginPage = () => {
     // Optionally, if setUser is available:
     // setUser && setUser(null);
     // Fetch CSRF cookie
-    fetch('http://localhost:8000/api/users/csrf/', {
+    const apiUrl = process.env.NODE_ENV === 'production' ? '/api/users/csrf/' : 'http://localhost:8000/api/users/csrf/';
+    fetch(apiUrl, {
       credentials: 'include',
     });
   }, []);
@@ -39,7 +40,8 @@ const LoginPage = () => {
     const csrfToken = getCSRFToken();
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/login/', {
+      const loginUrl = process.env.NODE_ENV === 'production' ? '/api/users/login/' : 'http://localhost:8000/api/users/login/';
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

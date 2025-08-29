@@ -21,7 +21,8 @@ export const AuthProvider = ({ children }) => {
   // Fetch the current logged-in user from the backend session
   const fetchSessionUser = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/me/', {
+      const meUrl = process.env.NODE_ENV === 'production' ? '/api/users/me/' : 'http://localhost:8000/api/users/me/';
+      const res = await fetch(meUrl, {
         credentials: 'include', // important to send cookies
       });
       if (!res.ok) throw new Error('Not authenticated');
@@ -50,7 +51,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8000/api/users/logout/', {
+      const logoutUrl = process.env.NODE_ENV === 'production' ? '/api/users/logout/' : 'http://localhost:8000/api/users/logout/';
+      await fetch(logoutUrl, {
         method: 'POST',
         credentials: 'include',
       });

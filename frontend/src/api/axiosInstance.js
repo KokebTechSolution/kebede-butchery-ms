@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // Helper to read CSRF token from cookie
 function getCookie(name) {
@@ -7,7 +8,7 @@ function getCookie(name) {
 }
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: API_BASE_URL,
   withCredentials: true, // IMPORTANT: send cookies on cross-origin requests
   headers: {
     'Content-Type': 'application/json',
