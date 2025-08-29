@@ -116,10 +116,7 @@ if os.environ.get('RENDER'):
             default=os.environ.get('DATABASE_URL'),
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=True,
-            options={
-                'sslmode': 'require',
-            }
+            ssl_require=True
         )
     }
 else:
