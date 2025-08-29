@@ -21,47 +21,90 @@ class Command(BaseCommand):
         if created:
             self.stdout.write(self.style.SUCCESS('✅ Created Main Branch'))
 
-        # Create superuser/owner
-        if not User.objects.filter(username='admin').exists():
-            admin_user = User.objects.create_superuser(
-                username='admin',
-                email='admin@kebedebutchery.com',
-                password='admin123',
-                role='owner',
-                branch=branch
-            )
-            self.stdout.write(self.style.SUCCESS('✅ Created admin user (username: admin, password: admin123)'))
-        else:
-            self.stdout.write(self.style.WARNING('Admin user already exists'))
+        # Create users for all roles
+        users_to_create = [
+            {
+                'username': 'admin',
+                'email': 'admin@kebedebutchery.com',
+                'password': 'admin123',
+                'role': 'owner',
+                'is_superuser': True,
+                'description': 'Owner/Admin'
+            },
+            {
+                'username': 'waiter1',
+                'email': 'waiter1@kebedebutchery.com',
+                'password': 'waiter123',
+                'role': 'waiter',
+                'is_superuser': False,
+                'description': 'Waiter'
+            },
+            {
+                'username': 'bartender1',
+                'email': 'bartender1@kebedebutchery.com',
+                'password': 'bartender123',
+                'role': 'bartender',
+                'is_superuser': False,
+                'description': 'Bartender'
+            },
+            {
+                'username': 'meat1',
+                'email': 'meat1@kebedebutchery.com',
+                'password': 'meat123',
+                'role': 'meat',
+                'is_superuser': False,
+                'description': 'Meat Counter'
+            },
+            {
+                'username': 'cashier1',
+                'email': 'cashier1@kebedebutchery.com',
+                'password': 'cashier123',
+                'role': 'cashier',
+                'is_superuser': False,
+                'description': 'Cashier'
+            },
+            {
+                'username': 'manager1',
+                'email': 'manager1@kebedebutchery.com',
+                'password': 'manager123',
+                'role': 'manager',
+                'is_superuser': False,
+                'description': 'Branch Manager'
+            }
+        ]
 
-        # Create test waiter
-        if not User.objects.filter(username='waiter1').exists():
-            waiter_user = User.objects.create_user(
-                username='waiter1',
-                email='waiter1@kebedebutchery.com',
-                password='waiter123',
-                role='waiter',
-                branch=branch
-            )
-            self.stdout.write(self.style.SUCCESS('✅ Created waiter1 user (username: waiter1, password: waiter123)'))
-        else:
-            self.stdout.write(self.style.WARNING('Waiter1 user already exists'))
-
-        # Create test manager
-        if not User.objects.filter(username='manager1').exists():
-            manager_user = User.objects.create_user(
-                username='manager1',
-                email='manager1@kebedebutchery.com',
-                password='manager123',
-                role='manager',
-                branch=branch
-            )
-            self.stdout.write(self.style.SUCCESS('✅ Created manager1 user (username: manager1, password: manager123)'))
-        else:
-            self.stdout.write(self.style.WARNING('Manager1 user already exists'))
+        # Create each user
+        for user_data in users_to_create:
+            if not User.objects.filter(username=user_data['username']).exists():
+                if user_data['is_superuser']:
+                    user = User.objects.create_superuser(
+                        username=user_data['username'],
+                        email=user_data['email'],
+                        password=user_data['password'],
+                        role=user_data['role'],
+                        branch=branch
+                    )
+                else:
+                    user = User.objects.create_user(
+                        username=user_data['username'],
+                        email=user_data['email'],
+                        password=user_data['password'],
+                        role=user_data['role'],
+                        branch=branch
+                    )
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'✅ Created {user_data["description"]} user (username: {user_data["username"]}, password: {user_data["password"]})'
+                    )
+                )
+            else:
+                self.stdout.write(self.style.WARNING(f'{user_data["description"]} user already exists'))
 
         self.stdout.write(self.style.SUCCESS('\n🎉 User creation process completed!'))
-        self.stdout.write(self.style.SUCCESS('You can now log in with:'))
-        self.stdout.write(self.style.SUCCESS('  - admin/admin123 (Owner)'))
+        self.stdout.write(self.style.SUCCESS('🔐 Test User Accounts Created:'))
+        self.stdout.write(self.style.SUCCESS('  - admin/admin123 (Owner/Admin)'))
         self.stdout.write(self.style.SUCCESS('  - waiter1/waiter123 (Waiter)'))
-        self.stdout.write(self.style.SUCCESS('  - manager1/manager123 (Manager)'))
+        self.stdout.write(self.style.SUCCESS('  - bartender1/bartender123 (Bartender)'))
+        self.stdout.write(self.style.SUCCESS('  - meat1/meat123 (Meat Counter)'))
+        self.stdout.write(self.style.SUCCESS('  - cashier1/cashier123 (Cashier)'))
+        self.stdout.write(self.style.SUCCESS('  - manager1/manager123 (Branch Manager)'))
