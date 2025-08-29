@@ -242,9 +242,13 @@ const InventoryRequestList = () => {
        };
        console.log('Sending to backend:', requestData);
        
-       await axiosInstance.post(
+       await axios.post(
          'inventory/requests/',
-         requestData
+         requestData,
+         {
+           headers: { 'Content-Type': 'application/json' },
+           withCredentials: true,
+         }
        );
 
       setFormMessage(t('request_submitted_successfully'));

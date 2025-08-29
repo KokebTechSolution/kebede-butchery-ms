@@ -111,7 +111,7 @@ const AnalyticsDashboard = () => {
   // Calculate Revenue Growth
   let revenueGrowth = 0;
   if (prevAnalyticsData && prevAnalyticsData.kpi && prevAnalyticsData.kpi.totalRevenue > 0) {
-    revenueGrowth = ((analyticsData.kpi.totalRevenue - prevAnalyticsData.kpi.totalRevenue) / prevAnalyticsData.kpi.totalRevenue) * 100;
+    revenueGrowth = ((analyticsData.kpi?.totalRevenue || 0) - prevAnalyticsData.kpi.totalRevenue) / prevAnalyticsData.kpi.totalRevenue) * 100;
   }
 
   return (
@@ -131,9 +131,9 @@ const AnalyticsDashboard = () => {
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <KpiCard title="Total Revenue" value={analyticsData.kpi.totalRevenue} isCurrency />
-          <KpiCard title="Cost of Inventory" value={analyticsData.kpi.costOfInventory} isCurrency />
-          <KpiCard title="Profit of Inventory" value={analyticsData.kpi.profitOfInventory} isCurrency isProfitLoss />
+          <KpiCard title="Total Revenue" value={analyticsData.kpi?.totalRevenue || 0} growth={revenueGrowth} isCurrency />
+          <KpiCard title="Cost of Inventory" value={analyticsData.kpi?.costOfInventory || 0} isCurrency />
+          <KpiCard title="Profit of Inventory" value={analyticsData.kpi?.profitOfInventory || 0} isCurrency isProfitLoss />
           {/* Net Profit replaced with Income from Food */}
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <p className="text-xs font-semibold text-gray-500 mb-1">INCOME FROM FOOD</p>
@@ -141,7 +141,7 @@ const AnalyticsDashboard = () => {
               ${analyticsData.kpi.foodIncome?.toLocaleString() ?? '0'}
             </p>
           </div>
-          <KpiCard title="Avg Order Value" value={analyticsData.kpi.avgOrderValue} isCurrency />
+          <KpiCard title="Avg Order Value" value={analyticsData.kpi?.avgOrderValue || 0} isCurrency />
         </div>
 
         {/* Charts Grid */}
