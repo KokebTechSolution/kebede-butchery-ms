@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 import { useAuth } from '../../context/AuthContext';
 import { fetchItemTypes, fetchCategories } from '../../api/inventory';
 
@@ -62,7 +63,7 @@ const AddProductForm = () => {
         const [itemTypeData, categoryData, unitRes] = await Promise.all([
           fetchItemTypes(),
           fetchCategories(), // Use inventory categories for inventory form
-          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
+          axiosInstance.get('inventory/productunits/'),
         ]);
         setItemTypes(itemTypeData);
         setCategories(categoryData);
@@ -221,16 +222,9 @@ const AddProductForm = () => {
       console.log('🔍 DEBUG: Product data being sent to API:', productData);
       console.log('🔍 DEBUG: CSRF Token:', csrfToken);
 
-      const productResponse = await axios.post(
-        'http://localhost:8000/api/inventory/products/',
-        productData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      const productResponse = await axiosInstance.post(
+        'inventory/products/',
+        productData
       );
 
       const createdProduct = productResponse.data;
@@ -326,16 +320,9 @@ const AddProductForm = () => {
         is_active: true,
       };
 
-      const response = await axios.post(
-        'http://localhost:8000/api/inventory/categories/',
-        categoryData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      const response = await axiosInstance.post(
+        'inventory/categories/',
+        categoryData
       );
 
       const createdCategory = response.data;
@@ -383,7 +370,7 @@ const AddProductForm = () => {
 
   const reloadUnits = async () => {
     try {
-      const unitData = await axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true });
+      const unitData = await axiosInstance.get('inventory/productunits/');
       setUnits(unitData.data);
     } catch (error) {
       console.error('Error reloading units:', error);
@@ -407,16 +394,9 @@ const AddProductForm = () => {
         is_active: true,
       };
 
-      const response = await axios.post(
-        'http://localhost:8000/api/inventory/productunits/',
-        unitData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      const response = await axiosInstance.post(
+        'inventory/productunits/',
+        unitData
       );
 
       const createdUnit = response.data;
@@ -486,16 +466,9 @@ const AddProductForm = () => {
         is_active: true,
       };
 
-      const response = await axios.post(
-        'http://localhost:8000/api/inventory/itemtypes/',
-        itemTypeData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-        }
+      const response = await axiosInstance.post(
+        'inventory/itemtypes/',
+        itemTypeData
       );
 
       const createdItemType = response.data;

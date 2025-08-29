@@ -4,6 +4,7 @@ import { useCart } from '../../../context/CartContext';
 import { tables } from '../tables/TablesPage';
 import { updatePaymentOption, getOrderById } from '../../../api/cashier';
 import { reduceBartenderInventory } from '../../../api/inventory';
+import axiosInstance from '../../../api/axiosInstance';
 
 const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose }) => {
   const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
@@ -198,29 +199,31 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
       console.log('Sending order to cashier...');
       
       // Update cashier status to 'printed' (sent to cashier)
-      const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/update-cashier-status/`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cashier_status: 'printed' })
+      const response = await axiosInstance.patch(`orders/order-list/${currentOrder.id}/update-cashier-status/`, {
+        cashier_status: 'printed'
       });
       
-      if (response.ok) {
+      if (response.status === 200) {
         console.log('Order sent to cashier successfully');
         // Add to local printed orders
         setPrintedOrders(prev => [...prev, currentOrder.id]);
         
-        // Show success message briefly before reloading
-        alert('✅ Order printed successfully! The page will reload and navigate to the order list.');
+        // Update current order status to reflect printed state immediately
+        setCurrentOrder(prev => ({
+          ...prev,
+          cashier_status: 'printed'
+        }));
+        
+        // Show success message and reload immediately
+        alert('✅ Order printed successfully! The order is now locked and sent to cashier. Page will reload.');
         
         // Set flag to navigate to orders after reload
         sessionStorage.setItem('orderPrinted', 'true');
         
-        // Reload the window after a short delay to show the success message
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        // Reload immediately to refresh the state
+        window.location.reload();
         
-        console.log('✅ Order printed successfully - page will reload');
+        console.log('✅ Order printed successfully - page reloaded');
       } else {
         console.error('Failed to send order to cashier');
         alert('❌ Failed to print order. Please try again.');
@@ -262,7 +265,12 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
           <span
             className="icon"
             onClick={currentOrder?.cashier_status !== 'printed' ? () => onEditOrder(currentOrder) : undefined}
-            style={{ color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer' }}
+            style={{ 
+              color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', 
+              cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer',
+              opacity: currentOrder?.cashier_status === 'printed' ? 0.5 : 1
+            }}
+            title={currentOrder?.cashier_status === 'printed' ? 'Order is locked - cannot edit after printing' : 'Edit order'}
           >
             ✏️
           </span>
@@ -277,7 +285,18 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
           >
             🖨️
           </span>
-          <span className="icon" onClick={handleDeleteOrder}>🗑️</span>
+          <span 
+            className="icon" 
+            onClick={currentOrder?.cashier_status !== 'printed' ? handleDeleteOrder : undefined}
+            style={{ 
+              color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', 
+              cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer',
+              opacity: currentOrder?.cashier_status === 'printed' ? 0.5 : 1
+            }}
+            title={currentOrder?.cashier_status === 'printed' ? 'Cannot delete - order is printed and sent to cashier' : 'Delete order'}
+          >
+            🗑️
+          </span>
           {/* Debug button to reset printed status */}
           {isPrinted && currentOrder && currentOrder.cashier_status !== 'printed' && (
             <span 
@@ -331,12 +350,10 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
             onClick={async () => {
               try {
                 console.log('Force reset order status to pending');
-                const response = await fetch(`http://localhost:8000/api/orders/order-list/${currentOrder.id}/`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ cashier_status: 'pending' })
+                const response = await axiosInstance.patch(`orders/order-list/${currentOrder.id}/`, {
+                  cashier_status: 'pending'
                 });
-                if (response.ok) {
+                if (response.status === 200) {
                   console.log('Order status reset to pending');
                   window.location.reload();
                 }
@@ -374,6 +391,23 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
 
       <div className="order-summary">
         <h2>Order {String(currentOrder.id).startsWith('pending-') ? `(Pending Table ${currentOrder.tableId})` : `${currentOrder.order_number} (Table ${currentOrder.table_number})`}</h2>
+        
+        {/* Show lock indicator when order is printed */}
+        {isPrinted && (
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            border: '2px solid #28a745',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '15px',
+            textAlign: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#28a745'
+          }}>
+            🔒 ORDER LOCKED - Sent to cashier and cannot be modified
+          </div>
+        )}
         <div className="payment-options">
           {currentOrder.payment_option ? (
             <div>

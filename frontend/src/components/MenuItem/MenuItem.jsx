@@ -1,89 +1,76 @@
-import React from 'react';
+import React, { useMemo, useCallback, useRef } from 'react';
 import { useCart } from '../../context/CartContext';
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import './MenuItem.css';
 
 const MenuItem = ({ item, stockStatus }) => {
   const { addToCart, cartItems, updateQuantity } = useCart();
-
-  // Debug logging
-  console.log('🔍 MenuItem received:', { 
-    item: item.name, 
-    stockStatus, 
-    item_type: item.item_type,
-    product_id: item.product,
-    item_data: item
-  });
-
-  // Sum the quantity of all items with the same name
-  const quantity = cartItems
-    .filter(i => i.name === item.name)
-    .reduce((sum, i) => sum + i.quantity, 0);
-
-  // Check if item is a beverage and has stock status
-  const isBeverage = item.item_type === 'beverage';
-  const hasStock = stockStatus && stockStatus.quantity_in_base_units > 0;
-  const isOutOfStock = isBeverage && stockStatus && stockStatus.quantity_in_base_units <= 0;
   
-  // Calculate available stock in input units (e.g., cartons) for beverages
-  const getAvailableStock = () => {
-    if (!isBeverage || !stockStatus || !stockStatus.quantity_in_base_units) return 0;
+  // Add debounce refs to prevent rapid clicking
+  const addClickTimeRef = useRef(0);
+  const subtractClickTimeRef = useRef(0);
+
+  // Memoize quantity calculation to prevent recalculation on every render
+  const quantity = useMemo(() => {
+    return cartItems
+      .filter(i => i.name === item.name)
+      .reduce((sum, i) => sum + i.quantity, 0);
+  }, [cartItems, item.name]);
+
+  // Memoize expensive calculations to prevent recalculation on every render
+  const { isBeverage, hasStock, isOutOfStock, availableStock, canOrderMore } = useMemo(() => {
+    const isBeverage = item.item_type === 'beverage';
+    const hasStock = stockStatus && stockStatus.quantity_in_base_units > 0;
+    const isOutOfStock = isBeverage && stockStatus && stockStatus.quantity_in_base_units <= 0;
     
-    console.log('🔍 Calculating available stock for:', item.name);
-    console.log('🔍 Stock status:', stockStatus);
-    console.log('🔍 quantity_in_base_units:', stockStatus.quantity_in_base_units);
-    console.log('🔍 conversion_amount:', stockStatus.stock?.product?.conversion_amount);
-    
-    // Get conversion factor from the product's conversion_amount
-    // This tells us how many base units (e.g., bottles) are in one input unit (e.g., carton)
-    let conversionFactor = stockStatus.stock?.product?.conversion_amount;
-    
-    // Safety check: if conversion factor is 0, undefined, or null, use default
-    if (!conversionFactor || conversionFactor <= 0) {
-      console.log('🔍 Invalid conversion factor, using default:', conversionFactor);
-      conversionFactor = 24; // Default fallback: 1 carton = 24 bottles
+    // Calculate available stock in input units (e.g., cartons) for beverages
+    let availableStock = 0;
+    if (isBeverage && stockStatus && stockStatus.quantity_in_base_units) {
+      // Get conversion factor from the product's conversion_amount
+      let conversionFactor = stockStatus.stock?.product?.conversion_amount;
+      
+      // Safety check: if conversion factor is 0, undefined, or null, use default
+      if (!conversionFactor || conversionFactor <= 0) {
+        conversionFactor = 24; // Default fallback: 1 carton = 24 bottles
+      }
+      
+      availableStock = Math.floor(stockStatus.quantity_in_base_units / conversionFactor);
     }
     
-    console.log('🔍 Using conversion factor:', conversionFactor);
+    // For food items, always allow ordering; for beverages, check stock
+    const canOrderMore = item.item_type === 'food' ? true : availableStock > quantity;
     
-    const availableStock = Math.floor(stockStatus.quantity_in_base_units / conversionFactor);
-    console.log('🔍 Calculated available stock:', availableStock);
-    
-    return availableStock;
-  };
-  
-  const availableStock = getAvailableStock();
-  // For food items, always allow ordering; for beverages, check stock
-  const canOrderMore = item.item_type === 'food' ? true : availableStock > quantity;
-  
-  // Show warning message without revealing exact quantity
-  const getWarningMessage = () => {
-    // Only show warnings for beverages, not for food items
-    if (item.item_type !== 'beverage') {
-      return null;
-    }
-    
-    if (availableStock === 0) {
-      return '⚠️ This item is out of stock and cannot be ordered.';
-    } else if (!canOrderMore) {
-      return `⚠️ You cannot order more than the available stock. You already have ${quantity} in your cart.`;
-    }
-    return null;
-  };
+    return { isBeverage, hasStock, isOutOfStock, availableStock, canOrderMore };
+  }, [item.item_type, stockStatus, quantity]);
 
-  const handleAdd = (e) => {
+  // Memoize event handlers with debouncing to prevent rapid clicking
+  const handleAdd = useCallback((e) => {
     e.preventDefault();
+    
+    // Debounce rapid clicks - only allow one click every 300ms
+    const now = Date.now();
+    if (now - addClickTimeRef.current < 300) {
+      return;
+    }
+    addClickTimeRef.current = now;
     
     // For food items, always allow adding to cart
     // For beverages, check stock availability
     if (item.item_type === 'food' || canOrderMore) {
       addToCart(item);
     }
-  };
+  }, [item, canOrderMore, addToCart]);
 
-  const handleSubtract = (e) => {
+  const handleSubtract = useCallback((e) => {
     e.stopPropagation();
     if (quantity === 0) return;
+
+    // Debounce rapid clicks - only allow one click every 300ms
+    const now = Date.now();
+    if (now - subtractClickTimeRef.current < 300) {
+      return;
+    }
+    subtractClickTimeRef.current = now;
 
     // Find the first (preferably 'pending') cart item with this name and quantity > 0
     const target = cartItems
@@ -93,13 +80,27 @@ const MenuItem = ({ item, stockStatus }) => {
     if (target) {
       updateQuantity(target.id, target.quantity - 1);
     }
-  };
+  }, [cartItems, item.name, quantity, updateQuantity]);
+
+  // Memoize the main click handler with debouncing
+  const handleMainClick = useCallback(() => {
+    if (!isOutOfStock) {
+      // Use the same debouncing as handleAdd
+      const now = Date.now();
+      if (now - addClickTimeRef.current < 300) {
+        return;
+      }
+      addClickTimeRef.current = now;
+      
+      addToCart(item);
+    }
+  }, [isOutOfStock, addToCart, item]);
 
   return (
     <div
       className={`menu-item transition-colors duration-150 hover:bg-green-100 active:bg-green-200 ${isOutOfStock ? 'out-of-stock' : ''}`}
       style={{ cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
-      onClick={() => !isOutOfStock && addToCart(item)}
+      onClick={handleMainClick}
     >
       <div className="menu-item-icon">{item.icon}</div>
       <div className="menu-item-content">
@@ -165,4 +166,4 @@ const MenuItem = ({ item, stockStatus }) => {
   );
 };
 
-export default MenuItem; 
+export default React.memo(MenuItem); 

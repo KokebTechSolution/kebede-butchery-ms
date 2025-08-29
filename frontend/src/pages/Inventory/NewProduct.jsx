@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import axiosInstance from '../../api/axiosInstance';
 
 // CSRF token helper
 function getCookie(name) {
@@ -38,10 +39,10 @@ const NewItemPage = ({ onClose, onSuccess }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [itemTypeRes, categoryRes, unitsRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/inventory/itemtypes/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/categories/', { withCredentials: true }),
-          axios.get('http://localhost:8000/api/inventory/productunits/', { withCredentials: true }),
+        const [itemTypeRes, categoryRes, unitsRes] =         await Promise.all([
+          axiosInstance.get('inventory/itemtypes/'),
+          axiosInstance.get('inventory/categories/'),
+          axiosInstance.get('inventory/productunits/'),
         ]);
         setItemTypes(itemTypeRes.data);
         setCategories(categoryRes.data);
@@ -65,13 +66,9 @@ const NewItemPage = ({ onClose, onSuccess }) => {
   const handleAddItemType = async () => {
     if (!newItemType.trim()) return alert('Please enter an item type name');
     try {
-      const res = await axios.post(
-        'http://localhost:8000/api/inventory/itemtypes/',
-        { type_name: newItemType },
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
-        }
+      const res = await axiosInstance.post(
+        'inventory/itemtypes/',
+        { type_name: newItemType }
       );
       setItemTypes([...itemTypes, res.data]);
       setSelectedItemType(res.data.id.toString());
@@ -86,15 +83,11 @@ const NewItemPage = ({ onClose, onSuccess }) => {
     if (!newCategory.trim()) return alert('Please enter a category name');
     if (!selectedItemType) return alert('Select an item type first');
     try {
-      const res = await axios.post(
-        'http://localhost:8000/api/inventory/categories/',
+              const res = await axiosInstance.post(
+        'inventory/categories/',
         {
           category_name: newCategory,
           item_type_id: parseInt(selectedItemType),
-        },
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
         }
       );
       setCategories([...categories, res.data]);
@@ -156,13 +149,9 @@ const NewItemPage = ({ onClose, onSuccess }) => {
 
       console.log('📤 Creating product with:', productData);
       
-      const productResponse = await axios.post(
-        'http://localhost:8000/api/inventory/products/',
-        productData,
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
-        }
+      const productResponse = await axiosInstance.post(
+        'inventory/products/',
+        productData
       );
 
       const newProduct = productResponse.data;
@@ -179,13 +168,9 @@ const NewItemPage = ({ onClose, onSuccess }) => {
 
       console.log('📤 Creating stock with:', stockData);
       
-      const stockResponse = await axios.post(
-        'http://localhost:8000/api/inventory/stocks/',
-        stockData,
-        {
-          headers: { 'X-CSRFToken': csrfToken },
-          withCredentials: true,
-        }
+      const stockResponse = await axiosInstance.post(
+        'inventory/stocks/',
+        stockData
       );
 
       const newStock = stockResponse.data;
