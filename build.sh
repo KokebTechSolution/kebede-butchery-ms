@@ -26,6 +26,6 @@ export DJANGO_SETTINGS_MODULE=kebede_pos.settings_prod
 python manage.py collectstatic --noinput
 
 echo "👥 Creating initial users..."
-python create_initial_users.py
+python manage.py create_test_users
 
 echo "🎉 Build process complete!"
