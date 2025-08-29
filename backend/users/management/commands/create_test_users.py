@@ -13,7 +13,9 @@ class Command(BaseCommand):
             name='Main Branch',
             defaults={
                 'location': 'Main Location',
-                'phone': '123-456-7890'
+                'city': 'Addis Ababa',
+                'subcity': 'Bole',
+                'wereda': '03'
             }
         )
         if created:
