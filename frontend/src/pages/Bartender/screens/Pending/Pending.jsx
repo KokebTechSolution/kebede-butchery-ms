@@ -7,7 +7,8 @@ import { useBeverages  } from '../../hooks/useBeverages';
 import NotificationPopup from '../../../../components/NotificationPopup.jsx';
 
 export const Pending = ({ orders, filterDate, setFilterDate }) => {
-  const { getActiveOrders, acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem, refetch } = useBeverages(filterDate);
+  // Use the orders passed from parent instead of calling useBeverages again
+  const { acceptOrder, rejectOrder, acceptOrderItem, rejectOrderItem } = useBeverages(filterDate);
   const [editingOrderId, setEditingOrderId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
   const [showNotification, setShowNotification] = useState(false);
@@ -22,11 +23,10 @@ export const Pending = ({ orders, filterDate, setFilterDate }) => {
   const [lastUpdate, setLastUpdate] = useState({ orderId: null, message: '' });
 
 
-  // Use only active orders
-  const allOrders = getActiveOrders()
-  
-  .filter(order => String(order.branch_id) === String(branchId))
-  .slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // Use orders passed from parent and filter by branch
+  const allOrders = (orders || [])
+    .filter(order => String(order.branch_id) === String(branchId))
+    .slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   console.log('Fetched orders:', allOrders);
 console.log('Current branchId:', branchId);
   // Group by table_number, fallback to 'N/A' if missing
@@ -52,7 +52,7 @@ console.log('Current branchId:', branchId);
     // On mount, set initial order IDs
     prevOrderIdsRef.current = allOrders.map(order => order.id);
     pollingRef.current = setInterval(() => {
-      const currentOrders = getActiveOrders();
+      const currentOrders = orders || [];
       const currentIds = currentOrders.map(order => order.id);
       const prevIds = prevOrderIdsRef.current;
       // Find new order IDs

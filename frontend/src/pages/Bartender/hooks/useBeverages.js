@@ -23,9 +23,18 @@ export const useBeverages = (filterDate) => {
 
       // If no cache or forcing refresh, fetch from API
       console.log('🌐 Fetching bartender orders from API');
-      const response = await axiosInstance.get(`${API_BASE_URL}orders/beverages/?branch_id=${branchId}`, {
+      console.log('🌐 API_BASE_URL:', API_BASE_URL);
+      console.log('🌐 Full URL:', `${API_BASE_URL}orders/beverages/?branch_id=${branchId}`);
+      console.log('🌐 Relative URL:', `orders/beverages/?branch_id=${branchId}`);
+      console.log('🌐 branchId:', branchId);
+      
+      const response = await axiosInstance.get(`orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent
       });
+      
+      console.log('🌐 API Response:', response);
+      console.log('🌐 Response data:', response.data);
+      
       setOrders(response.data);
       
       // Cache the fetched data
@@ -34,17 +43,26 @@ export const useBeverages = (filterDate) => {
       console.log('Fetched from backend:', response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      console.error("Error details:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       setOrders([]);
     }
   };
 
   useEffect(() => {
+    console.log('🔍 useBeverages useEffect triggered');
+    console.log('🔍 branchId:', branchId);
+    console.log('🔍 filterDate:', filterDate);
+    
     if (branchId) {
-      fetchOrders();
-      const intervalId = setInterval(fetchOrders, 10000);
+      console.log('🔍 Calling fetchOrders with branchId:', branchId);
+      fetchOrders(filterDate);
+      const intervalId = setInterval(() => fetchOrders(filterDate), 10000);
       return () => clearInterval(intervalId);
+    } else {
+      console.log('🔍 No branchId, not fetching orders');
     }
-  }, [branchId]);
+  }, [branchId, filterDate]);
 
   // Helper to check if order matches filterDate (YYYY-MM-DD)
   const matchesFilterDate = (order) => {
@@ -57,7 +75,7 @@ export const useBeverages = (filterDate) => {
     try {
       const payload = { beverage_status: status };
       // You may want to send reason here if backend supports it
-      const response = await axiosInstance.patch(`${API_BASE_URL}orders/order-list/${orderId}/`, payload, {
+      const response = await axiosInstance.patch(`orders/order-list/${orderId}/`, payload, {
         withCredentials: true,
       });
       setOrders(prevOrders =>
@@ -105,7 +123,7 @@ export const useBeverages = (filterDate) => {
   // Item-level status update
   const updateOrderItemStatus = async (itemId, status) => {
     try {
-      const response = await axiosInstance.patch(`${API_BASE_URL}orders/order-item/${itemId}/update-status/`, { status }, {
+      const response = await axiosInstance.patch(`orders/order-item/${itemId}/update-status/`, { status }, {
         withCredentials: true,
       });
       setOrders(prevOrders =>

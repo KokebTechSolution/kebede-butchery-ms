@@ -17,10 +17,10 @@ export function useDashboardStats() {
     setError(null);
     try {
       const [ordersRes, inventoryRes, stockRes, staffRes] = await Promise.all([
-        axiosInstance.get(`${API_BASE_URL}orders/beverages/`),
-        axiosInstance.get(`${API_BASE_URL}inventory/barman-stock/`),
-        axiosInstance.get(`${API_BASE_URL}inventory/barman-stock/?running_out=true`),
-        axiosInstance.get(`${API_BASE_URL}users/users`),
+        axiosInstance.get(`orders/beverages/`),
+        axiosInstance.get(`inventory/barman-stock/`),
+        axiosInstance.get(`inventory/barman-stock/?running_out=true`),
+        axiosInstance.get(`users/users`),
       ]);
 
       const pendingOrders = ordersRes.data.filter(o =>

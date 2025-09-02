@@ -28,9 +28,17 @@ export default function BartenderDashboard() {
   });
 
   // Pass filterDate to useBeverages
-  const { orders } = useBeverages(filterDate);
   const { user } = useAuth();
   const branchId = user?.branch;
+  const { orders, refreshOrders } = useBeverages(filterDate);
+
+  // Debug logging
+  console.log('🔍 BartenderDashboard Debug:');
+  console.log('🔍 filterDate:', filterDate);
+  console.log('🔍 orders:', orders);
+  console.log('🔍 orders.length:', orders?.length);
+  console.log('🔍 user:', user);
+  console.log('🔍 branchId:', branchId);
 
   const [inventoryRequests, setInventoryRequests] = useState([]);
 //  const { pendingOrders, inventoryItems, lowStock, staffCount } = useDashboardStats();
@@ -106,9 +114,18 @@ export default function BartenderDashboard() {
 
                  {/* Bar Operations Navigation - Direct Buttons + Dropdown */}
          <div className="bg-white rounded-lg shadow p-4 max-w-2xl mx-auto">
-           <div className="flex items-center gap-3 mb-4">
-             <FaBeer className="text-2xl text-blue-600" />
-             <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
+           <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-3">
+               <FaBeer className="text-2xl text-blue-600" />
+               <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
+             </div>
+             <button
+               onClick={refreshOrders}
+               className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+               title="Refresh Orders"
+             >
+               🔄 Refresh
+             </button>
            </div>
 
            <div className="grid grid-cols-3 gap-3">

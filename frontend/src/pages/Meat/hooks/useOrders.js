@@ -21,7 +21,7 @@ export const useOrders = (filterDate) => {
 
       // If no cache or forcing refresh, fetch from API
       console.log('🌐 Fetching meat orders from API');
-      let url = `${API_BASE_URL}orders/food/`;
+      let url = `orders/food/`;
       if (date) url += `?date=${date}`;
       const response = await axiosInstance.get(url);
       setOrders(response.data);
@@ -44,7 +44,7 @@ export const useOrders = (filterDate) => {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
       await axiosInstance.patch(
-        `${API_BASE_URL}orders/order-list/${orderId}/`,
+        `orders/order-list/${orderId}/`,
         payload
       );
       setOrders(prevOrders =>
@@ -109,7 +109,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axiosInstance.patch(`${API_BASE_URL}orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axiosInstance.patch(`orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {
