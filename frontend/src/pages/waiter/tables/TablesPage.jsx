@@ -130,7 +130,7 @@ const TablesPage = ({ onSelectTable }) => {
             </div>
             
             {/* Show cache status */}
-            {tables.length > 0 ? (
+            {tables.length > 0 && (
               <div style={{ 
                 textAlign: 'center', 
                 marginTop: '20px', 
@@ -141,40 +141,6 @@ const TablesPage = ({ onSelectTable }) => {
                 borderRadius: '4px'
               }}>
                 📦 {tables.length} tables loaded from cache • Navigate freely - no more loading!
-              </div>
-            ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                marginTop: '20px', 
-                fontSize: '14px', 
-                color: '#666',
-                padding: '20px',
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7',
-                borderRadius: '4px'
-              }}>
-                🚨 No tables found! This could be because:
-                <br />
-                • You need to create tables first
-                <br />
-                • You're not logged in as a waiter
-                <br />
-                • Backend permission issue
-                <br />
-                <br />
-                <button 
-                  onClick={() => { refreshTables(); refreshOrders(); }}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🔄 Retry
-                </button>
               </div>
             )}
           </>
