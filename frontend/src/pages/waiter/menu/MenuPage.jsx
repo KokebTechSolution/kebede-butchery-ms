@@ -2,18 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
-import { fetchMenuItems } from '../../../api/menu'; // Updated import
-import { fetchBarmanStock } from '../../../api/inventory'; // Add this import
+import { useDataCache } from '../../../context/DataCacheContext';
 import './MenuPage.css';
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'; // Added import for icons
 
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
+    const { 
+        fetchMenuItems: fetchMenuFromCache, 
+        fetchBarmanStock: fetchBarmanStockFromCache,
+        getCachedData
+    } = useDataCache();
+    
     const [menuItems, setMenuItems] = useState([]);
     const [barmanStock, setBarmanStock] = useState([]);
     const [stockLoading, setStockLoading] = useState(false);
     const [stockError, setStockError] = useState(null);
     const [activeTab, setActiveTab] = useState('food');
-    const [isOrdering, setIsOrdering] = useState(false); // <-- add this
+    const [isOrdering, setIsOrdering] = useState(false);
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
 
     useEffect(() => {
@@ -25,14 +30,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     useEffect(() => {
         const loadMenuItems = async () => {
             try {
-                const items = await fetchMenuItems();
+                const items = await fetchMenuFromCache();
                 setMenuItems(items);
             } catch (error) {
                 console.error('❌ Error loading menu items:', error);
             }
         };
         loadMenuItems();
-    }, []);
+    }, [fetchMenuFromCache]);
 
     // Fetch barman stock for beverages
     useEffect(() => {
@@ -40,7 +45,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             setStockLoading(true);
             setStockError(null);
             try {
-                const stock = await fetchBarmanStock();
+                const stock = await fetchBarmanStockFromCache();
                 setBarmanStock(stock);
             } catch (error) {
                 console.error('❌ Error loading barman stock:', error);
@@ -50,14 +55,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             }
         };
         loadBarmanStock();
-    }, []);
+    }, [fetchBarmanStockFromCache]);
 
     // Helper function to refresh stock
     const refreshStock = async () => {
         setStockLoading(true);
         setStockError(null);
         try {
-            const stock = await fetchBarmanStock();
+            const stock = await fetchBarmanStockFromCache();
             setBarmanStock(stock);
         } catch (error) {
             console.error('❌ Error refreshing barman stock:', error);
