@@ -1,18 +1,36 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../../api/axiosInstance'; // assumes this has withCredentials set
 import { useAuth } from '../../../context/AuthContext';
+import { API_BASE_URL } from '../../../config/api';
+import { getCachedOrders, cacheOrders } from '../../../utils/cacheUtils';
 
 export const useBeverages = (filterDate) => {
   const [orders, setOrders] = useState([]);
   const { user } = useAuth();
   const branchId = user?.branch;
 
-  const fetchOrders = async (date) => {
+  const fetchOrders = async (date, forceRefresh = false) => {
     try {
-      const response = await axiosInstance.get(`/orders/beverages/?branch_id=${branchId}`, {
+      // Try to get from cache first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedOrders = getCachedOrders();
+        if (cachedOrders) {
+          console.log('📦 Loading bartender orders from cache');
+          setOrders(cachedOrders);
+          return;
+        }
+      }
+
+      // If no cache or forcing refresh, fetch from API
+      console.log('🌐 Fetching bartender orders from API');
+      const response = await axiosInstance.get(`${API_BASE_URL}orders/beverages/?branch_id=${branchId}`, {
         withCredentials: true, // ensure cookies sent
       });
       setOrders(response.data);
+      
+      // Cache the fetched data
+      cacheOrders(response.data);
+      
       console.log('Fetched from backend:', response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -39,7 +57,7 @@ export const useBeverages = (filterDate) => {
     try {
       const payload = { beverage_status: status };
       // You may want to send reason here if backend supports it
-      const response = await axiosInstance.patch(`/api/orders/${orderId}/`, payload, {
+      const response = await axiosInstance.patch(`${API_BASE_URL}orders/order-list/${orderId}/`, payload, {
         withCredentials: true,
       });
       setOrders(prevOrders =>
@@ -87,7 +105,7 @@ export const useBeverages = (filterDate) => {
   // Item-level status update
   const updateOrderItemStatus = async (itemId, status) => {
     try {
-      const response = await axiosInstance.patch(`/orders/order-item/${itemId}/update-status/`, { status }, {
+      const response = await axiosInstance.patch(`${API_BASE_URL}orders/order-item/${itemId}/update-status/`, { status }, {
         withCredentials: true,
       });
       setOrders(prevOrders =>
@@ -119,5 +137,6 @@ export const useBeverages = (filterDate) => {
     getRejectedOrders,
     getClosedOrders,
     getActiveOrders,
+    refreshOrders: () => fetchOrders(filterDate, true),
   };
 };

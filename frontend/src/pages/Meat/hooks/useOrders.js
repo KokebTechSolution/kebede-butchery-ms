@@ -1,15 +1,33 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import axiosInstance from '../../../api/axiosInstance';
+import { API_BASE_URL } from '../../../config/api';
+import { getCachedOrders, cacheOrders } from '../../../utils/cacheUtils';
+
 export const useOrders = (filterDate) => {
   const [orders, setOrders] = useState([]);
 
-  const fetchOrders = async (date) => {
+  const fetchOrders = async (date, forceRefresh = false) => {
     try {
-      let url = 'orders/food/';
+      // Try to get from cache first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedOrders = getCachedOrders();
+        if (cachedOrders) {
+          console.log('📦 Loading meat orders from cache');
+          setOrders(cachedOrders);
+          return;
+        }
+      }
+
+      // If no cache or forcing refresh, fetch from API
+      console.log('🌐 Fetching meat orders from API');
+      let url = `${API_BASE_URL}orders/food/`;
       if (date) url += `?date=${date}`;
       const response = await axiosInstance.get(url);
       setOrders(response.data);
+      
+      // Cache the fetched data
+      cacheOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
     }
@@ -26,7 +44,7 @@ export const useOrders = (filterDate) => {
       const payload = { food_status: status };
       // add rejectionReason here once supported by backend
       await axiosInstance.patch(
-        `orders/order-list/${orderId}/`,
+        `${API_BASE_URL}orders/order-list/${orderId}/`,
         payload
       );
       setOrders(prevOrders =>
@@ -91,7 +109,7 @@ export const useOrders = (filterDate) => {
   // Add this function to update cashier_status
   const setOrderPrinted = async (orderId) => {
     try {
-      await axiosInstance.patch(`orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
+      await axiosInstance.patch(`${API_BASE_URL}orders/order-list/${orderId}/update-cashier-status/`, { cashier_status: 'printed' });
       // Optionally, refresh orders after printing
       fetchOrders(filterDate);
     } catch (error) {
@@ -110,6 +128,7 @@ export const useOrders = (filterDate) => {
     getActiveOrders,
     acceptOrderItem,
     rejectOrderItem,
-    setOrderPrinted // <-- export the new function
+    setOrderPrinted, // <-- export the new function
+    refreshOrders: () => fetchOrders(filterDate, true),
   };
 };

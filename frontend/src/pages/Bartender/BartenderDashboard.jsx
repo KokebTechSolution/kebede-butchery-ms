@@ -9,6 +9,7 @@ import Reports from "./screens/Reports";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { API_BASE_URL } from "../../config/api";
 
 export default function BartenderDashboard() {
   const { t } = useTranslation();
@@ -42,7 +43,7 @@ export default function BartenderDashboard() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await axios.get("http://localhost:8000/api/inventory/requests/", {
+        const res = await axios.get(`${API_BASE_URL}inventory/requests/`, {
           withCredentials: true,  // send session cookies
         });
         setInventoryRequests(

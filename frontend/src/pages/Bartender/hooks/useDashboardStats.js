@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../api/axiosInstance"; // assume this has withCredentials: true
+import { API_BASE_URL } from "../../config/api";
 
 export function useDashboardStats() {
   const [stats, setStats] = useState({
@@ -16,10 +17,10 @@ export function useDashboardStats() {
     setError(null);
     try {
       const [ordersRes, inventoryRes, stockRes, staffRes] = await Promise.all([
-        axiosInstance.get("/orders/beverages/"),
-        axiosInstance.get("/api/inventory/barman-stock/"),
-        axiosInstance.get("/api/inventory/barman-stock/?running_out=true"),
-        axiosInstance.get("/api/users/users"),
+        axiosInstance.get(`${API_BASE_URL}orders/beverages/`),
+        axiosInstance.get(`${API_BASE_URL}inventory/barman-stock/`),
+        axiosInstance.get(`${API_BASE_URL}inventory/barman-stock/?running_out=true`),
+        axiosInstance.get(`${API_BASE_URL}users/users`),
       ]);
 
       const pendingOrders = ordersRes.data.filter(o =>
