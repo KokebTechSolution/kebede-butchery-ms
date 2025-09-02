@@ -2,23 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { MdArrowBack, MdTableRestaurant } from 'react-icons/md';
 import MenuItem from '../../../components/MenuItem/MenuItem';
 import { useCart } from '../../../context/CartContext';
-import { useDataCache } from '../../../context/DataCacheContext';
+import { fetchMenuItems } from '../../../api/menu'; // Updated import
+import { fetchBarmanStock } from '../../../api/inventory'; // Add this import
 import './MenuPage.css';
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'; // Added import for icons
 
 const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
-    const { 
-        fetchMenuItems: fetchMenuFromCache, 
-        fetchBarmanStock: fetchBarmanStockFromCache,
-        getCachedData
-    } = useDataCache();
-    
     const [menuItems, setMenuItems] = useState([]);
     const [barmanStock, setBarmanStock] = useState([]);
     const [stockLoading, setStockLoading] = useState(false);
     const [stockError, setStockError] = useState(null);
     const [activeTab, setActiveTab] = useState('food');
-    const [isOrdering, setIsOrdering] = useState(false);
+    const [isOrdering, setIsOrdering] = useState(false); // <-- add this
     const { setActiveTable, cartItems, orders, clearCart } = useCart();
 
     useEffect(() => {
@@ -30,14 +25,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     useEffect(() => {
         const loadMenuItems = async () => {
             try {
-                const items = await fetchMenuFromCache();
+                const items = await fetchMenuItems();
                 setMenuItems(items);
             } catch (error) {
                 console.error('❌ Error loading menu items:', error);
             }
         };
         loadMenuItems();
-    }, [fetchMenuFromCache]);
+    }, []);
 
     // Fetch barman stock for beverages
     useEffect(() => {
@@ -45,7 +40,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             setStockLoading(true);
             setStockError(null);
             try {
-                const stock = await fetchBarmanStockFromCache();
+                const stock = await fetchBarmanStock();
                 setBarmanStock(stock);
             } catch (error) {
                 console.error('❌ Error loading barman stock:', error);
@@ -55,14 +50,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
             }
         };
         loadBarmanStock();
-    }, [fetchBarmanStockFromCache]);
+    }, []);
 
     // Helper function to refresh stock
     const refreshStock = async () => {
         setStockLoading(true);
         setStockError(null);
         try {
-            const stock = await fetchBarmanStockFromCache();
+            const stock = await fetchBarmanStock();
             setBarmanStock(stock);
         } catch (error) {
             console.error('❌ Error refreshing barman stock:', error);
@@ -72,33 +67,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         }
     };
 
-    if (!menuItems || menuItems.length === 0) {
-        return (
-            <div style={{ 
-                textAlign: 'center', 
-                padding: '40px', 
-                fontSize: '18px', 
-                color: '#666' 
-            }}>
-                🔄 Loading menu items...
-                <br />
-                <div style={{ fontSize: '14px', marginTop: '10px' }}>
-                    This will be cached for instant access later!
-                </div>
-            </div>
-        );
-    }
+    if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
 
     // Group items by type and then by category
     const groupByCategory = (items) => {
-        if (!items || !Array.isArray(items)) return {};
-        
         const grouped = {};
         items.forEach(item => {
-            if (item && item.category_name) {
-                if (!grouped[item.category_name]) grouped[item.category_name] = [];
-                grouped[item.category_name].push(item);
-            }
+            if (!grouped[item.category_name]) grouped[item.category_name] = [];
+            grouped[item.category_name].push(item);
         });
         return grouped;
     };
@@ -153,13 +129,13 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         return stock || null;
     };
 
-    const foodItems = menuItems && Array.isArray(menuItems) ? menuItems.filter(item => item.item_type === 'food' && item.is_available) : [];
-    const beverageItems = menuItems && Array.isArray(menuItems) ? menuItems.filter(item => item.item_type === 'beverage' && item.is_available) : [];
+    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
+    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
     const foodByCategory = groupByCategory(foodItems);
     const beverageByCategory = groupByCategory(beverageItems);
 
     // Filter previous orders for this table
-    const previousOrders = orders && Array.isArray(orders) ? orders.filter(order => order.table_number === table?.id) : [];
+    const previousOrders = orders.filter(order => order.table_number === table?.id);
 
     // Find the latest order for this table
     const latestOrder = previousOrders.length > 0 ? [...previousOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] : null;
@@ -219,17 +195,17 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                                     <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
                                         <span className="stock-count available">
                                             <FaCheckCircle size={14} />
-                                            {beverageItems && Array.isArray(beverageItems) ? beverageItems.filter(item => {
+                                            {beverageItems.filter(item => {
                                                 const stock = getStockStatus(item);
                                                 return stock && stock.quantity_in_base_units > 0;
-                                            }).length : 0} Available
+                                            }).length} Available
                                         </span>
                                         <span className="stock-count out-of-stock">
                                             <FaTimesCircle size={14} />
-                                            {beverageItems && Array.isArray(beverageItems) ? beverageItems.filter(item => {
+                                            {beverageItems.filter(item => {
                                                 const stock = getStockStatus(item);
                                                 return stock && stock.quantity_in_base_units <= 0;
-                                            }).length : 0} Out of Stock
+                                            }).length} Out of Stock
                                         </span>
                                     </div>
                                 )}

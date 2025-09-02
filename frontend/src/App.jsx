@@ -3,7 +3,6 @@ import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { DataCacheProvider } from './context/DataCacheContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Public Pages
@@ -121,14 +120,12 @@ const ConditionalMain = () => {
 function App() {
   return (
     <AuthProvider>
-      <DataCacheProvider>
-        <div className="min-h-screen flex flex-col bg-gray-100">
-          <ConditionalTopbar />
-          <ConditionalMain />
-          <Footer />
-          {/* <BottomNav /> */}
-        </div>
-      </DataCacheProvider>
+      <div className="min-h-screen flex flex-col bg-gray-100">
+        <ConditionalTopbar />
+        <ConditionalMain />
+        <Footer />
+        {/* <BottomNav /> */}
+      </div>
     </AuthProvider>
   );
 }
