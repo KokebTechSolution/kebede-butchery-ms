@@ -91,10 +91,14 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
 
     // Group items by type and then by category
     const groupByCategory = (items) => {
+        if (!items || !Array.isArray(items)) return {};
+        
         const grouped = {};
         items.forEach(item => {
-            if (!grouped[item.category_name]) grouped[item.category_name] = [];
-            grouped[item.category_name].push(item);
+            if (item && item.category_name) {
+                if (!grouped[item.category_name]) grouped[item.category_name] = [];
+                grouped[item.category_name].push(item);
+            }
         });
         return grouped;
     };
@@ -149,8 +153,8 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         return stock || null;
     };
 
-    const foodItems = menuItems.filter(item => item.item_type === 'food' && item.is_available);
-    const beverageItems = menuItems.filter(item => item.item_type === 'beverage' && item.is_available);
+    const foodItems = menuItems && Array.isArray(menuItems) ? menuItems.filter(item => item.item_type === 'food' && item.is_available) : [];
+    const beverageItems = menuItems && Array.isArray(menuItems) ? menuItems.filter(item => item.item_type === 'beverage' && item.is_available) : [];
     const foodByCategory = groupByCategory(foodItems);
     const beverageByCategory = groupByCategory(beverageItems);
 
@@ -215,17 +219,17 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                                     <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
                                         <span className="stock-count available">
                                             <FaCheckCircle size={14} />
-                                            {beverageItems.filter(item => {
+                                            {beverageItems && Array.isArray(beverageItems) ? beverageItems.filter(item => {
                                                 const stock = getStockStatus(item);
                                                 return stock && stock.quantity_in_base_units > 0;
-                                            }).length} Available
+                                            }).length : 0} Available
                                         </span>
                                         <span className="stock-count out-of-stock">
                                             <FaTimesCircle size={14} />
-                                            {beverageItems.filter(item => {
+                                            {beverageItems && Array.isArray(beverageItems) ? beverageItems.filter(item => {
                                                 const stock = getStockStatus(item);
                                                 return stock && stock.quantity_in_base_units <= 0;
-                                            }).length} Out of Stock
+                                            }).length : 0} Out of Stock
                                         </span>
                                     </div>
                                 )}
