@@ -64,25 +64,48 @@ export default function BartenderDashboard() {
     if (branchId) fetchRequests();
   }, [branchId]);
 
-  const getClosedOrders = () =>
-    orders.filter(order =>
-      String(order.branch_id) === String(branchId) &&
-      order.has_payment &&
-      order.items.length > 0 &&
-      order.items.every(item => item.status === 'accepted' || item.status === 'rejected')
-    );
+  const getClosedOrders = () => {
+    try {
+      if (!orders || !Array.isArray(orders)) return [];
+      
+      return orders.filter(order => {
+        if (!order || !order.items) return false;
+        
+        return (
+          String(order.branch_id) === String(branchId) &&
+          order.has_payment &&
+          Array.isArray(order.items) &&
+          order.items.length > 0 &&
+          order.items.every(item => item && item.status && (item.status === 'accepted' || item.status === 'rejected'))
+        );
+      });
+    } catch (error) {
+      console.error('Error in getClosedOrders:', error);
+      return [];
+    }
+  };
 
   const renderContent = () => {
-    switch (activeSection) {
-      case 'Inventory':
-        return <Inventory requests={inventoryRequests} />;
-      case 'Reports':
-        return <Reports />;
-      case 'Closed':
-        return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
-      case 'Orders':
-      default:
-        return <Pending orders={orders} filterDate={filterDate} setFilterDate={setFilterDate} />;
+    try {
+      switch (activeSection) {
+        case 'Inventory':
+          return <Inventory requests={inventoryRequests} />;
+        case 'Reports':
+          return <Reports />;
+        case 'Closed':
+          return <ClosedOrders orders={getClosedOrders()} filterDate={filterDate} setFilterDate={setFilterDate} />;
+        case 'Orders':
+        default:
+          return <Pending orders={orders || []} filterDate={filterDate} setFilterDate={setFilterDate} />;
+      }
+    } catch (error) {
+      console.error('Error in renderContent:', error);
+      return (
+        <div className="p-8 text-center">
+          <h2 className="text-xl font-bold text-red-600">Error Loading Content</h2>
+          <p className="text-gray-600">Please refresh the page or try again later.</p>
+        </div>
+      );
     }
   };
 
@@ -120,7 +143,18 @@ export default function BartenderDashboard() {
                <h2 className="text-lg font-semibold text-gray-700">{t("bar_operations")}</h2>
              </div>
              <button
-               onClick={refreshOrders}
+               onClick={() => {
+                 try {
+                   if (refreshOrders) {
+                     refreshOrders();
+                   } else {
+                     window.location.reload();
+                   }
+                 } catch (error) {
+                   console.error('Error refreshing orders:', error);
+                   window.location.reload();
+                 }
+               }}
                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                title="Refresh Orders"
              >

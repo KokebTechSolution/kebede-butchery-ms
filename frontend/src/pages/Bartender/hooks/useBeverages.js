@@ -11,6 +11,13 @@ export const useBeverages = (filterDate) => {
 
   const fetchOrders = async (date, forceRefresh = false) => {
     try {
+      // Check if branchId exists before making API call
+      if (!branchId) {
+        console.log('⚠️ No branchId available, skipping API call');
+        setOrders([]);
+        return;
+      }
+
       // Try to get from cache first (unless forcing refresh)
       if (!forceRefresh) {
         const cachedOrders = getCachedOrders();
@@ -35,17 +42,27 @@ export const useBeverages = (filterDate) => {
       console.log('🌐 API Response:', response);
       console.log('🌐 Response data:', response.data);
       
-      setOrders(response.data);
+      // Validate response data before setting state
+      if (response.data && Array.isArray(response.data)) {
+        setOrders(response.data);
+        // Cache the fetched data
+        cacheOrders(response.data);
+        console.log('✅ Orders set successfully:', response.data.length);
+      } else {
+        console.warn('⚠️ Invalid response data format:', response.data);
+        setOrders([]);
+      }
       
-      // Cache the fetched data
-      cacheOrders(response.data);
-      
-      console.log('Fetched from backend:', response.data);
     } catch (error) {
-      console.error("Error fetching orders:", error);
-      console.error("Error details:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+      console.error("❌ Error fetching orders:", error);
+      console.error("❌ Error details:", error.response?.data);
+      console.error("❌ Error status:", error.response?.status);
+      
+      // Set empty orders to prevent UI errors
       setOrders([]);
+      
+      // Don't throw error to prevent 500 status
+      return;
     }
   };
 
@@ -66,9 +83,20 @@ export const useBeverages = (filterDate) => {
 
   // Helper to check if order matches filterDate (YYYY-MM-DD)
   const matchesFilterDate = (order) => {
-    if (!filterDate) return true;
-    if (!order.created_at) return false;
-    return order.created_at.slice(0, 10) === filterDate;
+    try {
+      if (!filterDate) return true;
+      if (!order || !order.created_at) return false;
+      
+      // Handle different date formats safely
+      const orderDate = new Date(order.created_at);
+      if (isNaN(orderDate.getTime())) return false;
+      
+      const orderDateStr = orderDate.toISOString().slice(0, 10);
+      return orderDateStr === filterDate;
+    } catch (error) {
+      console.error('Error in matchesFilterDate:', error);
+      return false;
+    }
   };
 
   const updateOrderStatus = async (orderId, status, reason = null) => {
@@ -101,23 +129,47 @@ export const useBeverages = (filterDate) => {
   const getPreparingOrders = () => orders.filter(order => order.beverage_status === 'preparing');
   const getRejectedOrders = () => orders.filter(order => order.beverage_status === 'rejected');
 
-  const getClosedOrders = () =>
-    orders.filter(order =>
-      order.has_payment &&
-      order.items.length > 0 &&
-      order.items.every(item => item.status === 'accepted' || item.status === 'rejected') &&
-      matchesFilterDate(order)
-    );
+  const getClosedOrders = () => {
+    try {
+      return orders.filter(order => {
+        // Add null checks to prevent errors
+        if (!order || !order.items) return false;
+        
+        return (
+          order.has_payment &&
+          Array.isArray(order.items) &&
+          order.items.length > 0 &&
+          order.items.every(item => 
+            item && item.status && (item.status === 'accepted' || item.status === 'rejected')
+          ) &&
+          matchesFilterDate(order)
+        );
+      });
+    } catch (error) {
+      console.error('Error in getClosedOrders:', error);
+      return [];
+    }
+  };
 
   const getActiveOrders = () => {
-    const active = orders.filter(order =>
-      !getClosedOrders().some(closed => closed.id === order.id) &&
-      matchesFilterDate(order)
-    );
-    console.log('Orders:', orders);
-    console.log('Active Orders:', active);
-    console.log('Closed Orders:', getClosedOrders());
-    return active;
+    try {
+      const active = orders.filter(order => {
+        if (!order) return false;
+        
+        return (
+          !getClosedOrders().some(closed => closed && closed.id === order.id) &&
+          matchesFilterDate(order)
+        );
+      });
+      
+      console.log('Orders:', orders);
+      console.log('Active Orders:', active);
+      console.log('Closed Orders:', getClosedOrders());
+      return active;
+    } catch (error) {
+      console.error('Error in getActiveOrders:', error);
+      return [];
+    }
   };
 
   // Item-level status update

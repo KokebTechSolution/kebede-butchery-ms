@@ -216,7 +216,7 @@ console.log('Current branchId:', branchId);
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
         <button
-          onClick={refetch}
+          onClick={() => window.location.reload()}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
         >
           Refresh
