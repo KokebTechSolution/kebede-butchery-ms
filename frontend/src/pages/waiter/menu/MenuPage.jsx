@@ -72,7 +72,22 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
         }
     };
 
-    if (!menuItems || menuItems.length === 0) return <div>Loading menu...</div>;
+    if (!menuItems || menuItems.length === 0) {
+        return (
+            <div style={{ 
+                textAlign: 'center', 
+                padding: '40px', 
+                fontSize: '18px', 
+                color: '#666' 
+            }}>
+                🔄 Loading menu items...
+                <br />
+                <div style={{ fontSize: '14px', marginTop: '10px' }}>
+                    This will be cached for instant access later!
+                </div>
+            </div>
+        );
+    }
 
     // Group items by type and then by category
     const groupByCategory = (items) => {
@@ -140,7 +155,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const beverageByCategory = groupByCategory(beverageItems);
 
     // Filter previous orders for this table
-    const previousOrders = orders.filter(order => order.table_number === table?.id);
+    const previousOrders = orders && Array.isArray(orders) ? orders.filter(order => order.table_number === table?.id) : [];
 
     // Find the latest order for this table
     const latestOrder = previousOrders.length > 0 ? [...previousOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] : null;
