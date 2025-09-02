@@ -23,6 +23,7 @@ import BranchManagerRoutes from './routes/BranchManagerRoutes';
 // Common Components
 import Topbar from './components/ManagmentComponents/Topbar';
 import Footer from './components/ManagmentComponents/Footer';
+import CacheStatusIndicator from './components/CacheStatusIndicator';
 // import BottomNav from './components/ManagmentComponents/BottomNav'; // Optional if needed
 
 // Layout Wrapper with dynamic Topbar/Sidebar
@@ -125,6 +126,9 @@ function App() {
         <ConditionalMain />
         <Footer />
         {/* <BottomNav /> */}
+        
+        {/* Cache Status Indicator - Only show in development */}
+        {process.env.NODE_ENV === 'development' && <CacheStatusIndicator />}
       </div>
     </AuthProvider>
   );

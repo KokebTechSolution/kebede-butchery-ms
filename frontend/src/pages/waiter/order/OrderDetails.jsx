@@ -5,6 +5,7 @@ import { tables } from '../tables/TablesPage';
 import { updatePaymentOption, getOrderById } from '../../../api/cashier';
 import { reduceBartenderInventory } from '../../../api/inventory';
 import axiosInstance from '../../../api/axiosInstance';
+import { triggerPrintCache } from '../../../utils/cacheUtils';
 
 const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose }) => {
   const { orders, activeTableId, cartItems, deleteOrder, clearCart, user } = useCart();
@@ -213,6 +214,9 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
           ...prev,
           cashier_status: 'printed'
         }));
+        
+        // 🖨️ TRIGGER CACHE INVALIDATION - This will force fresh data fetch on next navigation
+        triggerPrintCache();
         
         // Show success message and reload immediately
         alert('✅ Order printed successfully! The order is now locked and sent to cashier. Page will reload.');

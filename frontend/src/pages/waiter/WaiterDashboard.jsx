@@ -11,6 +11,7 @@ import '../../App.css';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosInstance from '../../api/axiosInstance';
+import CacheStatusIndicator from '../../components/CacheStatusIndicator';
 
 function mergeOrderItems(existingItems, cartItems) {
   // Keep all existing items (don't merge by name)
@@ -399,6 +400,8 @@ const WaiterDashboard = () => {
         )}
       </div>
       
+      {/* Cache Status Indicator - Only show in development */}
+      {process.env.NODE_ENV === 'development' && <CacheStatusIndicator />}
 
     </div>
   );

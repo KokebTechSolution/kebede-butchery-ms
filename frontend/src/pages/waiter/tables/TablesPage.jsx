@@ -3,6 +3,7 @@ import TableCard from '../../../components/TableCard.jsx';
 import '../../../App.css';
 import axiosInstance from '../../../api/axiosInstance';
 import { getMyOrders } from '../../../api/cashier';
+import { getCachedTables, cacheTables, getCachedOrders, cacheOrders } from '../../../utils/cacheUtils';
 
 const getTableStatus = (table, orders) => {
   // Find all orders for this table (matching by table.number)
@@ -29,8 +30,21 @@ const TablesPage = ({ onSelectTable }) => {
   // Fetch tables from API
   const fetchTables = async () => {
     try {
+      // Try to get from cache first
+      const cachedTables = getCachedTables();
+      if (cachedTables) {
+        console.log('📦 Loading tables from cache');
+        setTables(cachedTables);
+        return;
+      }
+
+      // If no cache, fetch from API
+      console.log('🌐 Fetching tables from API');
       const response = await axiosInstance.get('/branches/tables/');
       setTables(response.data);
+      
+      // Cache the fetched data
+      cacheTables(response.data);
     } catch (err) {
       console.error('Failed to fetch tables:', err);
       setTables([]);
@@ -41,8 +55,21 @@ const TablesPage = ({ onSelectTable }) => {
   // Fetch orders from API
   const fetchOrders = async () => {
     try {
+      // Try to get from cache first
+      const cachedOrders = getCachedOrders();
+      if (cachedOrders) {
+        console.log('📦 Loading orders from cache');
+        setOrders(cachedOrders);
+        return;
+      }
+
+      // If no cache, fetch from API
+      console.log('🌐 Fetching orders from API');
       const data = await getMyOrders();
       setOrders(data);
+      
+      // Cache the fetched data
+      cacheOrders(data);
     } catch (err) {
       console.error('Failed to fetch orders:', err);
       setOrders([]);
@@ -80,6 +107,7 @@ const TablesPage = ({ onSelectTable }) => {
       });
 
       await fetchTables(); // Refresh tables after adding
+      // Cache will be updated automatically in fetchTables
     } catch (err) {
       console.error('Failed to add table:', err);
       setError('Failed to add table.');
