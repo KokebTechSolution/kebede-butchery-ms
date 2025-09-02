@@ -2,28 +2,77 @@
   padding: 20px;
   display: flex;
   gap: 2rem;
+  position: relative;
 }
 
 .menu-content {
   flex: 2;
+  margin-right: 320px; /* Reserve space for fixed cart */
 }
 
 .cart-section {
-  flex: 1;
-  min-width: 300px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: slideInRight 0.3s ease-out;
+  transition: all 0.3s ease;
+}
+
+.cart-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Cart slide-in animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .cart-container {
   background: #fff;
   border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 2px 8px #0001;
-  margin-bottom: 16px;
+  padding: 16px;
   height: auto;
-  max-height: 35vh;
+  max-height: calc(100vh - 40px);
   overflow-y: auto;
   overflow-x: hidden;
   transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Custom scrollbar for webkit browsers */
+.cart-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cart-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.cart-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.cart-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Make empty cart more compact */
@@ -268,20 +317,20 @@
   .menu-content {
     flex: none;
     width: 100%;
+    margin-right: 0; /* Remove right margin on mobile */
     padding-bottom: 150px; /* Compact reserved space for fixed cart + bottom nav */
   }
   
   .cart-section {
-    flex: none;
+    position: fixed;
+    top: auto;
+    bottom: 72px; /* keep bottom nav fully visible (matches ~sidebar height) */
+    left: 0;
+    right: 0;
     width: 100vw; /* ensure full viewport width */
     max-width: 100vw;
     min-width: auto;
     order: 2; /* Move cart below menu on mobile */
-    position: fixed; /* pin to bottom */
-    bottom: 72px; /* keep bottom nav fully visible (matches ~sidebar height) */
-    left: 50%;
-    transform: translateX(-50%); /* escape parent padding/transform and center full-bleed */
-    right: 0;
     z-index: 900; /* keep nav (z-index:1000) above the cart */
     background: #fff;
     border-radius: 8px 8px 0 0;
@@ -301,6 +350,7 @@
     height: auto; /* container itself not scrollable; compact when empty */
     max-height: none;
     overflow: hidden; /* prevent container scroll; items list scrolls */
+    border: none; /* Remove border on mobile for edge-to-edge look */
   }
 
   /* Make only the items list scroll inside the fixed cart */
