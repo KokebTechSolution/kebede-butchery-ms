@@ -243,13 +243,11 @@
 /* Base order-printed styles */
 .order-printed {
   opacity: 0.7;
-  pointer-events: none;
 }
 
 /* Remove the order-printed opacity that was hiding items */
 .order-printed .order-items-table {
   opacity: 1 !important;
-  pointer-events: auto;
 }
 
 .order-printed .order-items-table table {

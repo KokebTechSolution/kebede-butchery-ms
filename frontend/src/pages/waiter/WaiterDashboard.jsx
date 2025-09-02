@@ -376,9 +376,6 @@ const WaiterDashboard = () => {
             <div className="menu-section">
               <MenuPage table={selectedTable} onBack={handleBackFromMenu} onOrder={handleOrder} />
             </div>
-            <div className="cart-section">
-              <Cart onOrder={handleOrder} onClearCart={handleClearCart} />
-            </div>
           </div>
         )}
         {currentPage === 'orderDetails' && (
@@ -387,12 +384,14 @@ const WaiterDashboard = () => {
               onSelectOrder={handleSelectOrder}
               selectedOrderId={selectedOrderId}
             />
-            <OrderDetails
-              onEditOrder={handleEditOrder}
-              selectedOrderId={selectedOrderId}
-              onOrderDeleted={handleOrderDeleted}
-              onClose={handleCloseOrderDetails}
-            />
+            {selectedOrderId && (
+              <OrderDetails
+                onEditOrder={handleEditOrder}
+                selectedOrderId={selectedOrderId}
+                onOrderDeleted={handleOrderDeleted}
+                onClose={handleCloseOrderDetails}
+              />
+            )}
           </div>
         )}
         {currentPage === 'profile' && (

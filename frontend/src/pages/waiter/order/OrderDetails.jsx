@@ -261,19 +261,6 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
         </button>
         
         <div className="icon-buttons">
-          {/* Icons for edit, print, delete */}
-          <span
-            className="icon"
-            onClick={currentOrder?.cashier_status !== 'printed' ? () => onEditOrder(currentOrder) : undefined}
-            style={{ 
-              color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', 
-              cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer',
-              opacity: currentOrder?.cashier_status === 'printed' ? 0.5 : 1
-            }}
-            title={currentOrder?.cashier_status === 'printed' ? 'Order is locked - cannot edit after printing' : 'Edit order'}
-          >
-            ✏️
-          </span>
           <span
             className="icon"
             onClick={currentOrder?.cashier_status !== 'printed' && canPrint ? handlePrint : undefined}
@@ -284,107 +271,6 @@ const OrderDetails = ({ onEditOrder, selectedOrderId, onOrderDeleted, onClose })
                    "Wait for all items to be processed by kitchen/bar"}
           >
             🖨️
-          </span>
-          <span 
-            className="icon" 
-            onClick={currentOrder?.cashier_status !== 'printed' ? handleDeleteOrder : undefined}
-            style={{ 
-              color: currentOrder?.cashier_status === 'printed' ? '#b0b0b0' : 'inherit', 
-              cursor: currentOrder?.cashier_status === 'printed' ? 'not-allowed' : 'pointer',
-              opacity: currentOrder?.cashier_status === 'printed' ? 0.5 : 1
-            }}
-            title={currentOrder?.cashier_status === 'printed' ? 'Cannot delete - order is printed and sent to cashier' : 'Delete order'}
-          >
-            🗑️
-          </span>
-          {/* Debug button to reset printed status */}
-          {isPrinted && currentOrder && currentOrder.cashier_status !== 'printed' && (
-            <span 
-              className="icon" 
-              onClick={handleResetPrintedStatus}
-              style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '16px' }}
-              title="Reset printed status (debug)"
-            >
-              🔄
-            </span>
-          )}
-          {/* Debug button to clear all printed orders */}
-          <span 
-            className="icon" 
-            onClick={handleClearAllPrintedOrders}
-            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '14px' }}
-            title="Clear all printed orders (debug)"
-          >
-            🗑️
-          </span>
-          {/* Debug button to force reset printed status if order shouldn't be printed */}
-          {isPrinted && currentOrder && currentOrder.cashier_status !== 'printed' && (
-            <span 
-              className="icon" 
-              onClick={() => {
-                setPrintedOrders(prev => prev.filter(id => id !== currentOrder.id));
-                console.log('Force reset printed status for debugging');
-              }}
-              style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
-              title="Force reset printed status (debug)"
-            >
-              🔧
-            </span>
-          )}
-          {/* Force reset order status for debugging */}
-          <span 
-            className="icon" 
-            onClick={() => {
-              console.log('Force reset order status for debugging');
-              // Force refresh the order data
-              window.location.reload();
-            }}
-            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
-            title="Force refresh order (debug)"
-          >
-            ��
-          </span>
-          {/* Force reset order status to pending */}
-          <span 
-            className="icon" 
-            onClick={async () => {
-              try {
-                console.log('Force reset order status to pending');
-                const response = await axiosInstance.patch(`orders/order-list/${currentOrder.id}/`, {
-                  cashier_status: 'pending'
-                });
-                if (response.status === 200) {
-                  console.log('Order status reset to pending');
-                  window.location.reload();
-                }
-              } catch (error) {
-                console.error('Failed to reset order status:', error);
-              }
-            }}
-            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
-            title="Reset order status to pending (debug)"
-          >
-            📝
-          </span>
-          
-          {/* Debug button to test inventory reduction manually */}
-          <span 
-            className="icon" 
-            onClick={async () => {
-              try {
-                console.log('🧪 Testing inventory reduction manually for order:', currentOrder.id);
-                const inventoryResponse = await reduceBartenderInventory(currentOrder.id);
-                console.log('🧪 Manual inventory reduction result:', inventoryResponse);
-                alert(`Inventory reduction test completed!\n\nReduced items: ${inventoryResponse.reduced_items?.length || 0}\nErrors: ${inventoryResponse.errors?.length || 0}`);
-              } catch (error) {
-                console.error('🧪 Manual inventory reduction failed:', error);
-                alert(`Inventory reduction test failed: ${error.message}`);
-              }
-            }}
-            style={{ color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}
-            title="Test inventory reduction manually (debug)"
-          >
-            🧪
           </span>
         </div>
       </div>

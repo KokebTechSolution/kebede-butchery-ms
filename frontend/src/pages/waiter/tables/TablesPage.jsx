@@ -24,6 +24,7 @@ const TablesPage = ({ onSelectTable }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [seats, setSeats] = useState(4); // Default seats for new table
+  const [isMobile, setIsMobile] = useState(false);
 
   // Fetch tables from API
   const fetchTables = async () => {
@@ -53,6 +54,14 @@ const TablesPage = ({ onSelectTable }) => {
   useEffect(() => {
     fetchTables();
     fetchOrders();
+  }, []);
+
+  // Detect mobile viewport to position the FAB appropriately
+  useEffect(() => {
+    const updateIsMobile = () => setIsMobile(window.innerWidth <= 768);
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
 
   // Handle adding a new table, auto-increment table number
@@ -107,8 +116,10 @@ const TablesPage = ({ onSelectTable }) => {
       <button
         style={{
           position: 'fixed',
-          bottom: 32,
-          right: 32,
+          bottom: isMobile ? 64 : 32, // sit closer to bottom nav on mobile
+          right: isMobile ? 'auto' : 32,
+          left: isMobile ? '70%' : 'auto', // shift left to avoid overlapping Orders
+          transform: isMobile ? 'translateX(-50%)' : 'none',
           width: 56,
           height: 56,
           borderRadius: '50%',
@@ -117,7 +128,7 @@ const TablesPage = ({ onSelectTable }) => {
           fontSize: 32,
           border: 'none',
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          zIndex: 1000,
+          zIndex: 1100,
           cursor: loading ? 'not-allowed' : 'pointer',
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
