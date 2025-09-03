@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../../components/ui/table";
-import { getPrintedOrders } from "../../../../../../api/cashier";
+import { getPrintedOrders, getMyOrders } from "../../../../../../api/cashier";
 import axiosInstance from "../../../../../../api/axiosInstance";
 
 // Helper to get today's date in yyyy-mm-dd format
@@ -25,14 +25,40 @@ export const SidebarSection = () => {
   const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
   const [filterDate, setFilterDate] = useState(getTodayDateString());
+  const [usingFallback, setUsingFallback] = useState(false);
 
   const fetchOrders = async (date) => {
     try {
       // Use getPrintedOrders instead of getMyOrders to only show orders that waiters have printed
       const ordersData = await getPrintedOrders(date);
-      setOrders(ordersData);
+      console.log('🔍 Raw orders from API:', ordersData);
+      
+      // Client-side filter as backup to ensure only printed orders are shown
+      const filteredOrders = ordersData.filter(order => {
+        const isPrinted = order.cashier_status === 'printed';
+        if (!isPrinted) {
+          console.log(`⚠️ Filtering out order ${order.order_number} - cashier_status: ${order.cashier_status}`);
+        }
+        return isPrinted;
+      });
+      
+      console.log('✅ Filtered orders (printed only):', filteredOrders);
+      setOrders(filteredOrders);
+      setUsingFallback(false);
     } catch (error) {
       console.error("Failed to fetch printed orders:", error);
+      // Fallback: try to get all orders and filter client-side
+      try {
+        console.log('🔄 Fallback: fetching all orders and filtering client-side...');
+        const allOrders = await getMyOrders(date);
+        const filteredOrders = allOrders.filter(order => order.cashier_status === 'printed');
+        console.log('✅ Fallback filtered orders:', filteredOrders);
+        setOrders(filteredOrders);
+        setUsingFallback(true);
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError);
+        setOrders([]);
+      }
     }
   };
 
@@ -105,6 +131,18 @@ export const SidebarSection = () => {
         <p className="text-sm text-gray-600 mt-1">
           Only orders that have been printed by waiters appear here
         </p>
+        {usingFallback && (
+          <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 rounded text-yellow-800 text-xs">
+            ⚠️ Using fallback filtering (backend filtering may not be working properly)
+          </div>
+        )}
+        {/* Debug Information */}
+        <div className="mt-2 p-2 bg-blue-100 border border-blue-400 rounded text-blue-800 text-xs">
+          <strong>Debug Info:</strong> Showing {orders.length} orders. 
+          {orders.length > 0 && (
+            <span> Cashier statuses: {[...new Set(orders.map(o => o.cashier_status))].join(', ')}</span>
+          )}
+        </div>
         <div className="w-full mt-3">
           <label htmlFor="order-date-filter" className="block text-sm font-medium text-gray-700 mb-2">
             Filter by Date:
