@@ -107,8 +107,8 @@ const TablesPage = ({ onSelectTable }) => {
       <button
         style={{
           position: 'fixed',
-          bottom: 32,
-          right: 32,
+          bottom: 80, // Increased from 32 to 80 to avoid overlap with bottom nav
+          right: 20,  // Reduced from 32 to 20 for better mobile positioning
           width: 56,
           height: 56,
           borderRadius: '50%',

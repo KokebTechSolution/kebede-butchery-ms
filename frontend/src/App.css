@@ -934,11 +934,22 @@ html, body {
   
   /* Floating action button mobile positioning */
   button[style*="position: fixed"] {
-    bottom: 20px !important;
-    right: 20px !important;
+    bottom: 80px !important; /* Increased to avoid bottom nav overlap */
+    right: 20px !important;  /* Better mobile positioning */
     width: 50px !important;
     height: 50px !important;
     font-size: 28px !important;
+  }
+  
+  /* Extra small mobile devices - adjust button position */
+  @media (max-width: 480px) {
+    button[style*="position: fixed"] {
+      bottom: 85px !important; /* Even more space on very small screens */
+      right: 15px !important;
+      width: 48px !important;
+      height: 48px !important;
+      font-size: 24px !important;
+    }
   }
   
   /* Mobile touch improvements */

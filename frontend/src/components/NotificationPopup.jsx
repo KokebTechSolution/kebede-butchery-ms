@@ -11,10 +11,23 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
           await audioRef.current.play();
         } catch (error) {
           console.warn('Autoplay blocked by browser:', error);
+          // Try to play on next user interaction
+          const handleUserInteraction = () => {
+            if (audioRef.current) {
+              audioRef.current.play().catch(console.warn);
+            }
+            document.removeEventListener('click', handleUserInteraction);
+            document.removeEventListener('keydown', handleUserInteraction);
+          };
+          document.addEventListener('click', handleUserInteraction);
+          document.addEventListener('keydown', handleUserInteraction);
         }
       }
     };
-    playSound();
+
+    // Small delay to ensure audio is loaded
+    const timer = setTimeout(playSound, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -57,10 +70,7 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
         <audio
           ref={audioRef}
           src={soundSrc}
-          muted // optional: prevent autoplay issues
-          onCanPlay={() => {
-            audioRef.current.muted = false; // unmute after load if needed
-          }}
+          preload="auto"
         />
       )}
     </div>
