@@ -5,17 +5,39 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
 
   useEffect(() => {
     const playSound = async () => {
-      if (audioRef.current) {
+      if (audioRef.current && soundSrc) {
         try {
+          console.log('🔊 Attempting to play notification sound:', soundSrc);
+          
+          // Reset audio to beginning
           audioRef.current.currentTime = 0;
-          await audioRef.current.play();
+          // Ensure volume is set
+          audioRef.current.volume = 0.7;
+          // Ensure audio is not muted
+          audioRef.current.muted = false;
+          
+          // Play the sound
+          const playPromise = audioRef.current.play();
+          
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log('🔊 Notification sound played successfully');
+          }
         } catch (error) {
-          console.warn('Autoplay blocked by browser:', error);
+          console.warn('🔇 Could not play notification sound:', error);
+          // Try alternative approach for browsers that block autoplay
+          if (error.name === 'NotAllowedError') {
+            console.log('🔇 Autoplay blocked, user interaction required');
+          }
         }
+      } else {
+        console.log('🔇 No audio element or sound source available');
       }
     };
+
+    // Play sound when notification appears
     playSound();
-  }, []);
+  }, [soundSrc]);
 
   return (
     <div style={{
@@ -57,10 +79,13 @@ const NotificationPopup = ({ message, orderNumber, tableName, onClose, soundSrc 
         <audio
           ref={audioRef}
           src={soundSrc}
-          muted // optional: prevent autoplay issues
-          onCanPlay={() => {
-            audioRef.current.muted = false; // unmute after load if needed
-          }}
+          preload="auto"
+          onError={(e) => console.error('🔇 Audio error:', e)}
+          onLoadStart={() => console.log('🔊 Loading notification sound...')}
+          onCanPlay={() => console.log('🔊 Notification sound ready to play')}
+          onLoadedData={() => console.log('🔊 Notification sound data loaded')}
+          onPlay={() => console.log('🔊 Notification sound started playing')}
+          onEnded={() => console.log('🔊 Notification sound finished')}
         />
       )}
     </div>

@@ -63,6 +63,12 @@
   border-bottom: 1px solid #eee;
   margin-bottom: 20px;
   padding: 0 16px;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .menu-tab {
@@ -94,8 +100,8 @@
 
 .menu-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -337,15 +343,46 @@
   /* Desktop Menu Grid - Horizontal Layout */
   .menu-items-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Force 4 columns on desktop */
-    gap: 16px;
+    grid-template-columns: repeat(3, 1fr); /* Force 3 columns on desktop */
+    gap: 12px;
     margin-bottom: 24px;
   }
   
-  /* Ensure items don't stack vertically */
+  /* Make menu items smaller and more compact */
   .menu-items-grid .menu-item {
     width: 100%;
-    min-width: 0; /* Allow items to shrink */
+    min-width: 0;
+    padding: 8px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Make menu item text smaller */
+  .menu-items-grid .menu-item h3,
+  .menu-items-grid .menu-item h4,
+  .menu-items-grid .menu-item .item-name {
+    font-size: 12px !important;
+    margin: 2px 0 !important;
+  }
+  
+  /* Make price text smaller */
+  .menu-items-grid .menu-item .price {
+    font-size: 10px !important;
+    margin: 2px 0 !important;
+  }
+  
+  /* Make quantity controls smaller */
+  .menu-items-grid .menu-item .quantity-controls {
+    margin: 4px 0 !important;
+  }
+  
+  .menu-items-grid .menu-item .quantity-controls button {
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+  }
+  
+  .menu-items-grid .menu-item .quantity-display {
+    font-size: 12px !important;
+    padding: 2px 6px !important;
   }
   
   .menu-category-section {
