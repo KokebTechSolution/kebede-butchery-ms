@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../../components/ui/table";
-import { getMyOrders } from "../../../../../../api/cashier";
+import { getPrintedOrders } from "../../../../../../api/cashier";
 import axiosInstance from "../../../../../../api/axiosInstance";
 
 // Helper to get today's date in yyyy-mm-dd format
@@ -25,23 +25,22 @@ export const SidebarSection = () => {
   const [orders, setOrders] = useState([]);
   const [clickedIndex, setClickedIndex] = useState(null);
   const [filterDate, setFilterDate] = useState(getTodayDateString());
-  const [filterStatus, setFilterStatus] = useState('all');
 
-  const fetchOrders = async (date, status = null) => {
+  const fetchOrders = async (date) => {
     try {
-      const ordersData = await getMyOrders(date, status);
+      // Use getPrintedOrders instead of getMyOrders to only show orders that waiters have printed
+      const ordersData = await getPrintedOrders(date);
       setOrders(ordersData);
     } catch (error) {
-      console.error("Failed to fetch orders:", error);
+      console.error("Failed to fetch printed orders:", error);
     }
   };
 
   useEffect(() => {
-    const status = filterStatus === 'all' ? null : filterStatus;
-    const interval = setInterval(() => fetchOrders(filterDate, status), 5000); // Fetch every 5 seconds
-    fetchOrders(filterDate, status); // Initial fetch
+    const interval = setInterval(() => fetchOrders(filterDate), 5000); // Fetch every 5 seconds
+    fetchOrders(filterDate); // Initial fetch
     return () => clearInterval(interval); // Cleanup on unmount
-  }, [filterDate, filterStatus]);
+  }, [filterDate]);
 
   const handleProcessPayment = async (order, index) => {
     setClickedIndex(index);
@@ -101,8 +100,11 @@ export const SidebarSection = () => {
     <div className="max-w-[960px] flex-1 grow flex flex-col items-start">
       <div className="flex flex-col items-start pt-5 pb-3 px-4 w-full">
         <h2 className="font-bold text-[#161111] text-[22px] leading-7 [font-family:'Work_Sans',Helvetica]">
-          Pending Orders
+          Orders Ready for Payment
         </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          Only orders that have been printed by waiters appear here
+        </p>
         <div className="w-full mt-3">
           <label htmlFor="order-date-filter" className="block text-sm font-medium text-gray-700 mb-2">
             Filter by Date:
@@ -121,7 +123,7 @@ export const SidebarSection = () => {
       <div className="block lg:hidden px-4 py-3 w-full space-y-4">
         {sortedOrders.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>No pending orders for the selected date.</p>
+            <p>No printed orders ready for payment on the selected date.</p>
           </div>
         ) : (
           sortedOrders.map((order, index) => (
