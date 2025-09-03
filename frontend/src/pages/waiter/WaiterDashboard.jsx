@@ -376,9 +376,6 @@ const WaiterDashboard = () => {
             <div className="menu-section">
               <MenuPage table={selectedTable} onBack={handleBackFromMenu} onOrder={handleOrder} />
             </div>
-            <div className="cart-section">
-              <Cart onOrder={handleOrder} onClearCart={handleClearCart} />
-            </div>
           </div>
         )}
         {currentPage === 'orderDetails' && (
