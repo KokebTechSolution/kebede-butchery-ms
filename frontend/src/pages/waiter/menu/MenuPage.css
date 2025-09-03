@@ -94,8 +94,9 @@
 
 .menu-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 /* Stock status indicators */
@@ -331,6 +332,24 @@
   
   .cart-container::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+  }
+  
+  /* Desktop Menu Grid - Horizontal Layout */
+  .menu-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .menu-category-section {
+    margin-bottom: 32px;
+  }
+  
+  .menu-category-section h3 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: #1f2937;
   }
 }
 

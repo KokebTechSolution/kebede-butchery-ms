@@ -82,7 +82,7 @@ const WaiterDashboard = () => {
   }, []);
 
   const handleNavigate = (page) => {
-    if (page === 'order') {
+    if (page === 'order' || page === 'orderDetails') {
       setCurrentPage('orderDetails');
       setSelectedOrderId(null); // Clear selected order to show order list first
       setEditingOrderId(null);
