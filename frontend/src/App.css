@@ -159,6 +159,31 @@ html, body {
     padding: 0;
     font-size: 12px;
   }
+  
+  /* Desktop cart positioning - make it sticky at the top */
+  .menu-cart-container {
+    flex-direction: row;
+    gap: 24px;
+    padding: 20px;
+    align-items: flex-start;
+  }
+  
+  .cart-section {
+    position: sticky;
+    top: 20px;
+    width: 320px;
+    min-width: 320px;
+    max-width: 320px;
+    order: 2;
+    margin: 0;
+  }
+  
+  .cart-container {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
 }
 
 /* MOBILE-FIRST APPROACH - Default styles for mobile */
@@ -934,11 +959,12 @@ html, body {
   
   /* Floating action button mobile positioning */
   button[style*="position: fixed"] {
-    bottom: 20px !important;
+    bottom: 90px !important; /* Increased to avoid overlap with bottom nav */
     right: 20px !important;
     width: 50px !important;
     height: 50px !important;
     font-size: 28px !important;
+    z-index: 999 !important; /* Ensure it's above other elements */
   }
   
   /* Mobile touch improvements */
@@ -957,10 +983,14 @@ html, body {
   
   .table-header {
     padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .table-header h1 {
     font-size: 24px;
+    margin: 0;
   }
   
   .table-section {
@@ -1111,6 +1141,15 @@ html, body {
 
 /* EXTRA SMALL MOBILE DEVICES */
 @media (max-width: 480px) {
+  /* Floating action button positioning for very small screens */
+  button[style*="position: fixed"] {
+    bottom: 100px !important; /* Even more space for very small screens */
+    right: 16px !important;
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 26px !important;
+  }
+  
   .table-grid.modern {
     gap: 4px;
     padding: 6px;

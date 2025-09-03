@@ -2,6 +2,8 @@
   padding: 20px;
   display: flex;
   gap: 2rem;
+  min-height: 100vh;
+  position: relative;
 }
 
 .menu-content {
@@ -24,6 +26,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
 }
 
 /* Make empty cart more compact */
@@ -256,6 +259,81 @@
   font-size: 16px;
 }
 
+/* Desktop Layout - Cart on the right side with FIXED positioning */
+@media (min-width: 769px) {
+  .menu-container {
+    flex-direction: row;
+    gap: 2rem;
+    padding: 20px;
+    align-items: flex-start;
+  }
+  
+  .menu-content {
+    flex: 2;
+    order: 1;
+    padding-right: 20px;
+    margin-right: 360px; /* Account for fixed cart width + gap */
+  }
+  
+  .cart-section {
+    flex: 1;
+    min-width: 320px;
+    max-width: 320px;
+    order: 2;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    height: fit-content;
+    z-index: 100;
+    width: 320px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .cart-container {
+    position: relative;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+    backdrop-filter: blur(10px);
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* Enhanced sticky behavior with smooth transitions */
+  .cart-container:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  /* Ensure smooth scrolling for the cart content */
+  .cart-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .cart-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .cart-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  .cart-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+}
+
 /* Mobile Responsive Design */
 @media (max-width: 768px) {
   .menu-container {
@@ -402,4 +480,4 @@
     font-size: 20px !important;
     gap: 20px;
   }
-} 
+}
