@@ -94,8 +94,8 @@
 
 .menu-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
   margin-bottom: 20px;
 }
 
@@ -337,9 +337,15 @@
   /* Desktop Menu Grid - Horizontal Layout */
   .menu-items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(3, 1fr); /* Force 4 columns on desktop */
+    gap: 16px;
     margin-bottom: 24px;
+  }
+  
+  /* Ensure items don't stack vertically */
+  .menu-items-grid .menu-item {
+    width: 100%;
+    min-width: 0; /* Allow items to shrink */
   }
   
   .menu-category-section {
