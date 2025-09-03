@@ -82,7 +82,8 @@ const WaiterDashboard = () => {
   }, []);
 
   const handleNavigate = (page) => {
-    if (page === 'order') {
+    if (page === 'orderDetails') {
+      // When navigating to Orders, show only the list first, not the full details view
       setCurrentPage('orderDetails');
       return;
     }
@@ -382,12 +383,14 @@ const WaiterDashboard = () => {
               onSelectOrder={handleSelectOrder}
               selectedOrderId={selectedOrderId}
             />
-            <OrderDetails
-              onEditOrder={handleEditOrder}
-              selectedOrderId={selectedOrderId}
-              onOrderDeleted={handleOrderDeleted}
-              onClose={handleCloseOrderDetails}
-            />
+            {selectedOrderId && (
+              <OrderDetails
+                onEditOrder={handleEditOrder}
+                selectedOrderId={selectedOrderId}
+                onOrderDeleted={handleOrderDeleted}
+                onClose={handleCloseOrderDetails}
+              />
+            )}
           </div>
         )}
         {currentPage === 'profile' && (
