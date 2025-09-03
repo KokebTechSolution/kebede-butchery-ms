@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -42,65 +42,87 @@ const Layout = ({ children }) => {
   );
 };
 
+// Conditional Topbar component
+const ConditionalTopbar = () => {
+  const location = useLocation();
+  const isWaiterDashboard = location.pathname === '/waiter/dashboard';
+  
+  if (isWaiterDashboard) {
+    return null; // No Topbar for waiter dashboard
+  }
+  
+  return <Topbar />;
+};
+
+// Conditional main wrapper
+const ConditionalMain = () => {
+  const location = useLocation();
+  const isWaiterDashboard = location.pathname === '/waiter/dashboard';
+  
+  return (
+    <main className={`flex-1 ${isWaiterDashboard ? '' : 'mt-10'}`}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/logout" element={<Logout />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        {/* Role-Based Dashboard on root path */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute allowedRoles={['manager', 'staff', 'waiter', 'owner', 'cashier', 'bartender', 'meat']}>
+              <Layout>
+                <RoleBasedDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Branch Manager Routes */}
+        <Route
+          path="/branch-manager/*"
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <Layout>
+                <BranchManagerRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Waiter Dashboard Route */}
+        <Route
+          path="/waiter/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['waiter']}>
+              <Layout>
+                <WaiterDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        {/* TODO: Add routes for other roles like staff, waiter, etc.
+        <Route
+          path="/staff/*"
+          element={
+            <ProtectedRoute allowedRoles={['staff']}>
+              <Layout>
+                <StaffRoutes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        /> */}
+        {/* Catch-all 404 Route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </main>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
       <div className="min-h-screen flex flex-col bg-gray-100">
-        <Topbar />
-        <main className="flex-1 mt-10">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/logout" element={<Logout />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            {/* Role-Based Dashboard on root path */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute allowedRoles={['manager', 'staff', 'waiter', 'owner', 'cashier', 'bartender', 'meat']}>
-                  <Layout>
-                    <RoleBasedDashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            {/* Branch Manager Routes */}
-            <Route
-              path="/branch-manager/*"
-              element={
-                <ProtectedRoute allowedRoles={['manager']}>
-                  <Layout>
-                    <BranchManagerRoutes />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            {/* Waiter Dashboard Route */}
-            <Route
-              path="/waiter/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['waiter']}>
-                  <Layout>
-                    <WaiterDashboard />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            {/* TODO: Add routes for other roles like staff, waiter, etc.
-            <Route
-              path="/staff/*"
-              element={
-                <ProtectedRoute allowedRoles={['staff']}>
-                  <Layout>
-                    <StaffRoutes />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            /> */}
-            {/* Catch-all 404 Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
+        <ConditionalTopbar />
+        <ConditionalMain />
         <Footer />
         {/* <BottomNav /> */}
       </div>

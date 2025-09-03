@@ -142,8 +142,8 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
     const isPaid = latestOrder && latestOrder.has_payment;
 
     return (
-        <div className="menu-container" style={{ display: 'flex', gap: '2rem' }}>
-            <div style={{ flex: 2 }}>
+        <div className="menu-container">
+            <div className="menu-content">
                 <div className="menu-header">
                     <h2>{table ? ` Table ${table.number}` : ''}</h2>
                     {onBack && <MdArrowBack size={36} onClick={onBack} style={{ cursor: 'pointer' }} />}
@@ -263,9 +263,11 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                     </div>
                 )}
             </div>
-            <div style={{ flex: 1, minWidth: 300 }}>
-                <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001', marginBottom: 24 }}>
-                    <h3 style={{ marginBottom: 8 }}>🛒 Current Order</h3>
+            
+            {/* Cart Section - Responsive */}
+            <div className="cart-section">
+                <div className="cart-container">
+                    <h3 style={{ marginBottom: 2 }}>🛒 Current Order</h3>
                     {(() => {
                         function mergeCartItems(items) {
                             // Don't merge quantities - keep items separate for display
@@ -275,7 +277,7 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                         return mergedCartItems.length === 0 ? (
                             <div>No items in current order.</div>
                         ) : (
-                            <ul style={{ marginBottom: 12 }}>
+                            <ul style={{ marginBottom: 6 }}>
                                 {mergedCartItems.map(item => (
                                     <li key={item.name + '-' + item.price + '-' + (item.item_type || 'food')}>
                                         {item.name} × {item.quantity} — ${(item.price * item.quantity).toFixed(2)}
@@ -284,18 +286,18 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                             </ul>
                         );
                     })()}
-                    <div style={{ fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>
                         Running Total: ${cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
                       </span>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
                         <button
                           style={{
                             background: '#4ade80',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: 4,
-                            padding: '8px 20px',
+                            padding: '6px 16px',
                             fontWeight: 600,
                             cursor: 'pointer',
                             transition: 'background 0.2s, color 0.2s',
@@ -325,10 +327,10 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                               color: '#fff',
                               border: 'none',
                               borderRadius: 4,
-                              padding: '8px 20px',
+                              padding: '6px 16px',
                               fontWeight: 600,
                               cursor: 'pointer',
-                              marginLeft: 8,
+                              marginLeft: 6,
                               transition: 'background 0.2s, color 0.2s',
                             }}
                             onClick={clearCart}
@@ -338,33 +340,6 @@ const MenuPage = ({ table, onBack, editingOrderId, onOrder }) => {
                         )}
                       </div>
                     </div>
-                </div>
-                <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0001' }}>
-                    <h4 style={{ marginBottom: 8 }}>Previous Orders</h4>
-                    {previousOrders.length === 0 ? (
-                        <div>No previous orders.</div>
-                    ) : (
-                        previousOrders.map(order => (
-                            <div key={order.id} style={{ borderBottom: '1px solid #eee', marginBottom: 8, paddingBottom: 8, background: editingOrderId === order.id ? '#e0f7fa' : 'transparent' }}>
-                                <div>
-                                    Order #{order.order_number} <span style={{ float: 'right' }}>${order.total_money}</span>
-                                    {editingOrderId === order.id && <span style={{ color: '#007bff', marginLeft: 8 }}>(Editing)</span>}
-                                </div>
-                                <div style={{ fontSize: 13, color: '#656565' }}>
-                                    {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                                    {(() => {
-                                      if (order.food_status && order.food_status !== 'not_applicable') {
-                                        return ` • ${order.food_status}`;
-                                      } else if (order.beverage_status && order.beverage_status !== 'not_applicable') {
-                                        return ` • ${order.beverage_status}`;
-                                      } else {
-                                        return '';
-                                      }
-                                    })()}
-                                </div>
-                            </div>
-                        ))
-                    )}
                 </div>
             </div>
         </div>
