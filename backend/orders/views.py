@@ -63,6 +63,10 @@ class OrderListView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
+        print(f"DEBUG: perform_create - User: {user}")
+        print(f"DEBUG: perform_create - User authenticated: {self.request.user.is_authenticated}")
+        print(f"DEBUG: perform_create - Request data: {self.request.data}")
+        
         # Only allow users in the 'waiter' group to create orders
         today = timezone.now().date()
         today_str = today.strftime('%Y%m%d')
@@ -81,6 +85,8 @@ class OrderListView(generics.ListCreateAPIView):
         has_beverages = any(item.get('item_type') == 'beverage' for item in items_data)
         food_status = 'pending' if has_food else 'not_applicable'
         beverage_status = 'pending' if has_beverages else 'not_applicable'
+        
+        print(f"DEBUG: perform_create - Saving with user: {user}, order_number: {new_order_number}")
         serializer.save(
             created_by=user, 
             order_number=new_order_number,

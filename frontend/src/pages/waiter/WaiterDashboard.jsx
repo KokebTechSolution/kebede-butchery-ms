@@ -276,9 +276,7 @@ const WaiterDashboard = () => {
           price: item.price,
           item_type: item.item_type || 'food',
           status: item.status // <-- preserve status!
-        })),
-        waiter_username: user?.username,
-        waiter_table_number: selectedTable?.number
+        }))
       };
       console.log('POST payload:', newOrderData); // <-- log payload
       try {

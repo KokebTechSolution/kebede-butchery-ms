@@ -49,54 +49,91 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at', 'order_number']
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items', None)
-        table = validated_data.get('table')
-
-        if not table:
-            raise serializers.ValidationError("Order must include a table.")
-
-        validated_data['branch'] = table.branch  # Set branch from table
-
-        if items_data is None:
-            raise serializers.ValidationError("Order must include 'items'.")
-
-        order = Order.objects.create(**validated_data)
-        total = 0
-        
-        # Group items by name, price, and type to avoid duplicates
-        grouped_items = {}
-        for item_data in items_data:
-            item_key = (item_data.get('name'), item_data.get('price'), item_data.get('item_type', 'food'))
+        try:
+            print("DEBUG: Starting serializer create method...")
+            print(f"DEBUG: Validated data: {validated_data}")
             
-            if item_key in grouped_items:
-                # Add quantities for same item
-                grouped_items[item_key]['quantity'] += item_data.get('quantity', 1)
-            else:
-                # Create new grouped item
-                grouped_items[item_key] = {
-                    'name': item_data.get('name'),
-                    'price': item_data.get('price'),
-                    'item_type': item_data.get('item_type', 'food'),
-                    'quantity': item_data.get('quantity', 1),
-                    'status': item_data.get('status', 'pending')
-                }
-        
-        # Create OrderItems from grouped data
-        for item_data in grouped_items.values():
-            try:
-                item = OrderItem.objects.create(order=order, **item_data)
-                if item.status == 'accepted':
-                    total += item.price * item.quantity
-            except Exception as e:
-                order.delete()
-                raise serializers.ValidationError(f"Error creating order item: {str(e)}")
+            items_data = validated_data.pop('items', None)
+            table = validated_data.get('table')
+            print(f"DEBUG: Table: {table}")
+            print(f"DEBUG: Table type: {type(table)}")
+            print(f"DEBUG: Table ID: {table.id if table else 'None'}")
+            
+            if not table:
+                raise serializers.ValidationError("Order must include a table.")
 
-        order.total_money = total
-        if order.all_items_completed():
-            order.food_status = 'completed'
-            order.beverage_status = 'completed'
-        order.save()
-        return order
+            # Check if table has a branch
+            try:
+                print(f"DEBUG: Table branch: {table.branch}")
+                print(f"DEBUG: Table branch type: {type(table.branch)}")
+                if not table.branch:
+                    raise serializers.ValidationError("Table must have a branch assigned.")
+            except Exception as e:
+                print(f"ERROR accessing table.branch: {str(e)}")
+                raise serializers.ValidationError(f"Error accessing table branch: {str(e)}")
+
+            validated_data['branch'] = table.branch  # Set branch from table
+            print(f"DEBUG: Branch set to: {table.branch}")
+
+            if items_data is None:
+                raise serializers.ValidationError("Order must include 'items'.")
+
+            print("DEBUG: Creating order...")
+            order = Order.objects.create(**validated_data)
+            print(f"DEBUG: Order created with ID: {order.id}")
+            
+            total = 0
+            
+            # Group items by name, price, and type to avoid duplicates
+            grouped_items = {}
+            for item_data in items_data:
+                item_key = (item_data.get('name'), item_data.get('price'), item_data.get('item_type', 'food'))
+                
+                if item_key in grouped_items:
+                    # Add quantities for same item
+                    grouped_items[item_key]['quantity'] += item_data.get('quantity', 1)
+                else:
+                    # Create new grouped item
+                    grouped_items[item_key] = {
+                        'name': item_data.get('name'),
+                        'price': item_data.get('price'),
+                        'item_type': item_data.get('item_type', 'food'),
+                        'quantity': item_data.get('quantity', 1),
+                        'status': item_data.get('status', 'pending')
+                    }
+            
+            print(f"DEBUG: Grouped items: {grouped_items}")
+            
+            # Create OrderItems from grouped data
+            for item_data in grouped_items.values():
+                try:
+                    print(f"DEBUG: Creating order item: {item_data}")
+                    item = OrderItem.objects.create(order=order, **item_data)
+                    print(f"DEBUG: Order item created: {item.id}")
+                    if item.status == 'accepted':
+                        total += item.price * item.quantity
+                except Exception as e:
+                    print(f"ERROR creating order item: {str(e)}")
+                    order.delete()
+                    raise serializers.ValidationError(f"Error creating order item: {str(e)}")
+
+            order.total_money = total
+            print(f"DEBUG: Total money set to: {total}")
+            
+            if order.all_items_completed():
+                order.food_status = 'completed'
+                order.beverage_status = 'completed'
+            
+            order.save()
+            print("DEBUG: Order saved successfully!")
+            return order
+            
+        except Exception as e:
+            print(f"ERROR in serializer create: {str(e)}")
+            print(f"ERROR type: {type(e)}")
+            import traceback
+            print(f"ERROR traceback: {traceback.format_exc()}")
+            raise e
 
     @transaction.atomic
     def update(self, instance, validated_data):

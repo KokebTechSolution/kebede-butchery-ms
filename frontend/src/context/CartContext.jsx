@@ -191,7 +191,6 @@ export const CartProvider = ({ children, initialActiveTableId }) => {
       const payload = {
         ...orderData,
         table: activeTableId,
-        waiter_username: user?.username,
       };
       delete payload.table_number;
       delete payload.branch;
